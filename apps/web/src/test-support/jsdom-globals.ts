@@ -1,7 +1,7 @@
 /**
  * Browser APIs jsdom does not implement, stubbed for the unit project.
  *
- * These are not wiring seams — nothing in the product is optional here. jsdom
+ * These are not wiring seams: nothing in the product is optional here. jsdom
  * simply has no layout engine, so an API that reports geometry has nothing to
  * report. A component is entitled to call `new ResizeObserver(...)`
  * unconditionally, and a test environment that throws on it is testing jsdom's
@@ -27,13 +27,12 @@ if (typeof window !== "undefined") {
   globalThis.ResizeObserver ??= ResizeObserverStub;
 
   /**
-   * `matchMedia` — same argument, one rung up.
+   * `matchMedia`: same argument, one rung up.
    *
    * jsdom ships no media-query engine, and a component is entitled to ask
    * `prefers-reduced-motion` or `prefers-color-scheme` unconditionally: the
    * question is how the product behaves, not whether the test environment
-   * implements CSSOM View. Two test files had already hand-rolled this stub with
-   * the same comment; the third one to need it is the sign it belongs here.
+   * implements CSSOM View. Belongs in shared setup, not hand-rolled per spec.
    *
    * **Everything reports false**, which is the honest default: no reduced-motion
    * preference, not mobile, light. A spec that cares about the other answer

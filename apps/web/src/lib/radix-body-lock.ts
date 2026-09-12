@@ -13,8 +13,8 @@ const MODAL_LAYER = "[role=dialog],[role=alertdialog]";
  * Handing that stale value back on close leaves the whole page dead with
  * nothing on screen to explain why, and only a reload recovers.
  *
- * Deferring harder cannot fix it — an exit animation has no duration this code
- * can know — so watch until the layers have actually settled, then assert the
+ * Deferring harder cannot fix it: an exit animation has no duration this code
+ * can know, so watch until the layers have actually settled, then assert the
  * invariant. Watching stops at the first settled frame, or after
  * LOCK_WATCH_MS if some layer stays open.
  */

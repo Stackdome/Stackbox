@@ -6,8 +6,20 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { load, dump } from 'js-yaml'
 
-const SOURCE = '/Users/akshaysasidharan/code/stackdome/config/openapi/stackdome_api.yaml'
 const OUTPUT = resolve(import.meta.dirname, '../openapi/stackbox_api.yaml')
+
+// The Stackdome checkout is a sibling repo, not part of this one, so its path
+// is never hard-coded: only a machine with that checkout can regenerate the
+// contract, and every other machine gets a clear error instead of a bad path.
+function sourcePath(): string {
+  const value = process.env.STACKDOME_OPENAPI
+  if (!value) {
+    throw new Error(
+      'STACKDOME_OPENAPI is required: set it to the path of stackdome_api.yaml before running pnpm generate.',
+    )
+  }
+  return value
+}
 
 // Shared with transform.spec.ts so the prune list is never a magic string
 // duplicated between the script and its test.
@@ -265,6 +277,17 @@ function renamedSchemaName(name: string): string {
 const PROSE_FIXUPS: Array<[string, string]> = [
   ['unique per project', 'unique per org'],
   ['exists in the project it is reconciled', 'exists it is reconciled'],
+  // Em dashes in source prose. Fixed here so a future regeneration never
+  // reintroduces one; each entry is the exact source text, verified unique.
+  // The dash itself is a — escape rather than a literal character so
+  // this file, which people read, carries no em dash of its own.
+  ['ignored — add\nchildren via', 'ignored. Add\nchildren via'],
+  ['body are ignored — use `PUT', 'body are ignored. Use `PUT'],
+  ['Idempotent — clients need not know', 'Idempotent: clients need not know'],
+  ['not started — retry later', 'not started. Retry later'],
+  // Volumes no longer has a schema of its own once its group is pruned, so
+  // naming it beside StackResources is stale; say "resources" instead.
+  [' such as StackResources or Volumes', ''],
 ]
 
 function applyProseFixups(text: string): string {
@@ -299,8 +322,19 @@ function renameSchemaMentions(text: string, renameMap: Map<string, string>): str
   return result
 }
 
+// Property keys that still spelled out "stack" verbatim. A bare `stack` key
+// only ever names ReleaseSnapshot's embedded object, never a path or schema
+// name, so it is safe to rename unconditionally wherever it appears.
+const RENAMED_PROPERTY_KEYS: Record<string, string> = {
+  stack_id: 'instance_id',
+  stack_resources: 'instance_resources',
+  stack_resource_id: 'instance_resource_id',
+  stack_resource_name: 'instance_resource_name',
+  stack: 'instance',
+}
+
 function renameKey(key: string): string {
-  return key === 'stack_id' ? 'instance_id' : key
+  return RENAMED_PROPERTY_KEYS[key] ?? key
 }
 
 // Same substitution as a schema name (Stack -> ApplicationInstance,
@@ -328,6 +362,11 @@ function renameTree(node: unknown, renameMap: Map<string, string>): unknown {
         result[newKey] = renameStackWord(renameSchemaMentions(applyProseFixups(value), renameMap))
       } else if (key === 'operationId' && typeof value === 'string') {
         result[newKey] = renameOperationId(value)
+      } else if (key === 'required' && Array.isArray(value)) {
+        // A required list names properties by their old keys; keep it in
+        // sync with the property rename above or it points at fields that
+        // no longer exist.
+        result[newKey] = value.map((name) => (typeof name === 'string' ? renameKey(name) : name))
       } else {
         result[newKey] = renameTree(value, renameMap)
       }
@@ -365,7 +404,7 @@ function rename(doc: JsonObject): void {
 
 function main(): void {
   const report: string[] = []
-  const doc = load(readFileSync(SOURCE, 'utf8')) as JsonObject
+  const doc = load(readFileSync(sourcePath(), 'utf8')) as JsonObject
 
   prune(doc, report)
   flatten(doc, report)

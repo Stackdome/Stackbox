@@ -1,5 +1,10 @@
 import { defineConfig } from '@playwright/test'
 
+// Matches apps/api/.env.example's commented stackbox_test line and
+// compose.yaml's postgres port; the api webServer needs a real DATABASE_URL
+// even when the shell running `pnpm e2e` didn't set one.
+const TEST_DATABASE_URL = 'postgres://postgres:postgres@localhost:5433/stackbox_test'
+
 export default defineConfig({
   testDir: './specs',
   reporter: 'list',
@@ -29,7 +34,7 @@ export default defineConfig({
       command: 'pnpm --filter @stackbox/api migrate && pnpm --filter @stackbox/api start',
       url: 'http://localhost:3000/api/v1/health',
       reuseExistingServer: !process.env.CI,
-      env: { DATABASE_URL: process.env.DATABASE_URL as string },
+      env: { DATABASE_URL: process.env.DATABASE_URL ?? TEST_DATABASE_URL },
     },
   ],
 })

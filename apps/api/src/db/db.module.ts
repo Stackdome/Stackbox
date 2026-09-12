@@ -8,7 +8,7 @@ export const DATABASE_CONNECTION = 'DATABASE_CONNECTION'
   providers: [
     {
       provide: DATABASE_CONNECTION,
-      useFactory: () => createDb(process.env.DATABASE_URL as string),
+      useFactory: () => createDb(process.env.DATABASE_URL),
     },
   ],
   exports: [DATABASE_CONNECTION],

@@ -7,7 +7,7 @@ export interface SseEvent {
 }
 
 // Streams scripted SSE frames to a browser EventSource. keepOpen (default)
-// leaves the stream open after the last frame — closing it triggers the
+// leaves the stream open after the last frame: closing it triggers the
 // EventSource auto-reconnect loop, which would re-invoke the handler forever.
 export function sseResponse(events: SseEvent[], opts: { keepOpen?: boolean } = {}) {
   const { keepOpen = true } = opts

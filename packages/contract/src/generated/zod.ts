@@ -324,7 +324,7 @@ const VolumeMountSourceType = z.enum([
 ]);
 const VolumeMount = z
   .object({
-    stack_resource_id: z.string().optional(),
+    instance_resource_id: z.string().optional(),
     source_volume_type: VolumeMountSourceType.optional(),
     source_volume_name: z.string(),
     source_sub_path: z.string().optional(),
@@ -440,7 +440,7 @@ const ApplicationInstanceConnection = z
   .passthrough();
 const ApplicationInstanceSpec = z
   .object({
-    stack_resources: z.array(ApplicationInstanceResource),
+    instance_resources: z.array(ApplicationInstanceResource),
     connections: z.array(ApplicationInstanceConnection),
   })
   .partial()
@@ -594,8 +594,8 @@ const ImageBuild = z
     id: z.string().optional(),
     namespace: z.string().optional(),
     instance_id: z.string().optional(),
-    stack_resource_id: z.string(),
-    stack_resource_name: z.string(),
+    instance_resource_id: z.string(),
+    instance_resource_name: z.string(),
     source_revision: BuildSourceRevision,
     build_context: BuildSourceContext,
     image_repo: z.string(),
@@ -839,7 +839,7 @@ const ReleaseList = z
   .passthrough();
 const ReleaseSnapshot = z
   .object({
-    stack: z
+    instance: z
       .object({
         id: z.string(),
         organisation_id: z.string(),
@@ -2038,7 +2038,7 @@ const endpoints = makeApi([
     path: "/api/v1/organizations/:org_id/instances",
     alias: "postApiv1organizationsOrg_idinstances",
     description: `Creates a thin instance shell (name, labels, annotations, settings). Any inline
-&#x60;stack_resources&#x60;, &#x60;volumes&#x60;, or &#x60;connections&#x60; in the body are ignored — add
+&#x60;stack_resources&#x60;, &#x60;volumes&#x60;, or &#x60;connections&#x60; in the body are ignored. Add
 children via &#x60;PUT /instances/{id}/apply&#x60; or the individual sub-resource endpoints.
 `,
     requestFormat: "json",
@@ -2115,7 +2115,7 @@ children via &#x60;PUT /instances/{id}/apply&#x60; or the individual sub-resourc
     alias: "putApiv1organizationsOrg_idinstancesId",
     description: `Updates only shell fields (name, labels, annotations, settings). &#x60;namespace&#x60; is
 immutable. Child collections (&#x60;stack_resources&#x60;, &#x60;volumes&#x60;, &#x60;connections&#x60;) in the
-body are ignored — use &#x60;PUT /instances/{id}/apply&#x60; for a full reconcile.
+body are ignored. Use &#x60;PUT /instances/{id}/apply&#x60; for a full reconcile.
 `,
     requestFormat: "json",
     parameters: [
@@ -2354,7 +2354,7 @@ accepts a full instance document.
       },
       {
         status: 409,
-        description: `Build job not created yet, or build pod not started — retry later`,
+        description: `Build job not created yet, or build pod not started. Retry later`,
         schema: Error,
       },
       {
@@ -3242,7 +3242,7 @@ accepts a full instance document.
 exists it is reconciled exactly like the id-addressed apply
 (resources and connections not present in the body are deleted, volumes
 are add-only); otherwise the instance and its children are created
-atomically after full validation. Idempotent — clients need not know
+atomically after full validation. Idempotent: clients need not know
 whether the instance already exists.
 `,
     requestFormat: "json",

@@ -13,7 +13,7 @@ describe('assertTestDatabaseUrl', () => {
   })
 })
 
-describe('the initial migration', () => {
+describe('migrating an empty test database', () => {
   let client: Client
 
   beforeAll(async () => {

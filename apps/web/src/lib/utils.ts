@@ -9,13 +9,13 @@ import type { ZodIssue } from "zod";
  * `text-*` utility as a text COLOUR, so `cn("text-body", "text-fg-2")` used to
  * drop the size entirely and the element fell back to the inherited 16px.
  *
- * Teaching it the font-size group fixes that at the root — without this, every
+ * Teaching it the font-size group fixes that at the root: without this, every
  * component that merges a size and a colour through `cn` silently loses its
  * size.
  */
 /**
  * **Every rung on §6's scale must be listed here.** A rung that is missing is
- * not merely unmerged — it is classified as a text COLOUR and dropped by the
+ * not merely unmerged: it is classified as a text COLOUR and dropped by the
  * next `text-*` class in the same string, silently, with the element falling
  * back to the inherited size.
  *
@@ -39,7 +39,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * The interaction ladder for a **navigation** face — a sidebar row, a rail item
+ * The interaction ladder for a **navigation** face, a sidebar row, a rail item
  * (§4). Two rungs only: reachable, and here.
  *
  * **Branch on the state, never stack the variants.** `hover:` and
@@ -48,21 +48,21 @@ export function cn(...inputs: ClassValue[]) {
  * be indistinguishable from the selected one. One call, one set of classes.
  *
  * **A selected row does not answer the pointer.** Selection is a statement about
- * where you are, not an offer — lifting it under the cursor made the row twitch
+ * where you are, not an offer: lifting it under the cursor made the row twitch
  * on the way past and put a fourth tint on a ladder that only needs to separate
  * "here" from "reachable".
  *
  * **A nav row has no pressed rung either.** A button's press is feedback for an
  * act that happens in place; a nav row's click *navigates*, so the 12% tint
  * landed at the same moment the route swapped and the row re-rendered as
- * selected — two fills fighting over one frame, which read as a flicker on
+ * selected, two fills fighting over one frame, which read as a flicker on
  * every click. Ghost BUTTONS keep `--wash-pressed` (see `button.tsx`); rows
  * that take you somewhere do not.
  *
  * Raw `var()` rather than `bg-wash-*`: the theme utility generates the selector
  * but resolves to transparent for both rungs.
  *
- * Lifted out of `sidebar.tsx`, which had the only copy — the previews rail is
+ * Lifted out of `sidebar.tsx`, which had the only copy: the previews rail is
  * the second face on this ladder and a second copy of the string is how the two
  * would drift.
  */

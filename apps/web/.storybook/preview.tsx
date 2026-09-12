@@ -15,8 +15,8 @@ localStorage.setItem('refreshToken', 'sb-refresh')
 localStorage.setItem('currentUser', JSON.stringify(makeUser()))
 
 // Driven off the globals channel rather than a decorator: decorators wrap
-// stories only, so the Foundations MDX pages — which document the tokens the
-// toggle exists to show — would never receive the class.
+// stories only, so the Foundations MDX pages, which document the tokens the
+// toggle exists to show, would never receive the class.
 function applyTheme({ globals }: { globals?: { theme?: string } }) {
   const theme = globals?.theme
   if (!theme) return

@@ -16,14 +16,22 @@ const enumBlocks = Object.entries(doc.components.schemas)
   .filter(([, schema]) => Array.isArray(schema['x-enum-varnames']))
   .map(([name, schema]) => ({ name, varnames: schema['x-enum-varnames']! }))
 
-const SOURCE = '/Users/akshaysasidharan/code/stackdome/config/openapi/stackdome_api.yaml'
-const rawSource = readFileSync(SOURCE, 'utf8')
 const rawOut = readFileSync(resolve(__dirname, '../openapi/stackbox_api.yaml'), 'utf8')
 
 const paths = Object.keys(doc.paths)
 const schemas = Object.keys(doc.components.schemas)
 const PRUNED = PRUNED_GROUPS
 const countEnumBlocks = (yaml: string) => (yaml.match(/x-enum-varnames/g) ?? []).length
+
+// The transformed contract is hand-owned (see transform.ts's header comment),
+// so this is a fixed expectation of the current document, not a value
+// derived from the Stackdome source -- the spec must pass on a machine with
+// no Stackdome checkout at all.
+const EXPECTED_ENUM_BLOCKS = 6
+
+const propertyKeys = Object.values(doc.components.schemas).flatMap((schema) =>
+  Object.keys((schema as { properties?: Record<string, unknown> }).properties ?? {}),
+)
 
 const operationIds = Object.values(doc.paths).flatMap((operations) =>
   Object.values(operations)
@@ -61,7 +69,11 @@ describe('the transformed contract', () => {
   })
 
   it('carries over every x-enum-varnames block the source document had', () => {
-    expect(countEnumBlocks(rawOut)).toBe(countEnumBlocks(rawSource))
+    expect(countEnumBlocks(rawOut)).toBe(EXPECTED_ENUM_BLOCKS)
+  })
+
+  it('renames stack inside every property key', () => {
+    expect(propertyKeys.filter((key) => /^stack(_|$)/.test(key))).toEqual([])
   })
 
   it('renames Stack inside every operationId', () => {
@@ -76,7 +88,7 @@ describe('the transformed contract', () => {
   })
 
   it('exports one enum per x-enum-varnames block', () => {
-    expect(enumBlocks).toHaveLength(6)
+    expect(enumBlocks).toHaveLength(EXPECTED_ENUM_BLOCKS)
     for (const block of enumBlocks) {
       const exported = (contract as Record<string, unknown>)[block.name]
       expect(exported, `expected an exported enum named ${block.name}`).toBeDefined()

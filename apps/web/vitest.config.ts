@@ -21,8 +21,8 @@ export default defineConfig({
         extends: './vite.config.ts',
         test: {
           name: 'unit',
-          // Environment stays per-file via the @vitest-environment pragma the
-          // existing suites already carry.
+          // Environment stays per-file via each spec's own @vitest-environment
+          // pragma, not a project-wide default.
           include: ['src/**/*.{test,spec}.{ts,tsx}'],
           // jsdom has no layout engine, so the geometry APIs it omits are
           // stubbed here rather than guarded at every call site. See the file.

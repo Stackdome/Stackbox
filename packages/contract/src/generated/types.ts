@@ -2368,7 +2368,7 @@ export interface paths {
         /**
          * Create a new instance
          * @description Creates a thin instance shell (name, labels, annotations, settings). Any inline
-         *     `stack_resources`, `volumes`, or `connections` in the body are ignored — add
+         *     `stack_resources`, `volumes`, or `connections` in the body are ignored. Add
          *     children via `PUT /instances/{id}/apply` or the individual sub-resource endpoints.
          */
         post: {
@@ -2491,7 +2491,7 @@ export interface paths {
          * Update a instance
          * @description Updates only shell fields (name, labels, annotations, settings). `namespace` is
          *     immutable. Child collections (`stack_resources`, `volumes`, `connections`) in the
-         *     body are ignored — use `PUT /instances/{id}/apply` for a full reconcile.
+         *     body are ignored. Use `PUT /instances/{id}/apply` for a full reconcile.
          */
         put: {
             parameters: {
@@ -2610,7 +2610,7 @@ export interface paths {
          *     exists it is reconciled exactly like the id-addressed apply
          *     (resources and connections not present in the body are deleted, volumes
          *     are add-only); otherwise the instance and its children are created
-         *     atomically after full validation. Idempotent — clients need not know
+         *     atomically after full validation. Idempotent: clients need not know
          *     whether the instance already exists.
          */
         put: operations["applyApplicationInstanceByName"];
@@ -3331,7 +3331,7 @@ export interface paths {
                     };
                     content?: never;
                 };
-                /** @description Build job not created yet, or build pod not started — retry later */
+                /** @description Build job not created yet, or build pod not started. Retry later */
                 409: {
                     headers: {
                         [name: string]: unknown;
@@ -3937,7 +3937,7 @@ export interface components {
             type: TopologyNodeRefType;
             /** @description Stable ID for persisted resources such as addons or secrets. */
             id?: string;
-            /** @description Name-scoped reference for instance-local resources such as ApplicationInstanceResources or Volumes. */
+            /** @description Name-scoped reference for instance-local resources. */
             name?: string;
         };
         /** @description Maps one produced value into one target location on the consumer. */
@@ -4005,8 +4005,8 @@ export interface components {
             id?: string;
             namespace?: string;
             instance_id?: string;
-            stack_resource_id: string;
-            stack_resource_name: string;
+            instance_resource_id: string;
+            instance_resource_name: string;
             source_revision: components["schemas"]["BuildSourceRevision"];
             build_context: components["schemas"]["BuildSourceContext"];
             image_repo: string;
@@ -4151,7 +4151,7 @@ export interface components {
             target_port?: number;
         };
         VolumeMount: {
-            readonly stack_resource_id?: string;
+            readonly instance_resource_id?: string;
             source_volume_type?: components["schemas"]["VolumeMountSourceType"];
             source_volume_name: string;
             source_sub_path?: string;
@@ -4521,7 +4521,7 @@ export interface components {
             total?: number;
         };
         ApplicationInstanceSpec: {
-            stack_resources?: components["schemas"]["ApplicationInstanceResource"][];
+            instance_resources?: components["schemas"]["ApplicationInstanceResource"][];
             connections?: components["schemas"]["ApplicationInstanceConnection"][];
         };
         ApplicationInstanceResource: {
@@ -4635,7 +4635,7 @@ export interface components {
             snapshot?: components["schemas"]["ReleaseSnapshot"];
         };
         ReleaseSnapshot: {
-            stack?: {
+            instance?: {
                 id?: string;
                 organisation_id?: string;
                 cluster_id?: string;

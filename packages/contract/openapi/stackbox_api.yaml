@@ -1032,7 +1032,7 @@ paths:
       summary: Create a new instance
       description: |
         Creates a thin instance shell (name, labels, annotations, settings). Any inline
-        `stack_resources`, `volumes`, or `connections` in the body are ignored — add
+        `stack_resources`, `volumes`, or `connections` in the body are ignored. Add
         children via `PUT /instances/{id}/apply` or the individual sub-resource endpoints.
       security:
         - Bearer: []
@@ -1099,7 +1099,7 @@ paths:
       description: |
         Updates only shell fields (name, labels, annotations, settings). `namespace` is
         immutable. Child collections (`stack_resources`, `volumes`, `connections`) in the
-        body are ignored — use `PUT /instances/{id}/apply` for a full reconcile.
+        body are ignored. Use `PUT /instances/{id}/apply` for a full reconcile.
       security:
         - Bearer: []
       parameters:
@@ -1163,7 +1163,7 @@ paths:
         exists it is reconciled exactly like the id-addressed apply
         (resources and connections not present in the body are deleted, volumes
         are add-only); otherwise the instance and its children are created
-        atomically after full validation. Idempotent — clients need not know
+        atomically after full validation. Idempotent: clients need not know
         whether the instance already exists.
       operationId: applyApplicationInstanceByName
       security:
@@ -1694,7 +1694,7 @@ paths:
         '404':
           description: Build not found
         '409':
-          description: Build job not created yet, or build pod not started — retry later
+          description: Build job not created yet, or build pod not started. Retry later
           content:
             application/json:
               schema:
@@ -2371,7 +2371,7 @@ components:
           description: Stable ID for persisted resources such as addons or secrets.
         name:
           type: string
-          description: Name-scoped reference for instance-local resources such as ApplicationInstanceResources or Volumes.
+          description: Name-scoped reference for instance-local resources.
     ConnectionMapping:
       type: object
       description: Maps one produced value into one target location on the consumer.
@@ -2476,8 +2476,8 @@ components:
     ImageBuild:
       type: object
       required:
-        - stack_resource_name
-        - stack_resource_id
+        - instance_resource_name
+        - instance_resource_id
         - source_revision
         - image_repo
         - build_context
@@ -2488,9 +2488,9 @@ components:
           type: string
         instance_id:
           type: string
-        stack_resource_id:
+        instance_resource_id:
           type: string
-        stack_resource_name:
+        instance_resource_name:
           type: string
         source_revision:
           $ref: '#/components/schemas/BuildSourceRevision'
@@ -2788,7 +2788,7 @@ components:
         - source_volume_name
         - target_path
       properties:
-        stack_resource_id:
+        instance_resource_id:
           type: string
           readOnly: true
         source_volume_type:
@@ -3585,7 +3585,7 @@ components:
     ApplicationInstanceSpec:
       type: object
       properties:
-        stack_resources:
+        instance_resources:
           type: array
           items:
             $ref: '#/components/schemas/ApplicationInstanceResource'
@@ -3858,7 +3858,7 @@ components:
     ReleaseSnapshot:
       type: object
       properties:
-        stack:
+        instance:
           type: object
           properties:
             id:

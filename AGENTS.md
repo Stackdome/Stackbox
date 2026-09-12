@@ -24,9 +24,9 @@ The reconciler is a single tick loop (2s interval): claim tasks by lease, observ
 | Generate contract types and zod schemas | `pnpm generate` |
 | Run all tests | `pnpm -r test:run` |
 | Web story tests only | `pnpm --filter @stackbox/web test:stories` |
-| Storybook | `storybook` |
-| Web app against mocked network | `dev:mock` |
-| Same, empty first-run org | `dev:mock:empty` |
+| Storybook | `pnpm --filter @stackbox/web storybook` |
+| Web app against mocked network | `pnpm --filter @stackbox/web dev:mock` |
+| Same, empty first-run org | `pnpm --filter @stackbox/web dev:mock:empty` |
 | API dev server | `pnpm --filter @stackbox/api dev` |
 | Start the database | `docker compose up -d postgres` |
 | Create the test database | `bash apps/api/scripts/create-test-db.sh` |
@@ -34,6 +34,8 @@ The reconciler is a single tick loop (2s interval): claim tasks by lease, observ
 | End-to-end (Playwright) | `pnpm e2e` |
 | Lint everything | `pnpm -r lint` |
 | Typecheck everything | `pnpm -r typecheck` |
+
+`DATABASE_URL` must be exported before running the API, its tests, or `pnpm e2e`; see `apps/api/.env.example`.
 
 ## Vocabulary
 
@@ -57,7 +59,7 @@ Anything visual reads `design-kit/agent-platform/design/DESIGN-PRODUCT.md` first
 
 ## Testing and verification
 
-Three layers, all in CI:
+Three layers; CI arrives in slice 1:
 
 1. Unit and calc tests, jsdom project: `pnpm test:run`.
 2. Story `play` tests in headless Chromium, same command, second project. A `play` only where it proves something the render does not.
