@@ -3852,7 +3852,7 @@ export interface components {
             turnstile_token?: string;
         };
         /** @enum {string} */
-        UserRole: "OrgAdmin" | "OrgMember";
+        UserRole: UserRole;
         RefreshTokenRequest: {
             /** @description The refresh token to exchange for a new access token */
             refreshToken: string;
@@ -3898,7 +3898,7 @@ export interface components {
              * @description Scalar value type exposed by this output.
              * @enum {string}
              */
-            type: "string" | "integer" | "boolean";
+            type: OutputDescriptorType;
             /** @description True when the output value is sensitive and should never be returned in normal metadata APIs. */
             sensitive: boolean;
         };
@@ -3917,7 +3917,7 @@ export interface components {
              * @description Edge kind. Explicit connections reuse connection kinds; derived edges use depends_on.
              * @enum {string}
              */
-            kind: "env" | "volume_mount" | "build_artifact_source" | "depends_on";
+            kind: TopologyEdgeKind;
             source: components["schemas"]["TopologyNodeRef"];
             target: components["schemas"]["TopologyNodeRef"];
             mappings?: components["schemas"]["ConnectionMapping"][];
@@ -3926,7 +3926,7 @@ export interface components {
              * @description Whether the edge came from an explicit connection or a derived relationship such as depends_on.
              * @enum {string}
              */
-            source_of_truth: "connection" | "derived";
+            source_of_truth: TopologyEdgeSource_of_truth;
         };
         /** @description Identifies a topology node within the instance graph. */
         TopologyNodeRef: {
@@ -3934,7 +3934,7 @@ export interface components {
              * @description The node category.
              * @enum {string}
              */
-            type: "stack_resource" | "addon/postgres" | "secret" | "volume" | "object_store";
+            type: TopologyNodeRefType;
             /** @description Stable ID for persisted resources such as addons or secrets. */
             id?: string;
             /** @description Name-scoped reference for instance-local resources such as ApplicationInstanceResources or Volumes. */
@@ -3951,7 +3951,7 @@ export interface components {
              * @description env writes an environment variable and file writes a mounted file path.
              * @enum {string}
              */
-            type: "env" | "file";
+            type: ConnectionTargetType;
             /** @description Environment variable name when type is env. */
             name?: string;
             /** @description Absolute file path when type is file. */
@@ -3965,7 +3965,7 @@ export interface components {
              * @description Which credential set to inject. Mutually exclusive with superuser.
              * @enum {string}
              */
-            credential_scope?: "owner" | "superuser";
+            credential_scope?: PostgresEnvConfigCredential_scope;
             /** @description Use superuser credentials. Mutually exclusive with credential_scope. */
             superuser?: boolean;
         };
@@ -4092,7 +4092,7 @@ export interface components {
             /** @description Git host this integration covers, e.g. gitlab.example.com */
             host: string;
             /** @enum {string} */
-            readonly status?: "active" | "pending_install" | "installed";
+            readonly status?: GitIntegrationStatus;
             auth?: components["schemas"]["GitIntegrationAuth"];
             readonly credentials_configured?: boolean;
             /** @description GitHub install page for adding the app to more accounts (github_app only) */
@@ -4107,7 +4107,7 @@ export interface components {
          * @default git_credentials
          * @enum {string}
          */
-        GitIntegrationType: "git_credentials" | "github_app";
+        GitIntegrationType: GitIntegrationType;
         /** @description Clone auth material; exactly one of token or basic. Never echoed in responses. */
         GitIntegrationAuth: {
             /** Format: password */
@@ -4128,7 +4128,7 @@ export interface components {
         };
         ContainerFailureDetail: {
             /** @enum {string} */
-            failure_type?: "crash_loop" | "out_of_memory" | "image_pull_failed" | "create_container_error" | "exit_error" | "port_not_listening";
+            failure_type?: ContainerFailureDetailFailure_type;
             reason?: string;
             message?: string;
             /** Format: int32 */
@@ -4138,7 +4138,7 @@ export interface components {
         };
         BuildFailureDetail: {
             /** @enum {string} */
-            failure_type?: "crash_loop" | "out_of_memory" | "image_pull_failed" | "create_container_error" | "exit_error" | "port_not_listening";
+            failure_type?: BuildFailureDetailFailure_type;
             reason?: string;
             message?: string;
             /** Format: int32 */
@@ -4158,7 +4158,7 @@ export interface components {
             target_path: string;
         };
         /** @enum {string} */
-        VolumeMountSourceType: "EmptyVolume" | "RemoteDirSyncedVolume" | "BuildArtifactSyncedVolume" | "GitRepoSyncedVolume";
+        VolumeMountSourceType: VolumeMountSourceType;
         Port: {
             name: string;
             number: number;
@@ -4332,13 +4332,13 @@ export interface components {
             items?: components["schemas"]["APIToken"][];
         };
         /** @enum {string} */
-        InviteStatus: "pending" | "accepted" | "revoked" | "expired";
+        InviteStatus: InviteStatus;
         OrgInvite: {
             readonly id?: string;
             email?: string;
             readonly organisation_id?: string;
             /** @enum {string} */
-            role?: "Developer" | "Viewer";
+            role?: OrgInviteRole;
             status?: components["schemas"]["InviteStatus"];
             /** Format: date-time */
             expires_at?: string;
@@ -4354,7 +4354,7 @@ export interface components {
             /** Format: email */
             email: string;
             /** @enum {string} */
-            role: "Developer" | "Viewer";
+            role: OrgInviteCreateRequestRole;
             expires_in_days: number;
         };
         OrgInviteCreateResponse: {
@@ -4386,7 +4386,7 @@ export interface components {
          * @description Computed runtime health rollup of a live/active release.
          * @enum {string}
          */
-        ReleaseHealth: "ok" | "progressing" | "degraded" | "unavailable" | "failed";
+        ReleaseHealth: ReleaseHealth;
         /** @description Lightweight release reference embedded in the instance for list views. */
         ReleaseSummary: {
             id?: string;
@@ -4411,7 +4411,7 @@ export interface components {
             observed_revision?: string;
         };
         /** @enum {string} */
-        ReleaseCauseKind: "manual" | "rollback" | "webhook_push" | "preview_sync";
+        ReleaseCauseKind: ReleaseCauseKind;
         CreateReleaseRequest: {
             /** @description If set, creates a rollback release copying this release's manifest */
             from_release_id?: string;
@@ -4431,13 +4431,13 @@ export interface components {
             /** Format: date-time */
             occurred_at?: string;
             /** @enum {string} */
-            source?: "hub" | "cluster";
+            source?: ReleaseEventSource;
             /** @enum {string} */
-            scope?: "release" | "resource";
+            scope?: ReleaseEventScope;
             resource_name?: string;
             type?: string;
             /** @enum {string} */
-            level?: "info" | "success" | "warning" | "error";
+            level?: ReleaseEventLevel;
             message?: string;
             links?: components["schemas"]["ReleaseEventLink"][];
             metadata?: {
@@ -4456,7 +4456,7 @@ export interface components {
             resource_name?: string;
             field?: string;
             /** @enum {string} */
-            code?: "resource_name_required" | "resource_name_invalid" | "resource_name_duplicate" | "source_required" | "source_conflict" | "workload_type_invalid" | "schedule_required" | "schedule_not_allowed" | "schedule_invalid" | "replicas_invalid" | "ports_not_allowed" | "public_port_not_http" | "port_protocol_invalid" | "port_name_invalid" | "port_number_invalid" | "port_name_duplicate" | "port_number_duplicate" | "subdomain_duplicate" | "domain_not_configured" | "env_name_required" | "env_name_duplicate" | "env_value_missing" | "env_value_conflict" | "env_self_output_unknown" | "volume_mount_invalid" | "volume_not_found" | "volume_hash_missing" | "secret_not_found" | "git_integration_not_found" | "registry_credential_not_found" | "self_dependency" | "duplicate_dependency" | "unknown_dependency" | "dependency_cycle" | "git_repo_url_required" | "git_branch_tag_conflict" | "git_commit_invalid" | "git_commit_requires_ref" | "image_ref_required" | "image_ref_invalid" | "push_target_required" | "push_target_conflict" | "push_ref_invalid" | "git_repo_unreachable" | "git_auth_failed" | "git_branch_not_found" | "git_tag_not_found" | "git_rate_limited" | "image_not_found" | "registry_credentials_required" | "registry_auth_failed" | "push_access_denied" | "stack_name_invalid" | "stack_settings_invalid" | "connection_invalid";
+            code?: ReleaseValidationErrorCode;
             message?: string;
         };
         ReleasePins: {
@@ -4543,7 +4543,7 @@ export interface components {
              * @default Service
              * @enum {string}
              */
-            workload_type: "Service" | "StatefulService" | "Worker" | "Job" | "CronJob";
+            workload_type: ApplicationInstanceResourceWorkload_type;
             schedule?: string;
             /** Format: int32 */
             replicas?: number;
@@ -4564,7 +4564,7 @@ export interface components {
              * @description The relationship type. `env` injects values into environment variables, `volume_mount` mounts a volume into a resource, and `build_artifact_source` seeds a volume from build output.
              * @enum {string}
              */
-            kind: "env" | "volume_mount" | "build_artifact_source";
+            kind: ApplicationInstanceConnectionKind;
             from: components["schemas"]["TopologyNodeRef"];
             to: components["schemas"]["TopologyNodeRef"];
             /** @description Target/value mappings for kinds that move values, such as `env`. */
@@ -4595,18 +4595,18 @@ export interface components {
         };
         ApplicationInstanceResourceFailure: {
             /** @enum {string} */
-            type?: "runtime_crash" | "build_failure" | "readiness_failure";
+            type?: ApplicationInstanceResourceFailureType;
             container?: components["schemas"]["ContainerFailureDetail"];
             init_container?: components["schemas"]["ContainerFailureDetail"];
             build?: components["schemas"]["BuildFailureDetail"];
         };
         /** @enum {string} */
-        ReleaseState: "Pending" | "InProgress" | "Released" | "Failed" | "Superseded" | "Cancelled";
+        ReleaseState: ReleaseState;
         /**
          * @description Coarse instance entity lifecycle. Deploy/runtime status lives on releases.
          * @enum {string}
          */
-        InstanceLifecycle: "active" | "deleting";
+        InstanceLifecycle: InstanceLifecycle;
         Release: {
             id?: string;
             instance_id?: string;
@@ -5156,4 +5156,196 @@ export interface operations {
             };
         };
     };
+}
+export enum UserRole {
+    OrgAdmin = "OrgAdmin",
+    OrgMember = "OrgMember"
+}
+export enum OutputDescriptorType {
+    string = "string",
+    integer = "integer",
+    boolean = "boolean"
+}
+export enum TopologyEdgeKind {
+    env = "env",
+    volume_mount = "volume_mount",
+    build_artifact_source = "build_artifact_source",
+    depends_on = "depends_on"
+}
+export enum TopologyEdgeSource_of_truth {
+    connection = "connection",
+    derived = "derived"
+}
+export enum TopologyNodeRefType {
+    stack_resource = "stack_resource",
+    addon_postgres = "addon/postgres",
+    secret = "secret",
+    volume = "volume",
+    object_store = "object_store"
+}
+export enum ConnectionTargetType {
+    env = "env",
+    file = "file"
+}
+export enum PostgresEnvConfigCredential_scope {
+    owner = "owner",
+    superuser = "superuser"
+}
+export enum GitIntegrationStatus {
+    active = "active",
+    pending_install = "pending_install",
+    installed = "installed"
+}
+export enum GitIntegrationType {
+    GIT_INTEGRATION_TYPE_CREDENTIALS = "git_credentials",
+    GIT_INTEGRATION_TYPE_GITHUB_APP = "github_app"
+}
+export enum ContainerFailureDetailFailure_type {
+    crash_loop = "crash_loop",
+    out_of_memory = "out_of_memory",
+    image_pull_failed = "image_pull_failed",
+    create_container_error = "create_container_error",
+    exit_error = "exit_error",
+    port_not_listening = "port_not_listening"
+}
+export enum BuildFailureDetailFailure_type {
+    crash_loop = "crash_loop",
+    out_of_memory = "out_of_memory",
+    image_pull_failed = "image_pull_failed",
+    create_container_error = "create_container_error",
+    exit_error = "exit_error",
+    port_not_listening = "port_not_listening"
+}
+export enum VolumeMountSourceType {
+    EmptyVolume = "EmptyVolume",
+    RemoteDirSyncedVolume = "RemoteDirSyncedVolume",
+    BuildArtifactSyncedVolume = "BuildArtifactSyncedVolume",
+    GitRepoSyncedVolume = "GitRepoSyncedVolume"
+}
+export enum InviteStatus {
+    INVITE_PENDING = "pending",
+    INVITE_ACCEPTED = "accepted",
+    INVITE_REVOKED = "revoked",
+    INVITE_EXPIRED = "expired"
+}
+export enum OrgInviteRole {
+    Developer = "Developer",
+    Viewer = "Viewer"
+}
+export enum OrgInviteCreateRequestRole {
+    Developer = "Developer",
+    Viewer = "Viewer"
+}
+export enum ReleaseHealth {
+    RELEASE_HEALTH_OK = "ok",
+    RELEASE_HEALTH_PROGRESSING = "progressing",
+    RELEASE_HEALTH_DEGRADED = "degraded",
+    RELEASE_HEALTH_UNAVAILABLE = "unavailable",
+    RELEASE_HEALTH_FAILED = "failed"
+}
+export enum ReleaseCauseKind {
+    RELEASE_CAUSE_MANUAL = "manual",
+    RELEASE_CAUSE_ROLLBACK = "rollback",
+    RELEASE_CAUSE_WEBHOOK_PUSH = "webhook_push",
+    RELEASE_CAUSE_PREVIEW_SYNC = "preview_sync"
+}
+export enum ReleaseEventSource {
+    hub = "hub",
+    cluster = "cluster"
+}
+export enum ReleaseEventScope {
+    release = "release",
+    resource = "resource"
+}
+export enum ReleaseEventLevel {
+    info = "info",
+    success = "success",
+    warning = "warning",
+    error = "error"
+}
+export enum ReleaseValidationErrorCode {
+    resource_name_required = "resource_name_required",
+    resource_name_invalid = "resource_name_invalid",
+    resource_name_duplicate = "resource_name_duplicate",
+    source_required = "source_required",
+    source_conflict = "source_conflict",
+    workload_type_invalid = "workload_type_invalid",
+    schedule_required = "schedule_required",
+    schedule_not_allowed = "schedule_not_allowed",
+    schedule_invalid = "schedule_invalid",
+    replicas_invalid = "replicas_invalid",
+    ports_not_allowed = "ports_not_allowed",
+    public_port_not_http = "public_port_not_http",
+    port_protocol_invalid = "port_protocol_invalid",
+    port_name_invalid = "port_name_invalid",
+    port_number_invalid = "port_number_invalid",
+    port_name_duplicate = "port_name_duplicate",
+    port_number_duplicate = "port_number_duplicate",
+    subdomain_duplicate = "subdomain_duplicate",
+    domain_not_configured = "domain_not_configured",
+    env_name_required = "env_name_required",
+    env_name_duplicate = "env_name_duplicate",
+    env_value_missing = "env_value_missing",
+    env_value_conflict = "env_value_conflict",
+    env_self_output_unknown = "env_self_output_unknown",
+    volume_mount_invalid = "volume_mount_invalid",
+    volume_not_found = "volume_not_found",
+    volume_hash_missing = "volume_hash_missing",
+    secret_not_found = "secret_not_found",
+    git_integration_not_found = "git_integration_not_found",
+    registry_credential_not_found = "registry_credential_not_found",
+    self_dependency = "self_dependency",
+    duplicate_dependency = "duplicate_dependency",
+    unknown_dependency = "unknown_dependency",
+    dependency_cycle = "dependency_cycle",
+    git_repo_url_required = "git_repo_url_required",
+    git_branch_tag_conflict = "git_branch_tag_conflict",
+    git_commit_invalid = "git_commit_invalid",
+    git_commit_requires_ref = "git_commit_requires_ref",
+    image_ref_required = "image_ref_required",
+    image_ref_invalid = "image_ref_invalid",
+    push_target_required = "push_target_required",
+    push_target_conflict = "push_target_conflict",
+    push_ref_invalid = "push_ref_invalid",
+    git_repo_unreachable = "git_repo_unreachable",
+    git_auth_failed = "git_auth_failed",
+    git_branch_not_found = "git_branch_not_found",
+    git_tag_not_found = "git_tag_not_found",
+    git_rate_limited = "git_rate_limited",
+    image_not_found = "image_not_found",
+    registry_credentials_required = "registry_credentials_required",
+    registry_auth_failed = "registry_auth_failed",
+    push_access_denied = "push_access_denied",
+    stack_name_invalid = "stack_name_invalid",
+    stack_settings_invalid = "stack_settings_invalid",
+    connection_invalid = "connection_invalid"
+}
+export enum ApplicationInstanceResourceWorkload_type {
+    Service = "Service",
+    StatefulService = "StatefulService",
+    Worker = "Worker",
+    Job = "Job",
+    CronJob = "CronJob"
+}
+export enum ApplicationInstanceConnectionKind {
+    env = "env",
+    volume_mount = "volume_mount",
+    build_artifact_source = "build_artifact_source"
+}
+export enum ApplicationInstanceResourceFailureType {
+    runtime_crash = "runtime_crash",
+    build_failure = "build_failure",
+    readiness_failure = "readiness_failure"
+}
+export enum ReleaseState {
+    RELEASE_STATE_PENDING = "Pending",
+    RELEASE_STATE_IN_PROGRESS = "InProgress",
+    RELEASE_STATE_RELEASED = "Released",
+    RELEASE_STATE_FAILED = "Failed",
+    RELEASE_STATE_SUPERSEDED = "Superseded",
+    RELEASE_STATE_CANCELLED = "Cancelled"
+}
+export enum InstanceLifecycle {
+    STACK_LIFECYCLE_ACTIVE = "active",
+    STACK_LIFECYCLE_DELETING = "deleting"
 }

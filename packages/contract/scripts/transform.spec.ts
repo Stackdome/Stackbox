@@ -3,10 +3,18 @@ import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { load } from 'js-yaml'
 import { PRUNED_GROUPS, SCHEMA_RENAME_MAP } from './transform.ts'
+import * as contract from '../src/index.ts'
 
 const doc = load(
   readFileSync(resolve(__dirname, '../openapi/stackbox_api.yaml'), 'utf8'),
-) as { paths: Record<string, Record<string, { operationId?: string }>>; components: { schemas: Record<string, unknown> } }
+) as {
+  paths: Record<string, Record<string, { operationId?: string }>>
+  components: { schemas: Record<string, { 'x-enum-varnames'?: string[] }> }
+}
+
+const enumBlocks = Object.entries(doc.components.schemas)
+  .filter(([, schema]) => Array.isArray(schema['x-enum-varnames']))
+  .map(([name, schema]) => ({ name, varnames: schema['x-enum-varnames']! }))
 
 const SOURCE = '/Users/akshaysasidharan/code/stackdome/config/openapi/stackdome_api.yaml'
 const rawSource = readFileSync(SOURCE, 'utf8')
@@ -64,6 +72,15 @@ describe('the transformed contract', () => {
     for (const [from, to] of Object.entries(SCHEMA_RENAME_MAP)) {
       expect(schemas, `expected ${from} to be renamed away`).not.toContain(from)
       expect(schemas, `expected ${to} to be present`).toContain(to)
+    }
+  })
+
+  it('exports one enum per x-enum-varnames block', () => {
+    expect(enumBlocks).toHaveLength(6)
+    for (const block of enumBlocks) {
+      const exported = (contract as Record<string, unknown>)[block.name]
+      expect(exported, `expected an exported enum named ${block.name}`).toBeDefined()
+      expect(Object.keys(exported as object).sort()).toEqual([...block.varnames].sort())
     }
   })
 })

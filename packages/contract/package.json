@@ -4,13 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "generate:types": "openapi-typescript openapi/stackbox_api.yaml -o src/generated/types.ts",
+    "generate:types": "openapi-typescript openapi/stackbox_api.yaml --enum -o src/generated/types.ts",
     "generate:zod": "openapi-zod-client openapi/stackbox_api.yaml -o src/generated/zod.ts --export-schemas",
     "generate": "pnpm generate:types && pnpm generate:zod",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@zodios/core": "^10.9.6",
     "zod": "^3.24.4"
   },
   "devDependencies": {
