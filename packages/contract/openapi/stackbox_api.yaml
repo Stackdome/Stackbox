@@ -1,0 +1,3946 @@
+openapi: 3.0.0
+info:
+  title: Stackbox API
+  version: 0.0.1-alpha
+  description: Deploy, debug, and operate applications through the Stackdome REST API on Stackdome Cloud or a self-hosted installation. This API is in alpha and may change before general availability.
+paths:
+  /api/v1/user-signup:
+    post:
+      summary: Create new user
+      description: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSignupRequest'
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSignupResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/config:
+    get:
+      summary: Get public application configuration
+      description: Returns feature flags the web client needs before authentication, such as whether GitHub OAuth is enabled.
+      responses:
+        '200':
+          description: Application configuration
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConfigResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/users/{id}:
+    get:
+      security:
+        - Bearer: []
+      summary: Get a user
+      description: Get a user
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: User fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Auth token is invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized to perform operation
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/users/current:
+    get:
+      security:
+        - Bearer: []
+      summary: Get the current authenticated user
+      responses:
+        '200':
+          description: User fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Auth token is invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized to perform operation
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/login:
+    post:
+      summary: User login
+      description: Authenticate user and generate an access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/refresh:
+    post:
+      summary: Refresh JWT token
+      description: Exchange a refresh token for a new access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshTokenRequest'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshTokenResponse'
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/auth/github:
+    get:
+      summary: Initiate GitHub OAuth flow
+      description: Redirects the user to GitHub for OAuth authorization
+      responses:
+        '302':
+          description: Redirect to GitHub OAuth authorization page
+        '500':
+          description: Internal server error
+  /api/v1/auth/github/callback:
+    get:
+      summary: GitHub OAuth callback
+      description: Handles the callback from GitHub after OAuth authorization
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: state
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OAuth login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: OAuth authorization failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/api-tokens:
+    post:
+      security:
+        - Bearer: []
+      summary: Create a new API token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/APITokenCreateRequest'
+      responses:
+        '201':
+          description: API token created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APITokenCreateResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      security:
+        - Bearer: []
+      summary: List all API tokens for the current user
+      responses:
+        '200':
+          description: API tokens listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APITokenList'
+  /api/v1/api-tokens/scopes:
+    get:
+      security:
+        - Bearer: []
+      summary: List all available API token scopes
+      description: Returns the list of resources and their allowed actions that can be used when creating API tokens
+      responses:
+        '200':
+          description: Scopes listed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScopeList'
+        '401':
+          description: Unauthorized
+  /api/v1/api-tokens/{id}:
+    get:
+      security:
+        - Bearer: []
+      summary: Get an API token by ID
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: API token fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIToken'
+        '404':
+          description: API token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      security:
+        - Bearer: []
+      summary: Revoke an API token
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: API token revoked successfully
+        '404':
+          description: API token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{id}:
+    get:
+      security:
+        - Bearer: []
+      summary: Get an organization
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Organization fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organisation'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Auth token is invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized to perform operation
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      security:
+        - Bearer: []
+      summary: Update an organization
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Organisation'
+      responses:
+        '200':
+          description: Organization updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Organisation'
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Auth token is invalid
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: Unauthorized to perform operation
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/users:
+    get:
+      summary: List all users in an organization
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            default: 20
+          description: Number of items per page
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/git-integrations/github/manifest:
+    post:
+      summary: Start the GitHub App manifest flow for the organization
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      responses:
+        '201':
+          description: Manifest flow started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitHubAppManifestFlow'
+        '400':
+          description: The hub external URL is not configured
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '409':
+          description: A GitHub App is already installed
+        '500':
+          description: Internal server error
+  /api/v1/git-integrations/github/manifest/callback:
+    get:
+      summary: GitHub App manifest redirect target (unauthenticated, state-validated)
+      parameters:
+        - in: query
+          name: code
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: state
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirects the browser to the GitHub App install page
+        '400':
+          description: Invalid or expired state
+        '500':
+          description: Internal server error
+  /api/v1/git-integrations/github/setup:
+    get:
+      summary: Platform GitHub App setup redirect target (unauthenticated, state-validated)
+      parameters:
+        - in: query
+          name: installation_id
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - in: query
+          name: state
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirects the browser back to the git integrations page
+        '400':
+          description: Invalid or expired state
+        '404':
+          description: The installation was not found on the platform app
+        '500':
+          description: Internal server error
+  /api/v1/webhooks/github:
+    post:
+      summary: GitHub webhook receiver (unauthenticated, HMAC-verified)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '202':
+          description: Delivery accepted
+        '403':
+          description: Signature verification failed
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/git-integrations/{id}/installations:
+    get:
+      summary: List GitHub App installations
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - in: query
+          name: refresh
+          schema:
+            type: boolean
+            default: false
+          description: Re-list installations from GitHub before returning (covers missed webhooks)
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitInstallationList'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Git integration not found
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/git-integrations/{id}/repositories:
+    get:
+      summary: List repositories visible to the GitHub App installation
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: installation_id
+          description: Our GitInstallation id (UUID). When omitted, repositories are aggregated across every installation of the integration.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitRepositoryPage'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Git integration not found
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/git-integrations/{id}/repositories/{owner}/{repo}:
+    get:
+      summary: Get repository details through the GitHub App installation
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - in: path
+          name: owner
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: repo
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitRepository'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/git-integrations/{id}/repositories/{owner}/{repo}/branches:
+    get:
+      summary: List repository branches through the GitHub App installation
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - in: path
+          name: owner
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: repo
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitBranchList'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/git-integrations:
+    post:
+      summary: Create a git integration for the organization
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitIntegration'
+      responses:
+        '201':
+          description: Git integration created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitIntegration'
+        '400':
+          description: Invalid request payload
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '409':
+          description: An integration for this host already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+    get:
+      summary: List git integrations for the organization
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitIntegrationList'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/git-integrations/{id}:
+    get:
+      summary: Get a git integration
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitIntegration'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Git integration not found
+        '500':
+          description: Internal server error
+    put:
+      summary: Update a git integration (credential rotation)
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitIntegration'
+      responses:
+        '200':
+          description: Git integration updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitIntegration'
+        '400':
+          description: Invalid request payload
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Git integration not found
+        '500':
+          description: Internal server error
+    delete:
+      summary: Delete a git integration
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Git integration deleted successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Git integration not found
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/git-integrations/{id}/verify:
+    post:
+      summary: Verify a git integration against a repository
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitIntegrationVerifyRequest'
+      responses:
+        '204':
+          description: Integration verified successfully
+        '400':
+          description: Verification failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Git integration not found
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/admins:
+    post:
+      summary: Promote a user to organization admin
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PromoteAdminRequest'
+      responses:
+        '200':
+          description: User promoted to admin successfully
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List organization admins
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/admins/{user_id}/demote:
+    post:
+      summary: Demote an organization admin
+      description: Demotes an OrgAdmin and places them in the specified project with the given role (defaults to Viewer).
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/user_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DemoteAdminRequest'
+      responses:
+        '204':
+          description: Admin demoted successfully
+        '400':
+          description: Bad request
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: User not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/invites:
+    post:
+      summary: Create an invite to the organization
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrgInviteCreateRequest'
+      responses:
+        '201':
+          description: Invite created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgInviteCreateResponse'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '409':
+          description: Conflict - user exists or duplicate pending invite
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+    get:
+      summary: List invites for an organization
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter invites by status (pending, accepted, revoked, expired)
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgInviteList'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/invites/{id}:
+    get:
+      summary: Get an invite by ID
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgInvite'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Invite not found
+        '500':
+          description: Internal server error
+    delete:
+      summary: Revoke a pending invite
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '204':
+          description: Invite revoked successfully
+        '400':
+          description: Can only revoke pending invites
+        '401':
+          description: Unauthorized
+        '404':
+          description: Invite not found
+        '500':
+          description: Internal server error
+  /api/v1/organizations/{org_id}/invites/{id}/resend:
+    post:
+      summary: Re-queue invite email for delivery
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Invite email re-queued
+        '400':
+          description: Can only resend pending invites
+        '401':
+          description: Unauthorized
+        '404':
+          description: Invite not found
+        '500':
+          description: Internal server error
+  /api/v1/invites/{token}/info:
+    get:
+      summary: Get public invite info (unauthenticated)
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The invite token
+      responses:
+        '200':
+          description: Invite info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrgInviteInfo'
+        '404':
+          description: Invite not found
+        '410':
+          description: Invite expired or revoked
+  /api/v1/organizations/{org_id}/instances:
+    post:
+      summary: Create a new instance
+      description: |
+        Creates a thin instance shell (name, labels, annotations, settings). Any inline
+        `stack_resources`, `volumes`, or `connections` in the body are ignored — add
+        children via `PUT /instances/{id}/apply` or the individual sub-resource endpoints.
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstance'
+      responses:
+        '201':
+          description: ApplicationInstance created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstance'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '409':
+          description: ApplicationInstance already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      summary: List all instances for a project
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceList'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}:
+    get:
+      summary: Get a specific instance
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstance'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update a instance
+      description: |
+        Updates only shell fields (name, labels, annotations, settings). `namespace` is
+        immutable. Child collections (`stack_resources`, `volumes`, `connections`) in the
+        body are ignored — use `PUT /instances/{id}/apply` for a full reconcile.
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstance'
+      responses:
+        '200':
+          description: ApplicationInstance updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstance'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a instance
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '202':
+          description: ApplicationInstance deletion initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstance'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/apply:
+    put:
+      summary: Apply a full instance document by name (declarative upsert)
+      description: |
+        Name-addressed declarative whole-document apply. ApplicationInstance identity is the
+        `name` in the request body (unique per project). If a instance with that name
+        exists in the project it is reconciled exactly like the id-addressed apply
+        (resources and connections not present in the body are deleted, volumes
+        are add-only); otherwise the instance and its children are created
+        atomically after full validation. Idempotent — clients need not know
+        whether the instance already exists.
+      operationId: applyStackByName
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstance'
+      responses:
+        '200':
+          description: ApplicationInstance updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstance'
+        '201':
+          description: ApplicationInstance created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstance'
+        '400':
+          description: Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/apply:
+    put:
+      summary: Apply a full instance document (declarative reconcile)
+      description: |
+        Declarative whole-document apply. Reconciles the instance against the supplied
+        document: resources and connections not present in the body are deleted, while
+        volumes are add-only and are never deleted. This is the only endpoint that
+        accepts a full instance document.
+      operationId: applyStack
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstance'
+      responses:
+        '200':
+          description: ApplicationInstance updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstance'
+        '400':
+          description: Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/logs:
+    get:
+      summary: Get logs for a instance
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - in: query
+          name: follow
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: tail
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - in: query
+          name: since
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stream of log lines via Server-Sent Events (SSE)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/metrics:
+    get:
+      summary: Get metrics for a instance
+      description: |
+        Returns metrics for a instance. If `stream=true` is passed, the server responds using Server-Sent Events (SSE).
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - in: query
+          name: stream
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: |
+            - Returns a `ResourceMetrics` object when `stream=false`.
+            - Returns a stream of metrics via Server-Sent Events (SSE) when `stream=true`.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceMetrics'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/resources:
+    get:
+      summary: List all instance resources under a instance
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceResourceList'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create a instance resource
+      operationId: createStackResource
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstanceResource'
+      responses:
+        '201':
+          description: ApplicationInstance resource created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceResource'
+        '400':
+          description: Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance not found
+        '409':
+          description: ApplicationInstance resource already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}:
+    get:
+      summary: Get a specific instance resource by name
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_name'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceResource'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      summary: Update a instance resource
+      operationId: updateStackResource
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_name'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstanceResource'
+      responses:
+        '200':
+          description: ApplicationInstance resource updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceResource'
+        '400':
+          description: Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance or resource not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete a instance resource
+      operationId: deleteStackResource
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_name'
+      responses:
+        '200':
+          description: ApplicationInstance resource deleted successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance or resource not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/logs:
+    get:
+      summary: Get logs for a instance resource
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_name'
+        - in: query
+          name: follow
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: tail
+          required: false
+          schema:
+            type: integer
+            default: 100
+        - in: query
+          name: since
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stream of log lines via Server-Sent Events (SSE)
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/metrics:
+    get:
+      summary: Get metrics for a instance resource
+      description: |
+        Returns metrics for a instance resource. If `stream=true` is passed, the server responds using Server-Sent Events (SSE).
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_name'
+        - in: query
+          name: stream
+          description: Whether to stream metrics via Server-Sent Events (SSE)
+          required: false
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: |
+            - Returns a `ResourceMetrics` object when `stream=false`.
+            - Returns a stream of metrics via Server-Sent Events (SSE) when `stream=true`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceMetrics'
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/builds:
+    get:
+      summary: List all builds for a instance resource
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_name'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageBuildList'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/actions/restart:
+    post:
+      summary: Restart a instance resource
+      description: Triggers a rolling restart of the instance resource by setting a new restart request timestamp.
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/resource_name'
+      responses:
+        '202':
+          description: Restart initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceResource'
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: ApplicationInstance resource not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/builds:
+    get:
+      summary: List all builds under a instance
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageBuildList'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/builds/{build_id}:
+    get:
+      summary: Get a specific build under a instance
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/build_id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageBuild'
+        '401':
+          description: Unauthorized
+        '404':
+          description: Build not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/builds/{build_id}/logs:
+    get:
+      summary: Get logs for an image build
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/build_id'
+        - in: query
+          name: follow
+          required: false
+          schema:
+            type: boolean
+            default: false
+        - in: query
+          name: tail
+          required: false
+          schema:
+            type: integer
+            default: 200
+        - in: query
+          name: since
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 'Stream of build log lines via Server-Sent Events (SSE). Log lines arrive as unnamed "data:" events; terminal stream errors as "event: error"; normal completion is signalled by a final "event: end" frame.'
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          description: Unauthorized
+        '404':
+          description: Build not found
+        '409':
+          description: Build job not created yet, or build pod not started — retry later
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/topology:
+    get:
+      summary: Get instance topology
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceTopology'
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/connections:
+    get:
+      summary: List instance connections
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceConnectionList'
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    post:
+      summary: Create instance connection
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstanceConnection'
+      responses:
+        '201':
+          description: ApplicationInstance connection created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceConnection'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance not found
+        '409':
+          description: ApplicationInstance connection already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/connections/{connection_id}:
+    put:
+      summary: Update instance connection
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/connection_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationInstanceConnection'
+      responses:
+        '200':
+          description: ApplicationInstance connection updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceConnection'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance or connection not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      summary: Delete instance connection
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/connection_id'
+      responses:
+        '204':
+          description: ApplicationInstance connection deleted successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: ApplicationInstance or connection not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/instances/{id}/releases:
+    post:
+      summary: Create a new release (deploy)
+      operationId: createRelease
+      security:
+        - Bearer: []
+      tags:
+        - Releases
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReleaseRequest'
+      responses:
+        '201':
+          description: Release created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Release'
+    get:
+      summary: List releases for a instance
+      operationId: listReleases
+      security:
+        - Bearer: []
+      tags:
+        - Releases
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - in: query
+          name: state
+          schema:
+            $ref: '#/components/schemas/ReleaseState'
+          description: Filter by release state
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Page number
+        - in: query
+          name: page_size
+          schema:
+            type: integer
+            default: 20
+          description: Number of items per page
+      responses:
+        '200':
+          description: List of releases
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseList'
+  /api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}:
+    get:
+      summary: Get a release by ID
+      operationId: getRelease
+      security:
+        - Bearer: []
+      tags:
+        - Releases
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - name: release_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Release details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseDetail'
+  /api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}/cancel:
+    post:
+      summary: Cancel a pending or rendering release
+      operationId: cancelRelease
+      security:
+        - Bearer: []
+      tags:
+        - Releases
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - name: release_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Release cancelled
+  /api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}/events:
+    get:
+      summary: List release events ordered by sequence
+      operationId: listReleaseEvents
+      security:
+        - Bearer: []
+      tags:
+        - Releases
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - name: release_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: after_sequence
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+      responses:
+        '200':
+          description: Release events ordered by sequence
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReleaseEventList'
+  /api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}/events/stream:
+    get:
+      summary: Stream release events via Server-Sent Events
+      operationId: streamReleaseEvents
+      security:
+        - Bearer: []
+      tags:
+        - Releases
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/id'
+        - name: release_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: after_sequence
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Stream of release events via Server-Sent Events (SSE). Each SSE frame's id is the event sequence; data is a ReleaseEvent JSON object.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                format: binary
+components:
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    id:
+      name: id
+      in: path
+      description: The id of record
+      required: true
+      schema:
+        type: string
+    org_id:
+      name: org_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The ID of the organization
+    cluster_id:
+      name: cluster_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The ID of the cluster
+    user_id:
+      name: user_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The ID of the user
+    resource_name:
+      name: resource_name
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The name of the instance resource
+    connection_id:
+      name: connection_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The ID of the instance connection
+    build_id:
+      name: build_id
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The ID of the build
+    database:
+      name: database
+      in: path
+      required: true
+      schema:
+        type: string
+      description: The name of the database
+  schemas:
+    AppConfigResponse:
+      type: object
+      properties:
+        github_oauth:
+          type: boolean
+          description: True when GitHub OAuth login is configured on the server.
+        signup:
+          $ref: '#/components/schemas/SignupConfigResponse'
+    SignupConfigResponse:
+      type: object
+      required:
+        - turnstile
+      properties:
+        turnstile:
+          $ref: '#/components/schemas/TurnstileConfigResponse'
+    TurnstileConfigResponse:
+      type: object
+      required:
+        - enabled
+        - site_key
+        - action
+      properties:
+        enabled:
+          type: boolean
+          description: True when password signup requires a Turnstile challenge.
+        site_key:
+          type: string
+          description: Public Turnstile site key used to render the signup widget.
+        action:
+          type: string
+          description: Turnstile action submitted by the signup widget.
+    Organisation:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        is_platform:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    UserSignupResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        jwt_token:
+          type: string
+          description: JWT token for the authenticated user
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: User's ID
+        name:
+          type: string
+          description: User's name
+        username:
+          type: string
+          description: User's username
+        email:
+          type: string
+          format: email
+          description: User's email address
+        organisation:
+          type: string
+          description: User's organisation
+        role:
+          $ref: '#/components/schemas/UserRole'
+        organisation_id:
+          type: string
+          description: OrganisationID
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserProjectMembership'
+          description: Projects the user belongs to (included in login/signup/current-user responses)
+    UserProjectMembership:
+      type: object
+      properties:
+        project_id:
+          type: string
+        role:
+          type: string
+          enum:
+            - Developer
+            - Viewer
+        default_project:
+          type: boolean
+    UserList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        total:
+          type: integer
+          description: Total number of records
+        page:
+          type: integer
+          description: Current page number
+        page_size:
+          type: integer
+          description: Number of items per page
+        total_pages:
+          type: integer
+          description: Total number of pages
+    UserSignupRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          description: User's name
+        email:
+          type: string
+          format: email
+          description: User's email address
+        password:
+          type: string
+          description: Users desired password
+        organisation:
+          $ref: '#/components/schemas/Organisation'
+        invite_token:
+          type: string
+          description: Optional invite token for joining an existing organization
+        turnstile_token:
+          type: string
+          description: Turnstile token required for protected public password signup
+    UserRole:
+      type: string
+      enum:
+        - OrgAdmin
+        - OrgMember
+    RefreshTokenRequest:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+          description: The refresh token to exchange for a new access token
+    RefreshTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: New access token
+        refreshToken:
+          type: string
+          description: New refresh token (old one is revoked)
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          description: User's email
+        password:
+          type: string
+          format: password
+          description: User's password
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Access token for authenticated requests
+        refresh_token:
+          type: string
+          description: Refresh token for obtaining new access tokens
+        user:
+          $ref: '#/components/schemas/User'
+        expires_in:
+          type: integer
+          description: Token expiration time in seconds
+    DemoteAdminRequest:
+      type: object
+      required: []
+      properties: {}
+    PromoteAdminRequest:
+      type: object
+      required:
+        - user_id
+      properties:
+        user_id:
+          type: string
+          description: The ID of the user to promote to admin
+    GitRepoRevision:
+      type: object
+      properties:
+        branch:
+          type: string
+        tag:
+          type: string
+        commit:
+          type: string
+    OutputDescriptor:
+      type: object
+      description: Declared output metadata for a topology node. Values are not returned here.
+      required:
+        - name
+        - type
+        - sensitive
+      properties:
+        name:
+          type: string
+          description: Stable output accessor name, for example `host` or `public_url`.
+        type:
+          type: string
+          description: Scalar value type exposed by this output.
+          enum:
+            - string
+            - integer
+            - boolean
+        sensitive:
+          type: boolean
+          description: True when the output value is sensitive and should never be returned in normal metadata APIs.
+    TopologyNode:
+      type: object
+      description: A node in the instance topology graph.
+      required:
+        - ref
+        - label
+      properties:
+        ref:
+          $ref: '#/components/schemas/TopologyNodeRef'
+        label:
+          type: string
+        outputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/OutputDescriptor'
+        state:
+          type: string
+          description: Optional runtime state for nodes that have status, such as instance resources or addons.
+    TopologyEdge:
+      type: object
+      description: An edge in the instance topology graph.
+      required:
+        - kind
+        - source
+        - target
+        - source_of_truth
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum:
+            - env
+            - volume_mount
+            - build_artifact_source
+            - depends_on
+          description: Edge kind. Explicit connections reuse connection kinds; derived edges use depends_on.
+        source:
+          $ref: '#/components/schemas/TopologyNodeRef'
+        target:
+          $ref: '#/components/schemas/TopologyNodeRef'
+        mappings:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConnectionMapping'
+        config:
+          $ref: '#/components/schemas/ApplicationInstanceConnectionConfig'
+        source_of_truth:
+          type: string
+          enum:
+            - connection
+            - derived
+          description: Whether the edge came from an explicit connection or a derived relationship such as depends_on.
+    TopologyNodeRef:
+      type: object
+      description: Identifies a topology node within the instance graph.
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: The node category.
+          enum:
+            - stack_resource
+            - addon/postgres
+            - secret
+            - volume
+            - object_store
+        id:
+          type: string
+          description: Stable ID for persisted resources such as addons or secrets.
+        name:
+          type: string
+          description: Name-scoped reference for instance-local resources such as ApplicationInstanceResources or Volumes.
+    ConnectionMapping:
+      type: object
+      description: Maps one produced value into one target location on the consumer.
+      required:
+        - target
+        - value
+      properties:
+        target:
+          $ref: '#/components/schemas/ConnectionTarget'
+        value:
+          $ref: '#/components/schemas/ValueRef'
+    ConnectionTarget:
+      type: object
+      description: The destination field that receives a mapped value.
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          description: env writes an environment variable and file writes a mounted file path.
+          enum:
+            - env
+            - file
+        name:
+          type: string
+          description: Environment variable name when type is env.
+        path:
+          type: string
+          description: Absolute file path when type is file.
+    PostgresEnvConfig:
+      type: object
+      description: |
+        Config for env connections from a PostgreSQL addon (kind=env, from.type=addon/postgres). credential_scope and superuser are mutually exclusive.
+      properties:
+        database:
+          type: string
+          description: Target database name within the addon.
+        credential_scope:
+          type: string
+          enum:
+            - owner
+            - superuser
+          description: Which credential set to inject. Mutually exclusive with superuser.
+        superuser:
+          type: boolean
+          description: Use superuser credentials. Mutually exclusive with credential_scope.
+      additionalProperties: false
+    VolumeMountConfig:
+      type: object
+      description: Config for volume mount connections (kind=volume_mount).
+      required:
+        - mount_path
+      properties:
+        mount_path:
+          type: string
+          description: Absolute path where the volume is mounted in the container.
+        sub_path:
+          type: string
+          description: Sub-path within the volume to mount.
+        read_only:
+          type: boolean
+          description: Mount the volume read-only.
+      additionalProperties: false
+    BuildArtifactSourceConfig:
+      type: object
+      description: Config for build artifact source connections (kind=build_artifact_source).
+      required:
+        - source_path
+      properties:
+        source_path:
+          type: string
+          description: Path within the build output to copy from.
+        destination_path:
+          type: string
+          description: Path within the volume to copy to.
+      additionalProperties: false
+    ValueRef:
+      type: object
+      description: |
+        Describes how to read a value from the connection's `from` node. This is only used inside `ApplicationInstanceConnection.mappings[]`.
+      properties:
+        output:
+          type: string
+          description: Output accessor on the connection's `from` node, such as `url` or `public_url`.
+        template:
+          type: string
+          description: Template used when one target value must be composed from multiple outputs.
+        values:
+          type: object
+          description: Named template inputs, each resolving one output from the connection's `from` node.
+          additionalProperties:
+            $ref: '#/components/schemas/OutputValueRef'
+    OutputValueRef:
+      type: object
+      description: References one output on the connection's `from` node.
+      required:
+        - output
+      properties:
+        output:
+          type: string
+          description: Output accessor on the connection's `from` node.
+    ImageBuild:
+      type: object
+      required:
+        - stack_resource_name
+        - stack_resource_id
+        - source_revision
+        - image_repo
+        - build_context
+      properties:
+        id:
+          type: string
+        namespace:
+          type: string
+        instance_id:
+          type: string
+        stack_resource_id:
+          type: string
+        stack_resource_name:
+          type: string
+        source_revision:
+          $ref: '#/components/schemas/BuildSourceRevision'
+        build_context:
+          $ref: '#/components/schemas/BuildSourceContext'
+        image_repo:
+          type: string
+        status:
+          $ref: '#/components/schemas/ImageBuildStatus'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    ResourceMetrics:
+      type: object
+      properties:
+        assigned_nodes:
+          type: array
+          items:
+            type: string
+        cpu_usage:
+          type: string
+          description: CPU usage in millicores
+        memory_usage:
+          type: string
+          description: Memory usage in bytes
+        node_capacities:
+          type: array
+          items:
+            type: object
+            properties:
+              node_name:
+                type: string
+              cpu_capacity:
+                type: string
+                description: CPU capacity in millicores
+              memory_capacity:
+                type: string
+                description: Memory capacity in bytes
+              storage_capacity:
+                type: string
+                description: Storage capacity in bytes
+        timestamp:
+          type: string
+          format: date-time
+    ImageBuildList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageBuild'
+        total:
+          type: integer
+    ImageBuildStatus:
+      type: object
+      properties:
+        state:
+          type: string
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        image_url:
+          type: string
+        build_source_revision:
+          type: string
+        last_build_failure_detail:
+          $ref: '#/components/schemas/BuildFailureDetail'
+    GitHubAppManifestFlow:
+      type: object
+      properties:
+        manifest:
+          type: object
+          additionalProperties: true
+          description: 'GitHub App manifest to POST to github_url as the manifest form field. Absent when the hub runs a platform-wide GitHub App: github_url is then the app''s install page and the browser is redirected to it.'
+        github_url:
+          type: string
+        state:
+          type: string
+    GitInstallation:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        installation_id:
+          type: integer
+          format: int64
+        account_login:
+          type: string
+        account_type:
+          type: string
+        repository_selection:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+    GitInstallationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GitInstallation'
+        total:
+          type: integer
+    GitRepository:
+      type: object
+      properties:
+        full_name:
+          type: string
+        clone_url:
+          type: string
+        default_branch:
+          type: string
+        private:
+          type: boolean
+        pushed_at:
+          type: string
+          format: date-time
+        owner:
+          type: string
+    GitRepositoryPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GitRepository'
+        page:
+          type: integer
+        total_count:
+          type: integer
+        has_next:
+          type: boolean
+    GitBranchList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: string
+        total:
+          type: integer
+    GitIntegration:
+      type: object
+      additionalProperties: false
+      required:
+        - host
+      properties:
+        id:
+          type: string
+          readOnly: true
+        type:
+          $ref: '#/components/schemas/GitIntegrationType'
+        host:
+          type: string
+          description: Git host this integration covers, e.g. gitlab.example.com
+        status:
+          type: string
+          readOnly: true
+          enum:
+            - active
+            - pending_install
+            - installed
+        auth:
+          $ref: '#/components/schemas/GitIntegrationAuth'
+        credentials_configured:
+          type: boolean
+          readOnly: true
+        install_url:
+          type: string
+          readOnly: true
+          description: GitHub install page for adding the app to more accounts (github_app only)
+        organisation_id:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+    GitIntegrationType:
+      type: string
+      default: git_credentials
+      enum:
+        - git_credentials
+        - github_app
+      x-enum-varnames:
+        - GIT_INTEGRATION_TYPE_CREDENTIALS
+        - GIT_INTEGRATION_TYPE_GITHUB_APP
+    GitIntegrationAuth:
+      type: object
+      additionalProperties: false
+      description: Clone auth material; exactly one of token or basic. Never echoed in responses.
+      properties:
+        token:
+          type: string
+          format: password
+          writeOnly: true
+        basic:
+          $ref: '#/components/schemas/GitIntegrationBasicAuth'
+    GitIntegrationBasicAuth:
+      type: object
+      additionalProperties: false
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          format: password
+          writeOnly: true
+    GitIntegrationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GitIntegration'
+        total:
+          type: integer
+    GitIntegrationVerifyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - repo_url
+      properties:
+        repo_url:
+          type: string
+    ContainerFailureDetail:
+      type: object
+      properties:
+        failure_type:
+          type: string
+          enum:
+            - crash_loop
+            - out_of_memory
+            - image_pull_failed
+            - create_container_error
+            - exit_error
+            - port_not_listening
+        reason:
+          type: string
+        message:
+          type: string
+        restart_count:
+          type: integer
+          format: int32
+        exit_code:
+          type: integer
+          format: int32
+    BuildFailureDetail:
+      type: object
+      properties:
+        failure_type:
+          type: string
+          enum:
+            - crash_loop
+            - out_of_memory
+            - image_pull_failed
+            - create_container_error
+            - exit_error
+            - port_not_listening
+        reason:
+          type: string
+        message:
+          type: string
+        restart_count:
+          type: integer
+          format: int32
+        exit_code:
+          type: integer
+          format: int32
+    Ingress:
+      type: object
+      properties:
+        url:
+          type: string
+        target_port:
+          type: integer
+    VolumeMount:
+      type: object
+      required:
+        - source_volume_name
+        - target_path
+      properties:
+        stack_resource_id:
+          type: string
+          readOnly: true
+        source_volume_type:
+          $ref: '#/components/schemas/VolumeMountSourceType'
+        source_volume_name:
+          type: string
+        source_sub_path:
+          type: string
+        target_path:
+          type: string
+    VolumeMountSourceType:
+      type: string
+      enum:
+        - EmptyVolume
+        - RemoteDirSyncedVolume
+        - BuildArtifactSyncedVolume
+        - GitRepoSyncedVolume
+    Port:
+      type: object
+      required:
+        - name
+        - number
+        - exposed_to_public
+      properties:
+        name:
+          type: string
+        number:
+          type: integer
+        protocol:
+          type: string
+        exposed_to_public:
+          type: boolean
+        subdomain_prefix:
+          type: string
+    LifecycleConfig:
+      type: object
+      properties:
+        restart_request_time:
+          type: string
+          format: date-time
+    SourceSpec:
+      type: object
+      additionalProperties: false
+      description: Where a instance resource's runtime image comes from. Exactly one of git, image, or volume must be set (enforced server-side).
+      properties:
+        git:
+          $ref: '#/components/schemas/GitSource'
+        image:
+          $ref: '#/components/schemas/ImageSource'
+        volume:
+          $ref: '#/components/schemas/VolumeBuildSource'
+    GitSource:
+      type: object
+      additionalProperties: false
+      required:
+        - repo_url
+      properties:
+        repo_url:
+          type: string
+        branch:
+          type: string
+          description: Defaults to the repository's default branch, resolved and stored at create time
+        tag:
+          type: string
+          description: Mutually exclusive with branch
+        commit:
+          type: string
+          description: Commit SHA pin; requires branch or tag
+        dockerfile_path:
+          type: string
+          default: Dockerfile
+        build_context:
+          type: string
+          default: .
+        integration_id:
+          type: string
+          description: Org-level git integration override for clone auth
+        push:
+          $ref: '#/components/schemas/PushTarget'
+    PushTarget:
+      type: object
+      additionalProperties: false
+      required:
+        - repository
+      properties:
+        repository:
+          type: string
+          description: Push repository as host/path, without a tag
+        registry_credentials_id:
+          type: string
+          description: Org-level registry credential override for push auth
+    ImageSource:
+      type: object
+      additionalProperties: false
+      required:
+        - ref
+      properties:
+        ref:
+          type: string
+        registry_credentials_id:
+          type: string
+          description: Org-level registry credential override for pull auth
+    VolumeBuildSource:
+      type: object
+      additionalProperties: false
+      properties:
+        volume_id:
+          type: string
+        volume_name:
+          type: string
+          description: Name of a volume defined on the instance; either volume_id or volume_name is required
+        current_volume_hash:
+          type: string
+          description: Content hash of the volume used as the build source revision
+        dockerfile_path:
+          type: string
+          default: Dockerfile
+        build_context:
+          type: string
+          default: .
+    BuildSourceContext:
+      type: object
+      properties:
+        volume:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        git_repo:
+          type: object
+          required:
+            - repo_url
+          properties:
+            repo_url:
+              type: string
+    BuildSourceRevision:
+      type: object
+      properties:
+        volume_source_revision:
+          type: object
+          required:
+            - current_volume_hash
+          properties:
+            current_volume_hash:
+              type: string
+        git_repo_revision:
+          $ref: '#/components/schemas/GitRepoRevision'
+    InitSpec:
+      type: object
+      additionalProperties: false
+      properties:
+        command:
+          type: array
+          items:
+            type: string
+        args:
+          type: array
+          items:
+            type: string
+    ExecutionConfig:
+      type: object
+      properties:
+        command:
+          type: array
+          items:
+            type: string
+        args:
+          type: array
+          items:
+            type: string
+        environment_variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnvVar'
+    EnvVar:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        value:
+          type: string
+          description: Literal environment variable value.
+        self_output:
+          type: string
+          description: Read this environment variable from one of the resource's own declared outputs, for example public_url.
+    Condition:
+      type: object
+      additionalProperties: false
+      properties:
+        type:
+          type: string
+        status:
+          type: string
+        observed_generation:
+          type: integer
+        last_transition_time:
+          type: string
+          format: date-time
+        reason:
+          type: string
+        message:
+          type: string
+    Label:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    Annotation:
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+        value:
+          type: string
+    Error:
+      allOf:
+        - $ref: '#/components/schemas/ObjectReference'
+        - type: object
+          properties:
+            code:
+              type: string
+            reason:
+              type: string
+            operation_id:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+              description: Optional structured, machine-readable error context
+    ObjectReference:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        href:
+          type: string
+    ScopeResource:
+      type: object
+      properties:
+        resource:
+          type: string
+          description: The resource name (e.g., instances, secrets, addons/postgres)
+        actions:
+          type: array
+          items:
+            type: string
+          description: The allowed actions for this resource (e.g., read, write, delete)
+    ScopeList:
+      type: object
+      properties:
+        full_access_scope:
+          type: string
+          description: The wildcard scope that grants full access (same permissions as the user)
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScopeResource'
+        total:
+          type: integer
+    APITokenCreateRequest:
+      type: object
+      required:
+        - name
+        - scopes
+      properties:
+        name:
+          type: string
+          description: Display name for the token
+        scopes:
+          type: array
+          items:
+            type: string
+          description: Permission scopes for the token
+        resource_ids:
+          type: array
+          items:
+            type: string
+          description: Optional list of resource IDs to restrict the token to
+        expires_at:
+          type: string
+          format: date-time
+          description: Optional expiration time in RFC3339 format
+    APITokenCreateResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: The raw API token (only returned on creation)
+        id:
+          type: string
+        name:
+          type: string
+        token_prefix:
+          type: string
+          description: Prefix of the token for identification
+        expires_at:
+          type: string
+          format: date-time
+    APIToken:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        user_id:
+          type: string
+        token_prefix:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+        resource_ids:
+          type: array
+          items:
+            type: string
+        org_id:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        revoked_at:
+          type: string
+          format: date-time
+    APITokenList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/APIToken'
+    InviteStatus:
+      type: string
+      enum:
+        - pending
+        - accepted
+        - revoked
+        - expired
+      x-enum-varnames:
+        - INVITE_PENDING
+        - INVITE_ACCEPTED
+        - INVITE_REVOKED
+        - INVITE_EXPIRED
+    OrgInvite:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        email:
+          type: string
+        organisation_id:
+          type: string
+          readOnly: true
+        role:
+          type: string
+          enum:
+            - Developer
+            - Viewer
+        status:
+          $ref: '#/components/schemas/InviteStatus'
+        expires_at:
+          type: string
+          format: date-time
+        invited_by:
+          type: string
+        email_sent:
+          type: boolean
+        email_error:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        accepted_at:
+          type: string
+          format: date-time
+    OrgInviteCreateRequest:
+      type: object
+      required:
+        - email
+        - role
+        - expires_in_days
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - Developer
+            - Viewer
+        expires_in_days:
+          type: integer
+          minimum: 1
+          maximum: 30
+    OrgInviteCreateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        organisation_id:
+          type: string
+        role:
+          type: string
+        status:
+          $ref: '#/components/schemas/InviteStatus'
+        expires_at:
+          type: string
+          format: date-time
+        invited_by:
+          type: string
+        email_sent:
+          type: boolean
+        invite_token:
+          type: string
+          description: Raw invite token (shown only once at creation)
+        created_at:
+          type: string
+          format: date-time
+    OrgInviteList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrgInvite'
+        total:
+          type: integer
+    OrgInviteInfo:
+      type: object
+      properties:
+        org_name:
+          type: string
+        inviter_name:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    ReleaseHealth:
+      type: string
+      description: Computed runtime health rollup of a live/active release.
+      enum:
+        - ok
+        - progressing
+        - degraded
+        - unavailable
+        - failed
+      x-enum-varnames:
+        - RELEASE_HEALTH_OK
+        - RELEASE_HEALTH_PROGRESSING
+        - RELEASE_HEALTH_DEGRADED
+        - RELEASE_HEALTH_UNAVAILABLE
+        - RELEASE_HEALTH_FAILED
+    ReleaseSummary:
+      type: object
+      readOnly: true
+      description: Lightweight release reference embedded in the instance for list views.
+      properties:
+        id:
+          type: string
+        sequence:
+          type: integer
+          format: int32
+        state:
+          $ref: '#/components/schemas/ReleaseState'
+        health:
+          $ref: '#/components/schemas/ReleaseHealth'
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+    ReleaseLiveStatus:
+      type: object
+      readOnly: true
+      description: Current runtime status overlaid onto a release at read time. Present only when the release is live (currently converged) or active (Pending/InProgress). Never stored; recomputed per request.
+      properties:
+        health:
+          $ref: '#/components/schemas/ReleaseHealth'
+        resources:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ApplicationInstanceResourceStatus'
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        target_revision:
+          type: string
+        observed_revision:
+          type: string
+    ReleaseCauseKind:
+      type: string
+      enum:
+        - manual
+        - rollback
+        - webhook_push
+        - preview_sync
+      x-enum-varnames:
+        - RELEASE_CAUSE_MANUAL
+        - RELEASE_CAUSE_ROLLBACK
+        - RELEASE_CAUSE_WEBHOOK_PUSH
+        - RELEASE_CAUSE_PREVIEW_SYNC
+    CreateReleaseRequest:
+      type: object
+      properties:
+        from_release_id:
+          type: string
+          description: If set, creates a rollback release copying this release's manifest
+    ReleaseEventLink:
+      type: object
+      properties:
+        kind:
+          type: string
+        label:
+          type: string
+        target:
+          type: object
+          additionalProperties:
+            type: string
+    ReleaseEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        release_id:
+          type: string
+        instance_id:
+          type: string
+        sequence:
+          type: integer
+        occurred_at:
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum:
+            - hub
+            - cluster
+        scope:
+          type: string
+          enum:
+            - release
+            - resource
+        resource_name:
+          type: string
+        type:
+          type: string
+        level:
+          type: string
+          enum:
+            - info
+            - success
+            - warning
+            - error
+        message:
+          type: string
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseEventLink'
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+    ReleaseEventList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReleaseEvent'
+        next_after_sequence:
+          type: integer
+    ReleaseCause:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/ReleaseCauseKind'
+        detail:
+          type: string
+    ReleaseValidationError:
+      type: object
+      properties:
+        resource_name:
+          type: string
+        field:
+          type: string
+        code:
+          type: string
+          enum:
+            - resource_name_required
+            - resource_name_invalid
+            - resource_name_duplicate
+            - source_required
+            - source_conflict
+            - workload_type_invalid
+            - schedule_required
+            - schedule_not_allowed
+            - schedule_invalid
+            - replicas_invalid
+            - ports_not_allowed
+            - public_port_not_http
+            - port_protocol_invalid
+            - port_name_invalid
+            - port_number_invalid
+            - port_name_duplicate
+            - port_number_duplicate
+            - subdomain_duplicate
+            - domain_not_configured
+            - env_name_required
+            - env_name_duplicate
+            - env_value_missing
+            - env_value_conflict
+            - env_self_output_unknown
+            - volume_mount_invalid
+            - volume_not_found
+            - volume_hash_missing
+            - secret_not_found
+            - git_integration_not_found
+            - registry_credential_not_found
+            - self_dependency
+            - duplicate_dependency
+            - unknown_dependency
+            - dependency_cycle
+            - git_repo_url_required
+            - git_branch_tag_conflict
+            - git_commit_invalid
+            - git_commit_requires_ref
+            - image_ref_required
+            - image_ref_invalid
+            - push_target_required
+            - push_target_conflict
+            - push_ref_invalid
+            - git_repo_unreachable
+            - git_auth_failed
+            - git_branch_not_found
+            - git_tag_not_found
+            - git_rate_limited
+            - image_not_found
+            - registry_credentials_required
+            - registry_auth_failed
+            - push_access_denied
+            - stack_name_invalid
+            - stack_settings_invalid
+            - connection_invalid
+        message:
+          type: string
+    ReleasePins:
+      type: object
+      properties:
+        resources:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ResourcePins'
+    ResourcePins:
+      type: object
+      properties:
+        git_sha:
+          type: string
+        volume_hash:
+          type: string
+        image_digest:
+          type: string
+    ReleaseOutcome:
+      type: object
+      properties:
+        resources:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ResourceOutcome'
+        duration:
+          type: string
+    ResourceOutcome:
+      type: object
+      properties:
+        phase:
+          type: string
+        ready_replicas:
+          type: integer
+        replicas:
+          type: integer
+        message:
+          type: string
+    ApplicationInstance:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        organisation_id:
+          type: string
+          readOnly: true
+        project_id:
+          type: string
+          readOnly: true
+        user_id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+        namespace:
+          type: string
+          readOnly: true
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Annotation'
+        revision:
+          type: string
+          readOnly: true
+        spec:
+          $ref: '#/components/schemas/ApplicationInstanceSpec'
+        settings:
+          $ref: '#/components/schemas/ApplicationInstanceSettings'
+        lifecycle:
+          $ref: '#/components/schemas/InstanceLifecycle'
+        converged_release:
+          $ref: '#/components/schemas/ReleaseSummary'
+        latest_release:
+          $ref: '#/components/schemas/ReleaseSummary'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+        - name
+        - spec
+    ApplicationInstanceSettings:
+      type: object
+      properties:
+        release_retention_limit:
+          type: integer
+          default: 10
+          description: Maximum total releases to retain per instance
+        min_successful_releases:
+          type: integer
+          default: 5
+          description: Minimum number of successful releases to always keep
+    ApplicationInstanceList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstance'
+        total:
+          type: integer
+    ApplicationInstanceConnectionList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstanceConnection'
+        total:
+          type: integer
+    ApplicationInstanceSpec:
+      type: object
+      properties:
+        stack_resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstanceResource'
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstanceConnection'
+    ApplicationInstanceResource:
+      type: object
+      properties:
+        id:
+          type: string
+          readOnly: true
+        instance_id:
+          type: string
+          readOnly: true
+        name:
+          type: string
+        labels:
+          type: array
+          items:
+            $ref: '#/components/schemas/Label'
+        annotations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Annotation'
+        revision:
+          type: string
+          readOnly: true
+        source:
+          $ref: '#/components/schemas/SourceSpec'
+        init_spec:
+          $ref: '#/components/schemas/InitSpec'
+        execution_config:
+          $ref: '#/components/schemas/ExecutionConfig'
+        volume_mounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/VolumeMount'
+        depends_on:
+          type: array
+          items:
+            type: string
+        lifecycle_config:
+          $ref: '#/components/schemas/LifecycleConfig'
+        ports:
+          type: array
+          items:
+            $ref: '#/components/schemas/Port'
+        outputs:
+          type: array
+          readOnly: true
+          items:
+            $ref: '#/components/schemas/OutputDescriptor'
+        workload_type:
+          type: string
+          enum:
+            - Service
+            - StatefulService
+            - Worker
+            - Job
+            - CronJob
+          default: Service
+        schedule:
+          type: string
+        replicas:
+          type: integer
+          format: int32
+          minimum: 0
+      required:
+        - name
+    ApplicationInstanceResourceList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstanceResource'
+        total:
+          type: integer
+    ApplicationInstanceTopology:
+      type: object
+      required:
+        - nodes
+        - edges
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopologyNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopologyEdge'
+    ApplicationInstanceConnection:
+      type: object
+      description: A user-authored topology edge between two nodes in a instance.
+      required:
+        - kind
+        - from
+        - to
+      properties:
+        id:
+          type: string
+          description: Stable connection identifier. Generated when omitted.
+        kind:
+          type: string
+          description: |
+            The relationship type. `env` injects values into environment variables, `volume_mount` mounts a volume into a resource, and `build_artifact_source` seeds a volume from build output.
+          enum:
+            - env
+            - volume_mount
+            - build_artifact_source
+        from:
+          $ref: '#/components/schemas/TopologyNodeRef'
+        to:
+          $ref: '#/components/schemas/TopologyNodeRef'
+        mappings:
+          type: array
+          description: |
+            Target/value mappings for kinds that move values, such as `env`.
+          items:
+            $ref: '#/components/schemas/ConnectionMapping'
+        config:
+          $ref: '#/components/schemas/ApplicationInstanceConnectionConfig'
+    ApplicationInstanceConnectionConfig:
+      description: |
+        Kind-specific connection configuration. The shape depends on the connection kind and source type: use PostgresEnvConfig when kind is env and from.type is addon/postgres, VolumeMountConfig when kind is volume_mount, and BuildArtifactSourceConfig when kind is build_artifact_source. Omit config entirely for env connections from stack_resource or secret sources.
+      oneOf:
+        - $ref: '#/components/schemas/PostgresEnvConfig'
+        - $ref: '#/components/schemas/VolumeMountConfig'
+        - $ref: '#/components/schemas/BuildArtifactSourceConfig'
+    ApplicationInstanceResourceStatus:
+      type: object
+      properties:
+        public_ingress:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ingress'
+        internal_service_name:
+          type: string
+        last_restart_request_processed_at:
+          type: string
+          format: date-time
+        state:
+          type: string
+        message:
+          type: string
+        observed_revision:
+          type: string
+        conditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Condition'
+        last_failure:
+          $ref: '#/components/schemas/ApplicationInstanceResourceFailure'
+        replicas:
+          type: integer
+          format: int32
+          readOnly: true
+        available_replicas:
+          type: integer
+          format: int32
+          readOnly: true
+        updated_replicas:
+          type: integer
+          format: int32
+          readOnly: true
+        last_run_time:
+          type: string
+          format: date-time
+          readOnly: true
+        last_run_succeeded:
+          type: boolean
+          readOnly: true
+    ApplicationInstanceResourceFailure:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - runtime_crash
+            - build_failure
+            - readiness_failure
+        container:
+          $ref: '#/components/schemas/ContainerFailureDetail'
+        init_container:
+          $ref: '#/components/schemas/ContainerFailureDetail'
+        build:
+          $ref: '#/components/schemas/BuildFailureDetail'
+    ReleaseState:
+      type: string
+      enum:
+        - Pending
+        - InProgress
+        - Released
+        - Failed
+        - Superseded
+        - Cancelled
+      x-enum-varnames:
+        - RELEASE_STATE_PENDING
+        - RELEASE_STATE_IN_PROGRESS
+        - RELEASE_STATE_RELEASED
+        - RELEASE_STATE_FAILED
+        - RELEASE_STATE_SUPERSEDED
+        - RELEASE_STATE_CANCELLED
+    InstanceLifecycle:
+      type: string
+      readOnly: true
+      description: Coarse instance entity lifecycle. Deploy/runtime status lives on releases.
+      enum:
+        - active
+        - deleting
+      x-enum-varnames:
+        - STACK_LIFECYCLE_ACTIVE
+        - STACK_LIFECYCLE_DELETING
+    Release:
+      type: object
+      properties:
+        id:
+          type: string
+        instance_id:
+          type: string
+        sequence:
+          type: integer
+        state:
+          $ref: '#/components/schemas/ReleaseState'
+        message:
+          type: string
+        cause:
+          $ref: '#/components/schemas/ReleaseCause'
+        snapshot_revision:
+          type: string
+        manifest_revision:
+          type: string
+        renderer_version:
+          type: string
+        pins:
+          $ref: '#/components/schemas/ReleasePins'
+        outcome:
+          $ref: '#/components/schemas/ReleaseOutcome'
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        rendered_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        validation_errors:
+          type: array
+          readOnly: true
+          items:
+            $ref: '#/components/schemas/ReleaseValidationError'
+        live_status:
+          $ref: '#/components/schemas/ReleaseLiveStatus'
+    ReleaseDetail:
+      allOf:
+        - $ref: '#/components/schemas/Release'
+        - type: object
+          properties:
+            snapshot:
+              $ref: '#/components/schemas/ReleaseSnapshot'
+    ReleaseSnapshot:
+      type: object
+      properties:
+        stack:
+          type: object
+          properties:
+            id:
+              type: string
+            organisation_id:
+              type: string
+            project_id:
+              type: string
+            cluster_id:
+              type: string
+            user_id:
+              type: string
+            name:
+              type: string
+            namespace_id:
+              type: string
+            namespace:
+              type: string
+            labels:
+              type: object
+              additionalProperties:
+                type: string
+            annotations:
+              type: object
+              additionalProperties:
+                type: string
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstanceResource'
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationInstanceConnection'
+        captured_at:
+          type: string
+          format: date-time
+    ReleaseList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Release'
+        total:
+          type: integer
+          description: Total number of records
+        page:
+          type: integer
+          description: Current page number
+        page_size:
+          type: integer
+          description: Number of items per page
+        total_pages:
+          type: integer
+          description: Total number of pages
