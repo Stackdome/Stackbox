@@ -3,6 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
   "scripts": {
     "generate:types": "openapi-typescript openapi/stackbox_api.yaml --enum -o src/generated/types.ts",
     "generate:zod": "openapi-zod-client openapi/stackbox_api.yaml -o src/generated/zod.ts --export-schemas",
