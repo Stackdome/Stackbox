@@ -12,5 +12,8 @@
   },
   "devDependencies": {
     "tsx": "^4.23.13"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@swc/core"]
   }
 }
