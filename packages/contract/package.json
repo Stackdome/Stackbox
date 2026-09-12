@@ -4,13 +4,21 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "generate:types": "openapi-typescript openapi/stackbox_api.yaml -o src/generated/types.ts",
+    "generate:zod": "openapi-zod-client openapi/stackbox_api.yaml -o src/generated/zod.ts --export-schemas",
+    "generate": "pnpm generate:types && pnpm generate:zod",
     "test:run": "vitest run",
     "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.4"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.5",
     "js-yaml": "^4.1.0",
+    "openapi-typescript": "^7.8.0",
+    "openapi-zod-client": "^1.18.3",
     "typescript": "~5.8.3",
     "vitest": "4.1.10"
   }
