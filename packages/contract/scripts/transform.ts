@@ -303,10 +303,17 @@ function renameKey(key: string): string {
   return key === 'stack_id' ? 'instance_id' : key
 }
 
-// Recursively rewrites schema $refs, the "stack_id" property key, and the
-// word "stack" (plus direct schema-name mentions) inside summary/description
-// strings. Schema-name renaming itself happens separately, directly on
-// components.schemas' keys.
+// Same substitution as a schema name (Stack -> ApplicationInstance,
+// Stackfile untouched), applied inside a camelCase operationId instead of a
+// standalone identifier: applyStackByName -> applyApplicationInstanceByName.
+function renameOperationId(id: string): string {
+  return id.replace(/Stack(?!file)/g, 'ApplicationInstance')
+}
+
+// Recursively rewrites schema $refs, the "stack_id" property key, the word
+// "stack" (plus direct schema-name mentions) inside summary/description
+// strings, and Stack inside operationId. Schema-name renaming itself happens
+// separately, directly on components.schemas' keys.
 function renameTree(node: unknown, renameMap: Map<string, string>): unknown {
   if (Array.isArray(node)) return node.map((item) => renameTree(item, renameMap))
   if (node && typeof node === 'object') {
@@ -319,6 +326,8 @@ function renameTree(node: unknown, renameMap: Map<string, string>): unknown {
       const newKey = renameKey(key)
       if ((key === 'summary' || key === 'description') && typeof value === 'string') {
         result[newKey] = renameStackWord(renameSchemaMentions(applyProseFixups(value), renameMap))
+      } else if (key === 'operationId' && typeof value === 'string') {
+        result[newKey] = renameOperationId(value)
       } else {
         result[newKey] = renameTree(value, renameMap)
       }

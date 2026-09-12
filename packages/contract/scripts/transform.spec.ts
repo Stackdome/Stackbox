@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { load } from 'js-yaml'
-import { PRUNED_GROUPS } from './transform.ts'
+import { PRUNED_GROUPS, SCHEMA_RENAME_MAP } from './transform.ts'
 
 const doc = load(
   readFileSync(resolve(__dirname, '../openapi/stackbox_api.yaml'), 'utf8'),
-) as { paths: Record<string, unknown>; components: { schemas: Record<string, unknown> } }
+) as { paths: Record<string, Record<string, { operationId?: string }>>; components: { schemas: Record<string, unknown> } }
 
 const SOURCE = '/Users/akshaysasidharan/code/stackdome/config/openapi/stackdome_api.yaml'
 const rawSource = readFileSync(SOURCE, 'utf8')
@@ -16,6 +16,12 @@ const paths = Object.keys(doc.paths)
 const schemas = Object.keys(doc.components.schemas)
 const PRUNED = PRUNED_GROUPS
 const countEnumBlocks = (yaml: string) => (yaml.match(/x-enum-varnames/g) ?? []).length
+
+const operationIds = Object.values(doc.paths).flatMap((operations) =>
+  Object.values(operations)
+    .map((op) => op.operationId)
+    .filter((id): id is string => typeof id === 'string'),
+)
 
 describe('the transformed contract', () => {
   it('has no path carrying project_name or a /projects/ segment', () => {
@@ -48,5 +54,16 @@ describe('the transformed contract', () => {
 
   it('carries over every x-enum-varnames block the source document had', () => {
     expect(countEnumBlocks(rawOut)).toBe(countEnumBlocks(rawSource))
+  })
+
+  it('renames Stack inside every operationId', () => {
+    expect(operationIds.filter((id) => /Stack(?!file)/.test(id))).toEqual([])
+  })
+
+  it('renames every schema in the rename map', () => {
+    for (const [from, to] of Object.entries(SCHEMA_RENAME_MAP)) {
+      expect(schemas, `expected ${from} to be renamed away`).not.toContain(from)
+      expect(schemas, `expected ${to} to be present`).toContain(to)
+    }
   })
 })

@@ -1165,7 +1165,7 @@ paths:
         are add-only); otherwise the instance and its children are created
         atomically after full validation. Idempotent — clients need not know
         whether the instance already exists.
-      operationId: applyStackByName
+      operationId: applyApplicationInstanceByName
       security:
         - Bearer: []
       parameters:
@@ -1211,7 +1211,7 @@ paths:
         document: resources and connections not present in the body are deleted, while
         volumes are add-only and are never deleted. This is the only endpoint that
         accepts a full instance document.
-      operationId: applyStack
+      operationId: applyApplicationInstance
       security:
         - Bearer: []
       parameters:
@@ -1347,7 +1347,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     post:
       summary: Create a instance resource
-      operationId: createStackResource
+      operationId: createApplicationInstanceResource
       security:
         - Bearer: []
       parameters:
@@ -1414,7 +1414,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     put:
       summary: Update a instance resource
-      operationId: updateStackResource
+      operationId: updateApplicationInstanceResource
       security:
         - Bearer: []
       parameters:
@@ -1452,7 +1452,7 @@ paths:
                 $ref: '#/components/schemas/Error'
     delete:
       summary: Delete a instance resource
-      operationId: deleteStackResource
+      operationId: deleteApplicationInstanceResource
       security:
         - Bearer: []
       parameters:
