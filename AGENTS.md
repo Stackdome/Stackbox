@@ -28,7 +28,9 @@ The reconciler is a single tick loop (2s interval): claim tasks by lease, observ
 | Web app against mocked network | `dev:mock` |
 | Same, empty first-run org | `dev:mock:empty` |
 | API dev server | `pnpm --filter @stackbox/api dev` |
-| DB migrations | `migrate` |
+| Start the database | `docker compose up -d postgres` |
+| Create the test database | `bash apps/api/scripts/create-test-db.sh` |
+| DB migrations | `pnpm --filter @stackbox/api migrate` |
 | End-to-end (Playwright) | `pnpm e2e` |
 | Lint everything | `pnpm -r lint` |
 | Typecheck everything | `pnpm -r typecheck` |
