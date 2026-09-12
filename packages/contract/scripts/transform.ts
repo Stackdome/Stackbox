@@ -279,12 +279,12 @@ const PROSE_FIXUPS: Array<[string, string]> = [
   ['exists in the project it is reconciled', 'exists it is reconciled'],
   // Em dashes in source prose. Fixed here so a future regeneration never
   // reintroduces one; each entry is the exact source text, verified unique.
-  // The dash itself is a — escape rather than a literal character so
+  // The dash itself is a \u2014 escape rather than a literal character so
   // this file, which people read, carries no em dash of its own.
-  ['ignored — add\nchildren via', 'ignored. Add\nchildren via'],
-  ['body are ignored — use `PUT', 'body are ignored. Use `PUT'],
-  ['Idempotent — clients need not know', 'Idempotent: clients need not know'],
-  ['not started — retry later', 'not started. Retry later'],
+  ['ignored \u2014 add\nchildren via', 'ignored. Add\nchildren via'],
+  ['body are ignored \u2014 use `PUT', 'body are ignored. Use `PUT'],
+  ['Idempotent \u2014 clients need not know', 'Idempotent: clients need not know'],
+  ['not started \u2014 retry later', 'not started. Retry later'],
   // Volumes no longer has a schema of its own once its group is pruned, so
   // naming it beside StackResources is stale; say "resources" instead.
   [' such as StackResources or Volumes', ''],
