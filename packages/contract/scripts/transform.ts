@@ -69,17 +69,31 @@ function schemaNameFromRef(ref: string): string | undefined {
   return match?.[1]
 }
 
-// Prunes two properties that survive reachability only because a surviving
-// schema still points at a schema whose own dedicated group is pruned. Left
-// alone, the schema-name test would still see Volume/DomainName/ProjectRole
-// (StackSpec, StackReleaseSnapshot, Organisation and DemoteAdminRequest all
-// stay reachable), and deleting those schemas anyway would leave a dangling
-// $ref. Removing the referencing property is the fix the plan calls for.
+// Properties that survive reachability only because a surviving schema still
+// points at a schema whose own dedicated group is pruned (or whose
+// vocabulary is banned outright). Left alone, the schema-name test would
+// still see Volume/DomainName/UserProjectMembership, and deleting those
+// schemas anyway would leave a dangling $ref. Removing the referencing
+// property is the fix the plan calls for.
 const DANGLING_REF_FIXUPS: Array<{ schema: string; property: string }> = [
   { schema: 'StackSpec', property: 'volumes' },
   { schema: 'StackReleaseSnapshot', property: 'volumes' },
   { schema: 'Organisation', property: 'domains' },
-  { schema: 'DemoteAdminRequest', property: 'role' },
+  { schema: 'User', property: 'projects' },
+]
+
+// Schemas dropped outright even though something used to reference them --
+// their whole vocabulary (Project) is banned, not just one field. Removing
+// the properties above already makes these unreachable; listing them here
+// too is belt and suspenders, and it's the single place a future prune adds
+// another one.
+export const PRUNED_SCHEMAS = ['UserProjectMembership']
+
+// The demote-admin request body was 100% Project-scoped fields (project_name,
+// role). Once those are gone there's nothing left to send, so the operation
+// loses its request body outright rather than keeping an empty schema.
+const REMOVED_REQUEST_BODIES: Array<{ path: string; method: string }> = [
+  { path: '/api/v1/organizations/{org_id}/admins/{user_id}/demote', method: 'post' },
 ]
 
 function removeDanglingRefs(schemas: JsonObject, report: string[]): void {
@@ -94,6 +108,16 @@ function removeDanglingRefs(schemas: JsonObject, report: string[]): void {
   }
 }
 
+function removeObsoleteRequestBodies(paths: JsonObject, report: string[]): void {
+  for (const { path, method } of REMOVED_REQUEST_BODIES) {
+    const operation = (paths[path] as JsonObject | undefined)?.[method] as JsonObject | undefined
+    if (!operation || !('requestBody' in operation)) continue
+    delete operation.requestBody
+    if (typeof operation.description === 'string') operation.description = 'Demotes an OrgAdmin.'
+    report.push(`${method.toUpperCase()} ${path} requestBody`)
+  }
+}
+
 function prune(doc: JsonObject, report: string[]): void {
   const paths = doc.paths as JsonObject
   for (const path of Object.keys(paths)) {
@@ -102,6 +126,7 @@ function prune(doc: JsonObject, report: string[]): void {
 
   const schemas = doc.components as unknown as { schemas: JsonObject; parameters: JsonObject }
   removeDanglingRefs(schemas.schemas, report)
+  removeObsoleteRequestBodies(paths, report)
 
   const reachable = new Set<string>()
   const queue: string[] = []
@@ -126,6 +151,7 @@ function prune(doc: JsonObject, report: string[]): void {
   for (const name of Object.keys(schemas.schemas)) {
     if (!reachable.has(name)) delete schemas.schemas[name]
   }
+  for (const name of PRUNED_SCHEMAS) delete schemas.schemas[name]
 
   // Safety net: fail loudly rather than ship a dangling $ref if reachability
   // missed a case symmetrical to the ones fixed above.
@@ -139,12 +165,43 @@ function prune(doc: JsonObject, report: string[]): void {
   }
 }
 
+// One flatten target collides with a path that was already there: the
+// project-scoped "list/create instances" path lands on
+// /organizations/{org_id}/stacks, which already held the org-wide "list
+// across all projects" GET. Once there's no more project partitioning those
+// two GETs are the same operation; keep the project-scoped one (it already
+// had pagination) and carry forward the org-wide one's OrgAdmin-visibility
+// note before it's discarded, rather than silently dropping it.
+const ORG_WIDE_LIST_SUMMARY = 'List all stacks'
+const ORG_WIDE_LIST_DESCRIPTION =
+  'Returns instances the user has access to in the org. OrgAdmins see all instances in the org.'
+
+function mergeFlattenedCollision(paths: JsonObject, target: string, incomingPath: string, report: string[]): void {
+  const existing = paths[target] as JsonObject
+  const incoming = paths[incomingPath] as JsonObject
+  for (const [method, operation] of Object.entries(incoming)) {
+    if (!(method in existing)) {
+      existing[method] = operation
+      continue
+    }
+    const incomingOp = operation as JsonObject
+    incomingOp.summary = ORG_WIDE_LIST_SUMMARY
+    if (!incomingOp.description) incomingOp.description = ORG_WIDE_LIST_DESCRIPTION
+    existing[method] = incomingOp
+    report.push(`merged ${method.toUpperCase()} ${target} (collision with ${incomingPath})`)
+  }
+}
+
 function flatten(doc: JsonObject, report: string[]): void {
   const paths = doc.paths as JsonObject
   for (const path of Object.keys(paths)) {
     if (!path.includes('/projects/{project_name}')) continue
     const flattened = path.replace('/projects/{project_name}', '')
-    paths[flattened] = paths[path]
+    if (flattened in paths) {
+      mergeFlattenedCollision(paths, flattened, path, report)
+    } else {
+      paths[flattened] = paths[path]
+    }
     delete paths[path]
   }
 
@@ -162,18 +219,37 @@ function flatten(doc: JsonObject, report: string[]): void {
   const parameters = (doc.components as JsonObject).parameters as JsonObject
   delete parameters.project_name
 
-  // A few surviving schemas (invite/membership request-response bodies) still
-  // carried a plain project_name string field left over from the pruned
-  // Project resource. Same fix as a dangling $ref: drop the field.
+  // A number of surviving schemas -- some top-level, some inline objects
+  // nested inside a surviving schema (e.g. ReleaseSnapshot's embedded
+  // `stack` object) -- still carried a plain project_name/project_id string
+  // field left over from the pruned Project resource. Same fix as a
+  // dangling $ref: drop the field, wherever in the tree it appears.
   const schemas = (doc.components as JsonObject).schemas as JsonObject
   for (const [name, schema] of Object.entries(schemas)) {
-    const properties = (schema as JsonObject).properties as JsonObject | undefined
-    if (!properties || !('project_name' in properties)) continue
-    delete properties.project_name
-    const required = (schema as JsonObject).required as string[] | undefined
-    if (required) (schema as JsonObject).required = required.filter((n) => n !== 'project_name')
-    report.push(`${name}.project_name`)
+    stripPrunedScalarProperties(schema, name, report)
   }
+}
+
+const PRUNED_SCALAR_PROPERTIES = ['project_name', 'project_id']
+
+function stripPrunedScalarProperties(node: unknown, label: string, report: string[]): void {
+  if (Array.isArray(node)) {
+    node.forEach((item) => stripPrunedScalarProperties(item, label, report))
+    return
+  }
+  if (!node || typeof node !== 'object') return
+  const obj = node as JsonObject
+  const properties = obj.properties as JsonObject | undefined
+  if (properties) {
+    for (const prop of PRUNED_SCALAR_PROPERTIES) {
+      if (!(prop in properties)) continue
+      delete properties[prop]
+      const required = obj.required as string[] | undefined
+      if (required) obj.required = required.filter((n) => n !== prop)
+      report.push(`${label}.${prop}`)
+    }
+  }
+  for (const value of Object.values(obj)) stripPrunedScalarProperties(value, label, report)
 }
 
 function renamedSchemaName(name: string): string {
@@ -181,6 +257,18 @@ function renamedSchemaName(name: string): string {
   if (name.startsWith('StackRelease')) return name.replace('StackRelease', 'Release')
   if (name.includes('Stack')) return name.replace('Stack', 'ApplicationInstance')
   return name
+}
+
+// A couple of description phrases stated project-scoped uniqueness rules
+// that no longer hold once Projects are pruned. Exact-string fixups
+// (verified unique in the source) rather than a broad prose scrub.
+const PROSE_FIXUPS: Array<[string, string]> = [
+  ['unique per project', 'unique per org'],
+  ['exists in the project it is reconciled', 'exists it is reconciled'],
+]
+
+function applyProseFixups(text: string): string {
+  return PROSE_FIXUPS.reduce((result, [from, to]) => result.split(from).join(to), text)
 }
 
 // Case-preserving whole-word replace of "stack"/"stacks" -> "instance"/
@@ -230,7 +318,7 @@ function renameTree(node: unknown, renameMap: Map<string, string>): unknown {
     for (const [key, value] of Object.entries(node as JsonObject)) {
       const newKey = renameKey(key)
       if ((key === 'summary' || key === 'description') && typeof value === 'string') {
-        result[newKey] = renameStackWord(renameSchemaMentions(value, renameMap))
+        result[newKey] = renameStackWord(renameSchemaMentions(applyProseFixups(value), renameMap))
       } else {
         result[newKey] = renameTree(value, renameMap)
       }
@@ -277,7 +365,7 @@ function main(): void {
   writeFileSync(OUTPUT, dump(doc, { lineWidth: -1 }))
 
   if (report.length > 0) {
-    console.log(`Removed dangling $ref properties: ${report.join(', ')}`)
+    console.log(`Removed: ${report.join(', ')}`)
   }
   console.log(`Wrote ${OUTPUT}`)
 }

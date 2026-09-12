@@ -834,18 +834,12 @@ paths:
   /api/v1/organizations/{org_id}/admins/{user_id}/demote:
     post:
       summary: Demote an organization admin
-      description: Demotes an OrgAdmin and places them in the specified project with the given role (defaults to Viewer).
+      description: Demotes an OrgAdmin.
       security:
         - Bearer: []
       parameters:
         - $ref: '#/components/parameters/org_id'
         - $ref: '#/components/parameters/user_id'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DemoteAdminRequest'
       responses:
         '204':
           description: Admin demoted successfully
@@ -1002,6 +996,38 @@ paths:
         '410':
           description: Invite expired or revoked
   /api/v1/organizations/{org_id}/instances:
+    get:
+      summary: List all instances
+      security:
+        - Bearer: []
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+        - in: query
+          name: offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationInstanceList'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      description: Returns instances the user has access to in the org. OrgAdmins see all instances in the org.
     post:
       summary: Create a new instance
       description: |
@@ -1039,37 +1065,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    get:
-      summary: List all instances for a project
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - in: query
-          name: limit
-          schema:
-            type: integer
-            default: 20
-        - in: query
-          name: offset
-          schema:
-            type: integer
-            default: 0
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApplicationInstanceList'
-        '401':
-          description: Unauthorized
         '500':
           description: Internal server error
           content:
@@ -1164,8 +1159,8 @@ paths:
       summary: Apply a full instance document by name (declarative upsert)
       description: |
         Name-addressed declarative whole-document apply. ApplicationInstance identity is the
-        `name` in the request body (unique per project). If a instance with that name
-        exists in the project it is reconciled exactly like the id-addressed apply
+        `name` in the request body (unique per org). If a instance with that name
+        exists it is reconciled exactly like the id-addressed apply
         (resources and connections not present in the body are deleted, volumes
         are add-only); otherwise the instance and its children are created
         atomically after full validation. Idempotent — clients need not know
@@ -2172,23 +2167,6 @@ components:
         organisation_id:
           type: string
           description: OrganisationID
-        projects:
-          type: array
-          items:
-            $ref: '#/components/schemas/UserProjectMembership'
-          description: Projects the user belongs to (included in login/signup/current-user responses)
-    UserProjectMembership:
-      type: object
-      properties:
-        project_id:
-          type: string
-        role:
-          type: string
-          enum:
-            - Developer
-            - Viewer
-        default_project:
-          type: boolean
     UserList:
       type: object
       properties:
@@ -2282,10 +2260,6 @@ components:
         expires_in:
           type: integer
           description: Token expiration time in seconds
-    DemoteAdminRequest:
-      type: object
-      required: []
-      properties: {}
     PromoteAdminRequest:
       type: object
       required:
@@ -3539,9 +3513,6 @@ components:
         organisation_id:
           type: string
           readOnly: true
-        project_id:
-          type: string
-          readOnly: true
         user_id:
           type: string
           readOnly: true
@@ -3893,8 +3864,6 @@ components:
             id:
               type: string
             organisation_id:
-              type: string
-            project_id:
               type: string
             cluster_id:
               type: string
