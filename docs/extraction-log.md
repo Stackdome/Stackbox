@@ -16,7 +16,7 @@ Tracks which Stackdome source became which Stackbox component, and in which slic
 | `.claude/skills/create-pr/` | `~/code/stackdome/.claude/skills/create-pr/` | 0 | repaired: pre-flight gate collapsed to one command, path/scope lines updated |
 | `.claude/skills/ingest-design-bundle/` | `~/code/stackdome/.claude/skills/ingest-design-bundle/` | 0 | repaired: path/command lines only |
 | `.claude/skills/grill-with-docs/` (3 files) | `~/code/stackdome/.claude/skills/grill-with-docs/` | 0 | repaired: path/command lines only |
-| `packages/contract/openapi/stackbox_api.yaml` | Stackdome's OpenAPI source (read by `packages/contract/scripts/transform.ts`) | 0 | rewritten: pruned unreachable schemas, flattened project-scoped paths onto `organizations/{org_id}/`, renamed `Stack*` to `ApplicationInstance*` |
+| `packages/contract/openapi/stackbox_api.yaml` | Stackdome's OpenAPI source, hand-owned from here, shape asserted by `packages/contract/src/openapi.spec.ts` | 0 | rewritten: pruned unreachable schemas, flattened project-scoped paths onto `organizations/{org_id}/`, renamed `Stack*` to `ApplicationInstance*` |
 | `apps/web/eslint.config.js` | `stackdome/frontend/eslint.config.js` | 0 | copied verbatim |
 | `apps/web/components.json` | `stackdome/frontend/components.json` | 0 | copied verbatim |
 | `apps/web/tsconfig.app.json` | `stackdome/frontend/tsconfig.app.json` | 0 | repaired: dropped `erasableSyntaxOnly` (broke `tsc -b` on contract's generated enums) |
