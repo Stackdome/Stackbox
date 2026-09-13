@@ -61,6 +61,6 @@ export {
   type SkeletonBar,
 } from "./data-list";
 export { KeyValueRows, type KeyValueRow } from "./key-value-rows";
-export { BRAND_ICONS, hasBrandIcon } from "./brand-icon-registry";
+export { BRAND_ICONS, hasBrandIcon, type ProviderId } from "./brand-icon-registry";
 export { BrandIcon } from "./brand-icons";
 export { ProviderLogo } from "./provider-logo";
