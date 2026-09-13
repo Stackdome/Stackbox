@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post, Res } from '@nestjs/common'
+import { Body, Controller, HttpCode, Inject, Post, Res } from '@nestjs/common'
 import { type components, schemas } from '@stackbox/contract'
 import { ZodValidationPipe } from '../common/zod-validation.pipe'
 import { AuthService } from './auth.service'
@@ -20,7 +20,7 @@ function setAuthCookie(response: CookieResponse, token: string): void {
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
   @Post('login')
   @HttpCode(200)

@@ -1,4 +1,4 @@
-import { type CanActivate, type ExecutionContext, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common'
+import { type CanActivate, type ExecutionContext, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 import { z } from 'zod'
 import { TaskStore } from '../db'
@@ -12,9 +12,9 @@ const uuid = z.string().uuid()
 @Injectable()
 export class AccessGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
-    private readonly access: AccessService,
-    private readonly tasks: TaskStore,
+    @Inject(Reflector) private readonly reflector: Reflector,
+    @Inject(AccessService) private readonly access: AccessService,
+    @Inject(TaskStore) private readonly tasks: TaskStore,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {

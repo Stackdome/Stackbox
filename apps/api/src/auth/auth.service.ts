@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Inject, Injectable, UnauthorizedException } from '@nestjs/common'
 import type { components } from '@stackbox/contract'
 import type { AuthUser } from '../access/types'
 import { UserStore } from '../db'
@@ -18,8 +18,8 @@ function authUserOf(user: UserProfile): AuthUser {
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly users: UserStore,
-    private readonly tokens: Tokens,
+    @Inject(UserStore) private readonly users: UserStore,
+    @Inject(Tokens) private readonly tokens: Tokens,
   ) {}
 
   async login(email: string, password: string): Promise<Session> {
