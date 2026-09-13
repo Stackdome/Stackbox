@@ -33,6 +33,7 @@ export const DecisionKind = {
   RetrySameKey: 'retry_same_key',
   RecordExecution: 'record_execution',
   AppendCheck: 'append_check',
+  IgnoreCheck: 'ignore_check',
   PushPatch: 'push_patch',
   OpenPullRequest: 'open_pull_request',
   Transition: 'transition',
@@ -70,6 +71,7 @@ export type Decision =
       commitSha: string | null
       artifacts: CheckArtifact[]
     }
+  | { kind: typeof DecisionKind.IgnoreCheck; checkKind: CheckKind; executionId: string; itemId: string | null }
   | { kind: typeof DecisionKind.PushPatch; runId: string; executionId: string }
   | { kind: typeof DecisionKind.OpenPullRequest; runId: string }
   | { kind: typeof DecisionKind.Transition; to: TaskPhase; resolution: TaskResolution | null }
@@ -104,6 +106,12 @@ const PURPOSE_BY_PHASE: Partial<Record<TaskPhase, RunPurpose>> = {
   [TaskPhase.Reproducing]: RunPurpose.Reproduce,
   [TaskPhase.Implementing]: RunPurpose.Implement,
   [TaskPhase.Verifying]: RunPurpose.Verify,
+}
+
+// The one check kind each run purpose may report; instance_ready is written only from the deploy target.
+const REPORTABLE_BY_PURPOSE: Partial<Record<RunPurpose, CheckKind>> = {
+  [RunPurpose.Reproduce]: CheckKind.ReportReproduced,
+  [RunPurpose.Verify]: CheckKind.FixVerified,
 }
 
 type RunScope = Pick<TaskSnapshot, 'task' | 'runs' | 'executions'>
@@ -143,8 +151,16 @@ export function decide(snapshot: TaskSnapshot, observations: Observations, now: 
   if (snapshot.task.phase === TaskPhase.Cancelled) return cleanUp(snapshot)
   const execution = activeExecution(snapshot)
   const turnEnd = execution && observations.events.map(turnEndOf).find((end) => end !== undefined)
+  const reported = execution ? observations.events.filter(isCheck).filter((event) => !isStored(snapshot, execution, event)) : []
+  const purpose = PURPOSE_BY_PHASE[snapshot.task.phase]
+  const reportable = purpose && REPORTABLE_BY_PURPOSE[purpose]
   const checks = execution
-    ? observations.events.filter(isCheck).filter((event) => !isStored(snapshot, execution, event)).map((event) => checkFromEvent(snapshot, execution, event))
+    ? reported.filter((event) => event.checkKind === reportable).map((event) => checkFromEvent(snapshot, execution, event))
+    : []
+  const ignored: Decision[] = execution
+    ? reported
+      .filter((event) => event.checkKind !== reportable)
+      .map((event) => ({ kind: DecisionKind.IgnoreCheck, checkKind: event.checkKind, executionId: execution.id, itemId: event.itemId ?? null }))
     : []
   const context: Context = {
     snapshot,
@@ -156,7 +172,7 @@ export function decide(snapshot: TaskSnapshot, observations: Observations, now: 
   }
   const retrying = turnEnd?.kind === AgentEventKind.TurnFailed && turnEnd.category === AgentErrorCategory.Transient
   const record = execution && observations.events.length > 0 && !retrying ? [recordExecution(execution, observations.events, turnEnd, now)] : []
-  return [...checks, ...advance(context), ...record]
+  return [...checks, ...ignored, ...advance(context), ...record]
 }
 
 function advance(c: Context): Decision[] {

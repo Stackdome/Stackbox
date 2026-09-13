@@ -132,6 +132,8 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
         return this.state.updateExecution(decision.executionId, decision.patch)
       case DecisionKind.AppendCheck:
         return this.appendCheck(snapshot, decision, now)
+      case DecisionKind.IgnoreCheck:
+        return this.event(snapshot, TaskEventKind.CheckIgnored, { checkKind: decision.checkKind, executionId: decision.executionId, itemId: decision.itemId }, now)
       case DecisionKind.PushPatch:
         return this.pushPatch(snapshot, decision)
       case DecisionKind.OpenPullRequest:

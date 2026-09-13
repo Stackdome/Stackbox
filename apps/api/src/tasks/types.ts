@@ -157,6 +157,7 @@ export const TaskEventKind = {
   PhaseChanged: 'phase_changed',
   InstanceRequested: 'instance_requested',
   BudgetExceeded: 'budget_exceeded',
+  CheckIgnored: 'check_ignored',
 } as const
 export type TaskEventKind = (typeof TaskEventKind)[keyof typeof TaskEventKind]
 

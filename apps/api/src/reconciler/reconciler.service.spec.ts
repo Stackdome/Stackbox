@@ -165,6 +165,28 @@ describe('the reconciler', () => {
     expect((await state.load('T1')).task.phase).toBe(TaskPhase.Reproducing)
   })
 
+  it('ignores an instance_ready check reported by the agent and records that it did', async () => {
+    const { state, runtime, deploy, service } = aReconciler()
+    const instance = await anInstanceWithLiveOrigin(deploy)
+    runtime.queueRun({
+      events: [reportCheckCall('call-1', { checkKind: CheckKind.InstanceReady, outcome: CheckOutcome.Passed, artifacts: [] })],
+    })
+    const repro = await runtime.startRun(aRunSpec())
+    state.seed(
+      aSnapshot({
+        task: aTask({ phase: TaskPhase.Reproducing, instanceId: instance.id }),
+        releases: [aRelease()],
+        executions: [anExecution({ sessionRef: repro.sessionId })],
+      }),
+    )
+    await service.tick()
+    const { checks } = await state.load('T1')
+    expect({ checks, events: state.eventsOf('T1').map((event) => event.kind) }).toEqual({
+      checks: [],
+      events: [TaskEventKind.CheckIgnored],
+    })
+  })
+
   it('writes a budget_exceeded event when it abandons a task over the organization budget', async () => {
     const { state, deploy, service } = aReconciler()
     const instance = await anInstanceWithLiveOrigin(deploy)
