@@ -11,19 +11,26 @@ type Document = {
   components: { schemas: Record<string, Schema> }
 }
 
-const GENERATED_ENUM_COUNT = 46
+const GENERATED_ENUM_COUNT = 47
 
 const SPEC_ENUMS = [
   'RepoProvider', 'ConnectionStatus', 'InstancePurpose', 'InstanceStatus', 'ReleaseStatus',
   'ReportSource', 'TaskKind', 'TaskPhase', 'TaskResolution', 'RunOutcome', 'SandboxStatus',
   'ExecutionStatus', 'CheckKind', 'CheckOutcome', 'ArtifactOwner', 'ArtifactKind', 'PrState',
-  'MessageRole', 'CoarseStatus', 'ApplicationRole',
+  'MessageRole', 'CoarseStatus', 'ApplicationRole', 'TaskEventKind',
 ]
 
 const TASK_PATHS = [
   '/api/v1/organizations/{org_id}/tasks',
   '/api/v1/organizations/{org_id}/tasks/{task_id}',
   '/api/v1/organizations/{org_id}/tasks/{task_id}/cancel',
+  '/api/v1/organizations/{org_id}/tasks/{task_id}/events',
+  '/api/v1/organizations/{org_id}/tasks/{task_id}/checks',
+  '/api/v1/organizations/{org_id}/tasks/{task_id}/runs',
+  '/api/v1/organizations/{org_id}/tasks/{task_id}/messages',
+  '/api/v1/organizations/{org_id}/tasks/{task_id}/artifacts',
+  '/api/v1/organizations/{org_id}/artifacts',
+  '/api/v1/organizations/{org_id}/artifacts/{artifact_id}',
   '/api/v1/organizations/{org_id}/applications',
 ]
 
@@ -32,6 +39,8 @@ const TASK_SUMMARY_FIELDS = [
   'run_limit', 'blocking_question', 'pull_request', 'instance', 'cost_cents', 'created_at',
   'completed_at',
 ]
+
+const TASK_DETAIL_ONLY_FIELDS = ['target_branch', 'budget_cents', 'pull_requests']
 
 const yamlPath = fileURLToPath(new URL('../openapi/stackbox_api.yaml', import.meta.url))
 const source = readFileSync(yamlPath, 'utf8')
@@ -60,7 +69,7 @@ describe('the committed contract', () => {
     expect(references.filter((name) => !(name in schemas))).toEqual([])
   })
 
-  it('exports exactly 46 enums from the barrel', () => {
+  it('exports exactly 47 enums from the barrel', () => {
     expect(Object.values(contract).filter(isEnum)).toHaveLength(GENERATED_ENUM_COUNT)
   })
 
@@ -84,5 +93,14 @@ describe('the committed contract', () => {
   it('requires exactly the fields a Tasks list row draws on every TaskSummary', () => {
     const summary = schemas.TaskSummary as Schema & { required?: string[] }
     expect(summary?.required).toEqual(TASK_SUMMARY_FIELDS)
+  })
+
+  it('requires every TaskSummary field on TaskDetail plus the fields only the detail screen draws', () => {
+    const detail = schemas.TaskDetail as Schema & { required?: string[] }
+    expect(detail?.required).toEqual([...TASK_SUMMARY_FIELDS, ...TASK_DETAIL_ONLY_FIELDS])
+  })
+
+  it('refuses the onboarding kind with the exact message the new task drawer shows', () => {
+    expect(source).toContain("message: Tasks of kind onboarding are not supported yet")
   })
 })

@@ -1,3 +1,4 @@
+import { TaskEventKind } from '@stackbox/contract'
 import type {
   ArtifactKind,
   ArtifactOwner,
@@ -15,6 +16,8 @@ import type {
   TaskPhase,
   TaskResolution,
 } from '@stackbox/contract'
+
+export { TaskEventKind }
 
 export type Organization = { id: string; name: string; budgetCents: number; createdAt: Date }
 
@@ -152,14 +155,6 @@ export type PullRequest = {
   isDraft: boolean
   state: PrState
 }
-
-export const TaskEventKind = {
-  PhaseChanged: 'phase_changed',
-  InstanceRequested: 'instance_requested',
-  BudgetExceeded: 'budget_exceeded',
-  CheckIgnored: 'check_ignored',
-} as const
-export type TaskEventKind = (typeof TaskEventKind)[keyof typeof TaskEventKind]
 
 export type TaskEvent = { id: string; taskId: string; kind: TaskEventKind; payload: Record<string, unknown>; at: Date }
 

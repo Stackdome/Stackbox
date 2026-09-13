@@ -3780,7 +3780,8 @@ export interface paths {
         /** List the organization's tasks, Needs you first, then newest first */
         get: operations["listTasks"];
         put?: never;
-        post?: never;
+        /** Create a report and its task in one call */
+        post: operations["createTask"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3794,7 +3795,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get one task as the Tasks list draws it */
+        /** Get one task as the Task detail screen draws it */
         get: operations["getTask"];
         put?: never;
         post?: never;
@@ -3815,6 +3816,126 @@ export interface paths {
         put?: never;
         /** Cancel a task that has not finished */
         post: operations["cancelTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/tasks/{task_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the task's timeline events, oldest first */
+        get: operations["listTaskEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/tasks/{task_id}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the task's checks, oldest first */
+        get: operations["listTaskChecks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/tasks/{task_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the task's runs by number, each with its cost and failed check */
+        get: operations["listTaskRuns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/tasks/{task_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the task's conversation, oldest first */
+        get: operations["listTaskMessages"];
+        put?: never;
+        /** Append a message; answers the open blocking question and resumes the diverted phase when the task needs input */
+        post: operations["createTaskMessage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/tasks/{task_id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List every artifact of the task, its report, checks and messages */
+        get: operations["listTaskArtifacts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload one image, at most 2 MB, stored as a data URL until object storage arrives */
+        post: operations["uploadArtifact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/artifacts/{artifact_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one artifact of the organization */
+        get: operations["getArtifact"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4771,6 +4892,11 @@ export interface components {
         /** @enum {string} */
         MessageRole: MessageRole;
         /**
+         * @description task_event.kind; the timeline is derived from these alone.
+         * @enum {string}
+         */
+        TaskEventKind: TaskEventKind;
+        /**
          * @description Derived from task phase by apps/api/src/tasks/calc/coarse-status.ts; not a database type.
          * @enum {string}
          */
@@ -4832,6 +4958,127 @@ export interface components {
             total: number;
             /** @description Unfiltered count of the organization's tasks whose coarse status is needs_you */
             needs_you_count: number;
+        };
+        TaskCreate: {
+            application_id: string;
+            description: string;
+            expected_behaviour?: string;
+            screenshot_artifact_id?: string;
+            target_branch?: string;
+            /** @default 2 */
+            run_limit: number;
+            /** @default fix */
+            kind: components["schemas"]["TaskKind"];
+        };
+        Artifact: {
+            id: string;
+            kind: components["schemas"]["ArtifactKind"];
+            /** @description A data URL this slice; an object storage URL once the sandbox vendor lands. */
+            url: string;
+            meta: {
+                [key: string]: unknown;
+            };
+        };
+        ArtifactList: {
+            items: components["schemas"]["Artifact"][];
+        };
+        TaskDetailReport: {
+            description: string;
+            expected_behaviour: string | null;
+            reporter: string | null;
+            source: components["schemas"]["ReportSource"];
+            screenshots: components["schemas"]["Artifact"][];
+        };
+        TaskDetailPullRequest: {
+            number: number;
+            repository_full_name: string;
+            state: components["schemas"]["PrState"];
+            is_draft: boolean;
+            head_ref: string | null;
+            base_ref: string | null;
+        };
+        TaskDetail: {
+            id: string;
+            application: components["schemas"]["ApplicationSummary"];
+            report: components["schemas"]["TaskDetailReport"] | null;
+            kind: components["schemas"]["TaskKind"];
+            phase: components["schemas"]["TaskPhase"];
+            coarse_status: components["schemas"]["CoarseStatus"];
+            resolution: components["schemas"]["TaskResolution"] | null;
+            run_number: number | null;
+            run_limit: number;
+            blocking_question: string | null;
+            pull_request: components["schemas"]["TaskPullRequest"] | null;
+            /** @description Null until the instances module lands. */
+            instance: components["schemas"]["TaskInstance"] | null;
+            cost_cents: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            completed_at: string | null;
+            target_branch: string | null;
+            /** @description Null means only the organization budget applies. */
+            budget_cents: number | null;
+            pull_requests: components["schemas"]["TaskDetailPullRequest"][];
+        };
+        TaskEvent: {
+            id: string;
+            kind: components["schemas"]["TaskEventKind"];
+            payload: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            at: string;
+        };
+        TaskEventList: {
+            items: components["schemas"]["TaskEvent"][];
+        };
+        TaskCheck: {
+            id: string;
+            kind: components["schemas"]["CheckKind"];
+            outcome: components["schemas"]["CheckOutcome"];
+            run_number: number | null;
+            commit_sha: string | null;
+            /** Format: date-time */
+            ran_at: string;
+            artifacts: components["schemas"]["Artifact"][];
+        };
+        TaskCheckList: {
+            items: components["schemas"]["TaskCheck"][];
+        };
+        TaskRun: {
+            id: string;
+            number: number;
+            outcome: components["schemas"]["RunOutcome"];
+            candidate_sha: string | null;
+            verified_sha: string | null;
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            ended_at: string | null;
+            /** @description Sum of the run's execution costs. */
+            cost_cents: number;
+            failed_check: components["schemas"]["TaskCheck"] | null;
+        };
+        TaskRunList: {
+            items: components["schemas"]["TaskRun"][];
+        };
+        TaskMessage: {
+            id: string;
+            role: components["schemas"]["MessageRole"];
+            body: string;
+            blocking: boolean;
+            /** Format: date-time */
+            answered_at: string | null;
+            replies_to_id: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        TaskMessageList: {
+            items: components["schemas"]["TaskMessage"][];
+        };
+        TaskMessageCreate: {
+            body: string;
         };
     };
     responses: never;
@@ -5369,6 +5616,75 @@ export interface operations {
             };
         };
     };
+    createTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskCreate"];
+            };
+        };
+        responses: {
+            /** @description Task created in phase intake */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDetail"];
+                };
+            };
+            /** @description The body is invalid or names an unsupported task kind */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "code": "unsupported_task_kind",
+                     *       "message": "Tasks of kind onboarding are not supported yet"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Application not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
     getTask: {
         parameters: {
             query?: never;
@@ -5388,7 +5704,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TaskSummary"];
+                    "application/json": components["schemas"]["TaskDetail"];
                 };
             };
             /** @description Auth token is invalid */
@@ -5471,6 +5787,442 @@ export interface operations {
             };
             /** @description The task has already finished */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listTaskEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Events fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskEventList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listTaskChecks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Checks fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskCheckList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listTaskRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Runs fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRunList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listTaskMessages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Messages fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskMessageList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createTaskMessage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskMessageCreate"];
+            };
+        };
+        responses: {
+            /** @description Message appended */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskMessage"];
+                };
+            };
+            /** @description The body is empty */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listTaskArtifacts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Artifacts fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtifactList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    uploadArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Artifact stored */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Artifact"];
+                };
+            };
+            /** @description No file */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The file is larger than 2 MB */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getArtifact: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                artifact_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Artifact fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Artifact"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Artifact not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5822,6 +6574,16 @@ export enum MessageRole {
     User = "user",
     Agent = "agent",
     System = "system"
+}
+export enum TaskEventKind {
+    PhaseChanged = "phase_changed",
+    InstanceRequested = "instance_requested",
+    BudgetExceeded = "budget_exceeded",
+    CheckIgnored = "check_ignored",
+    RunStarted = "run_started",
+    RunEnded = "run_ended",
+    CheckRecorded = "check_recorded",
+    MessageSent = "message_sent"
 }
 export enum CoarseStatus {
     Running = "running",
