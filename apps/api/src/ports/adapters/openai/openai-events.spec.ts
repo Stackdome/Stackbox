@@ -94,8 +94,14 @@ describe('the openai event mapping', () => {
   })
 
   it('maps each environment stream event to its environment status', () => {
-    const statuses = ['pending', 'connected', 'disconnected', 'failed'].map((suffix) => {
-      const event = toAgentEvent('sess_1', wire(`agent.session.environment.${suffix}`))
+    const wireTypes = [
+      'agent.session.environment.pending',
+      'agent.session.environment.connected',
+      'agent.session.environment.disconnected',
+      'agent.session.environment.failed',
+    ]
+    const statuses = wireTypes.map((type) => {
+      const event = toAgentEvent('sess_1', wire(type))
       return event?.kind === AgentEventKind.Environment ? event.status : null
     })
     expect(statuses).toEqual([
