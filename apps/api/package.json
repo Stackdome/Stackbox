@@ -9,7 +9,8 @@
     "test:run": "vitest run",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "migrate": "tsx -e \"import('./src/db/client').then(m => m.runMigrations(process.env.DATABASE_URL))\""
+    "migrate": "tsx -e \"import('./src/db/client').then(m => m.runMigrations(process.env.DATABASE_URL))\"",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.2.3",
