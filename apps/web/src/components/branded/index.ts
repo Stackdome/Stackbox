@@ -25,7 +25,10 @@ export { DetailList, DetailRow } from "./detail-rows";
 export { Disclosure } from "./disclosure";
 export { EventRow, type EventRowProps } from "./event-row";
 export { LogSnapshot, type LogSnapshotProps } from "./log-snapshot";
-export { StageTracker, type StageStatus, type Stages } from "./stage-tracker";
+export { StageTracker, type Stage, type StageStatus } from "./stage-tracker";
+export { TimelineRail, RailNode, type TimelineTone, type RailDotShape } from "./timeline-rail";
+export { TimelineNode, type TimelineNodeProps } from "./timeline-node";
+export { SplitConsole, type ConsoleSource, type ConsoleLine, type SplitConsoleProps } from "./split-console";
 export { BlockedAction, reasonList } from "./blocked-action";
 export { ConfirmProvider, useConfirm, type ConfirmOptions, type ConfirmFn } from "./confirm";
 export {

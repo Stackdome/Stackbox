@@ -142,6 +142,9 @@ Story copy fixed (banned word in visible text, not code): `confirm.stories.tsx` 
 | `apps/web/src/assets/brand/{docker,docker-light,github,github-light,gitlab,bitbucket,gitea}.svg` (7 files) | `frontend/src/assets/brand/` | copied verbatim | none |
 | `apps/web/src/components/branded/stackbox-mark.tsx` | none | written fresh: `Boxes` lucide glyph and the word "Stackbox" in `text-name` weight 500 | `Branded/StackboxMark` |
 | `apps/web/src/components/branded/index.ts` | `frontend/src/components/branded/index.ts` | repaired: extended to the full export list (every extracted branded component through this task); dropped `StackdomeMark`/`StackdomeWordmark`, `CloudAlphaBanner`, `NoSecretsGlyph`; added `StackboxMark` | none |
+| `apps/web/src/components/branded/timeline-rail.tsx` | `pages/stacks/components/editor/tabs/deployments/timeline/timeline-rail.tsx`, `rail-node.tsx` | release props replaced by children and `RailNode` tone and shape; §16 geometry kept | `Branded/TimelineRail` |
+| `apps/web/src/components/branded/timeline-node.tsx` | `.../timeline/timeline-node.tsx` | release, stack and menu props replaced by title, identity, time, state, detail and an optional disclosure | `Branded/TimelineNode` |
+| `apps/web/src/components/branded/split-console.tsx` | `.../timeline/split-console.tsx` | resources and release events replaced by sources and lines; crash log and build logs modal left behind | `Branded/SplitConsole` |
 | `apps/web/src/stories/foundations/colors.mdx` | `frontend/src/stories/foundations/colors.mdx` | copied verbatim; em dash prose restructured | `Foundations/Colors` |
 | `apps/web/src/stories/foundations/typography.mdx` | `frontend/src/stories/foundations/typography.mdx` | copied; em dash prose restructured, banned word fixed | `Foundations/Typography` |
 | `apps/web/src/stories/foundations/status.mdx` | `frontend/src/stories/foundations/status.mdx` | copied; em dash prose restructured, banned word fixed | `Foundations/Status` |
