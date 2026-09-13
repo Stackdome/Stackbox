@@ -3,7 +3,7 @@ import type { components } from '@stackbox/contract'
 import type { AuthUser } from '../access/types'
 import { UserStore } from '../db'
 import type { UserProfile } from '../organizations/types'
-import { verifyPassword } from './password'
+import { DUMMY_HASH, verifyPassword } from './password'
 import { presentUser } from './present-user'
 import { Tokens, type TokenPair } from './tokens'
 
@@ -24,7 +24,13 @@ export class AuthService {
 
   async login(email: string, password: string): Promise<Session> {
     const user = await this.users.findByEmail(email)
-    if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+    // Runs scrypt on the unknown-email and no-hash paths too, so all three answer the
+    // same 401 in about the same time and a script cannot use timing to find an email.
+    if (!user?.passwordHash) {
+      await verifyPassword(password, DUMMY_HASH)
+      throw new UnauthorizedException({ message: 'invalid credentials' })
+    }
+    if (!(await verifyPassword(password, user.passwordHash))) {
       throw new UnauthorizedException({ message: 'invalid credentials' })
     }
     return { ...(await this.tokens.issue(authUserOf(user))), user: presentUser(user) }
