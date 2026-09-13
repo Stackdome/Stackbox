@@ -151,11 +151,11 @@ export type PullRequest = {
   state: PrState
 }
 
-export type TaskEvent = { id: string; taskId: string; kind: string; payload: Record<string, unknown>; at: Date }
-
 export const TaskEventKind = {
   PhaseChanged: 'phase_changed',
   InstanceRequested: 'instance_requested',
   BudgetExceeded: 'budget_exceeded',
 } as const
 export type TaskEventKind = (typeof TaskEventKind)[keyof typeof TaskEventKind]
+
+export type TaskEvent = { id: string; taskId: string; kind: TaskEventKind; payload: Record<string, unknown>; at: Date }
