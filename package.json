@@ -1,0 +1,19 @@
+{
+  "name": "stackbox",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "generate": "pnpm --filter @stackbox/contract generate",
+    "test:run": "pnpm -r test:run",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "e2e": "pnpm --filter @stackbox/e2e test"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@swc/core", "esbuild", "msw"]
+  }
+}
