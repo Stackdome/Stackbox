@@ -20,6 +20,7 @@ import {
   TaskResolution,
   UserRole,
 } from '@stackbox/contract'
+import type { Action, Subject } from '../access/types'
 import { sql } from 'drizzle-orm'
 import {
   type AnyPgColumn,
@@ -355,9 +356,9 @@ export const policy = pgTable(
   {
     id: id(),
     orgId: uuid('org_id').notNull().references(() => organization.id, { onDelete: 'cascade' }),
-    subject: text('subject').notNull(),
+    subject: text('subject').$type<Subject>().notNull(),
     resource: text('resource').notNull(),
-    action: text('action').notNull(),
+    action: text('action').$type<Action>().notNull(),
   },
   (t) => [unique('policy_org_subject_resource_action_unique').on(t.orgId, t.subject, t.resource, t.action)],
 )
@@ -368,7 +369,7 @@ export const roleBinding = pgTable(
     id: id(),
     orgId: uuid('org_id').notNull().references(() => organization.id, { onDelete: 'cascade' }),
     userId: uuid('user_id').notNull().references(() => userAccount.id, { onDelete: 'cascade' }),
-    subject: text('subject').notNull(),
+    subject: text('subject').$type<Subject>().notNull(),
     scope: text('scope').notNull(),
   },
   (t) => [unique('role_binding_org_user_subject_scope_unique').on(t.orgId, t.userId, t.subject, t.scope)],

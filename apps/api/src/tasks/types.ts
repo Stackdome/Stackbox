@@ -162,3 +162,12 @@ export const TaskEventKind = {
 export type TaskEventKind = (typeof TaskEventKind)[keyof typeof TaskEventKind]
 
 export type TaskEvent = { id: string; taskId: string; kind: TaskEventKind; payload: Record<string, unknown>; at: Date }
+
+export type TaskListRow = {
+  task: Task
+  application: { id: string; name: string }
+  report: { description: string; source: ReportSource } | null
+  runNumber: number | null
+  blockingQuestion: string | null
+  pullRequest: { number: number; isDraft: boolean; state: PrState; repositoryFullName: string } | null
+}

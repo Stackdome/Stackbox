@@ -7,6 +7,8 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
     root: './',
+    // Store specs drop and migrate the one test database.
+    fileParallelism: false,
   },
   plugins: [
     swc.vite({

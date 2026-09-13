@@ -1,7 +1,13 @@
 import { Global, Module } from '@nestjs/common'
-import { createDb } from './client'
+import { ApplicationStore } from './application-store'
+import { DATABASE_CONNECTION, createDb } from './client'
+import { PolicyStore } from './policy-store'
+import { TaskStore } from './task-store'
+import { UserStore } from './user-store'
 
-export const DATABASE_CONNECTION = 'DATABASE_CONNECTION'
+export { DATABASE_CONNECTION }
+
+const STORES = [UserStore, PolicyStore, ApplicationStore, TaskStore]
 
 @Global()
 @Module({
@@ -10,7 +16,8 @@ export const DATABASE_CONNECTION = 'DATABASE_CONNECTION'
       provide: DATABASE_CONNECTION,
       useFactory: () => createDb(process.env.DATABASE_URL),
     },
+    ...STORES,
   ],
-  exports: [DATABASE_CONNECTION],
+  exports: [DATABASE_CONNECTION, ...STORES],
 })
 export class DbModule {}
