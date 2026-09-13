@@ -11,3 +11,5 @@ blob-report/
 storybook-static/
 .DS_Store
 .superpowers/
+.vitest-attachments/
+__screenshots__/
