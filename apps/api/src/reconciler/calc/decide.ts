@@ -7,7 +7,7 @@ import {
   TaskPhase,
   TaskResolution,
 } from '@stackbox/contract'
-import { AgentErrorCategory, type AgentEvent, AgentEventKind, type CheckArtifact } from '../../ports'
+import { AgentErrorCategory, type AgentEvent, AgentEventKind, type CheckArtifact, EnvironmentStatus } from '../../ports'
 import { costOf, wouldExceedBudget } from '../../tasks/calc/budget'
 import { reproKey, runKey, verifyKey } from '../../tasks/calc/idempotency-key'
 import type { Execution, Release, Run } from '../../tasks/types'
@@ -81,7 +81,11 @@ export type Decision =
 
 type AppendCheck = Extract<Decision, { kind: typeof DecisionKind.AppendCheck }>
 type CheckEvent = Extract<AgentEvent, { kind: typeof AgentEventKind.Check }>
-type TurnEnd = Extract<AgentEvent, { kind: typeof AgentEventKind.TurnCompleted | typeof AgentEventKind.TurnFailed }>
+// Every event that ends the execution's turn, reduced to how it ended.
+type TurnEnd =
+  | { kind: typeof AgentEventKind.TurnCompleted; costCents: number }
+  | { kind: typeof AgentEventKind.TurnFailed; category: AgentErrorCategory; costCents: number; status: ExecutionStatus }
+type FailedTurn = Extract<TurnEnd, { kind: typeof AgentEventKind.TurnFailed }>
 type RunStart = { key: string; purpose: RunPurpose; runNumber: number | null; instanceUrl: string | null }
 
 type Context = {
@@ -138,7 +142,7 @@ export function activeExecution(snapshot: RunScope): Execution | undefined {
 export function decide(snapshot: TaskSnapshot, observations: Observations, now: Date): Decision[] {
   if (snapshot.task.phase === TaskPhase.Cancelled) return cleanUp(snapshot)
   const execution = activeExecution(snapshot)
-  const turnEnd = execution && observations.events.find(isTurnEnd)
+  const turnEnd = execution && observations.events.map(turnEndOf).find((end) => end !== undefined)
   const checks = execution
     ? observations.events.filter(isCheck).filter((event) => !isStored(snapshot, execution, event)).map((event) => checkFromEvent(snapshot, execution, event))
     : []
@@ -177,7 +181,7 @@ function advance(c: Context): Decision[] {
   }
 }
 
-function afterFailedTurn(c: Context, execution: Execution, turnEnd: TurnEnd & { kind: typeof AgentEventKind.TurnFailed }): Decision[] {
+function afterFailedTurn(c: Context, execution: Execution, turnEnd: FailedTurn): Decision[] {
   if (turnEnd.category !== AgentErrorCategory.Transient) return [transition(TaskPhase.Failed)]
   if (overBudget(c)) return [failBudget(c)]
   return [
@@ -291,7 +295,7 @@ function recordExecution(execution: Execution, events: AgentEvent[], turnEnd: Tu
     turnEnd === undefined
       ? {}
       : {
-        status: turnEnd.kind === AgentEventKind.TurnCompleted ? ExecutionStatus.Succeeded : ExecutionStatus.Failed,
+        status: turnEnd.kind === AgentEventKind.TurnCompleted ? ExecutionStatus.Succeeded : turnEnd.status,
         costCents: execution.costCents + turnEnd.costCents,
         endedAt: now,
       }
@@ -363,6 +367,25 @@ function isCheck(event: AgentEvent): event is CheckEvent {
   return event.kind === AgentEventKind.Check
 }
 
-function isTurnEnd(event: AgentEvent): event is TurnEnd {
-  return event.kind === AgentEventKind.TurnCompleted || event.kind === AgentEventKind.TurnFailed
+function turnEndOf(event: AgentEvent): TurnEnd | undefined {
+  const permanent = (status: ExecutionStatus): FailedTurn => ({
+    kind: AgentEventKind.TurnFailed,
+    category: AgentErrorCategory.Permanent,
+    costCents: 0,
+    status,
+  })
+  switch (event.kind) {
+    case AgentEventKind.TurnCompleted:
+      return { kind: event.kind, costCents: event.costCents }
+    case AgentEventKind.TurnFailed:
+      return { kind: event.kind, category: event.category, costCents: event.costCents, status: ExecutionStatus.Failed }
+    case AgentEventKind.TurnCancelled:
+      return permanent(ExecutionStatus.Cancelled)
+    case AgentEventKind.SessionFailed:
+      return permanent(ExecutionStatus.Failed)
+    case AgentEventKind.Environment:
+      return event.status === EnvironmentStatus.Failed ? permanent(ExecutionStatus.Failed) : undefined
+    default:
+      return undefined
+  }
 }

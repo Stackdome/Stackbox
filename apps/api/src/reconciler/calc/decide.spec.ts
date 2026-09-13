@@ -8,7 +8,7 @@ import {
   TaskResolution,
 } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
-import { AgentErrorCategory, type AgentEvent, AgentEventKind } from '../../ports'
+import { AgentErrorCategory, type AgentEvent, AgentEventKind, EnvironmentStatus } from '../../ports'
 import { type AgentEventBody, turnCompleted, turnFailed } from '../../ports/fakes'
 import {
   aCheck,
@@ -284,6 +284,53 @@ describe('decide', () => {
         kind: DecisionKind.RecordExecution,
         executionId: 'E1',
         patch: { eventCursor: 'item-4', status: ExecutionStatus.Failed, costCents: 0, endedAt: NOW },
+      },
+    ])
+  })
+
+  it('fails an implementing task whose session failed instead of waiting on it forever', () => {
+    const snapshot = aSnapshot({
+      task: aTask({ phase: TaskPhase.Implementing, instanceId: 'instance-1' }),
+      runs: [aRun()],
+      executions: [anExecution({ idempotencyKey: 'T1:run1', runId: 'T1-run1' })],
+    })
+    const events = [item('item-4', { kind: AgentEventKind.SessionFailed, message: 'environment lost' })]
+    expect(decide(snapshot, observing({ events }), NOW)).toEqual([
+      transition(TaskPhase.Failed),
+      {
+        kind: DecisionKind.RecordExecution,
+        executionId: 'E1',
+        patch: { eventCursor: 'item-4', status: ExecutionStatus.Failed, costCents: 0, endedAt: NOW },
+      },
+    ])
+  })
+
+  it('fails a reproducing task whose environment failed to set up', () => {
+    const snapshot = aSnapshot({ task: aTask({ phase: TaskPhase.Reproducing, instanceId: 'instance-1' }), executions: [anExecution()] })
+    const events = [item('item-1', { kind: AgentEventKind.Environment, status: EnvironmentStatus.Failed, error: 'setup exited 1' })]
+    expect(decide(snapshot, observing({ events }), NOW)).toEqual([
+      transition(TaskPhase.Failed),
+      {
+        kind: DecisionKind.RecordExecution,
+        executionId: 'E1',
+        patch: { eventCursor: 'item-1', status: ExecutionStatus.Failed, costCents: 0, endedAt: NOW },
+      },
+    ])
+  })
+
+  it('fails a verifying task whose turn was cancelled outside the reconciler and marks the execution cancelled', () => {
+    const snapshot = aSnapshot({
+      task: aTask({ phase: TaskPhase.Verifying, instanceId: 'instance-1' }),
+      runs: [aRun({ candidateSha: 'pushed-sha-1' })],
+      executions: [anExecution({ idempotencyKey: 'T1:run1:verify', runId: 'T1-run1' })],
+    })
+    const events = [item('item-5', { kind: AgentEventKind.TurnCancelled })]
+    expect(decide(snapshot, observing({ events }), NOW)).toEqual([
+      transition(TaskPhase.Failed),
+      {
+        kind: DecisionKind.RecordExecution,
+        executionId: 'E1',
+        patch: { eventCursor: 'item-5', status: ExecutionStatus.Cancelled, costCents: 0, endedAt: NOW },
       },
     ])
   })
