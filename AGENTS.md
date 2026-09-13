@@ -108,6 +108,9 @@ Left behind: `add-template`, `design-taste-frontend`, `.agents/`, `skills-lock.j
 
 Issues and PRDs live in the `Stackdome/StackboxTest` GitHub repo via the `gh` CLI. See `docs/agents/issue-tracker.md`. Triage labels: `docs/agents/triage-labels.md`.
 
+One stacked pull request per slice using `gh stack`: `gh stack add slice-N-<name>` on top of the previous slice's branch, run the `create-pr` skill's gate, then `gh stack submit`.
+Pull request bodies follow the `create-pr` skill template.
+
 ## Domain docs
 
 Single context: `docs/CONTEXT.md` is the only glossary. See `docs/agents/domain.md`.
