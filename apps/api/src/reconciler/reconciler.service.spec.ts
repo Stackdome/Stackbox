@@ -1,4 +1,4 @@
-import { ArtifactKind, CheckKind, CheckOutcome, ReleaseStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
+import { ArtifactKind, CheckKind, CheckOutcome, ExecutionStatus, ReleaseStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import { TurnStatus } from '../ports'
 import {
@@ -140,8 +140,9 @@ describe('the reconciler', () => {
     const instance = await anInstanceWithLiveOrigin(deploy)
     state.seed(
       aSnapshot({
-        task: aTask({ phase: TaskPhase.Preparing, instanceId: instance.id, budgetCents: 0 }),
+        task: aTask({ phase: TaskPhase.Preparing, instanceId: instance.id, budgetCents: 100 }),
         releases: [aRelease()],
+        executions: [anExecution({ sessionRef: null, status: ExecutionStatus.Failed, costCents: 100 })],
       }),
     )
     await service.tick()
