@@ -32,6 +32,7 @@ export const FIXTURE = {
   organizationName: 'acme',
   adminEmail: 'ada@example.com',
   viewerEmail: 'vik@example.com',
+  developerEmail: 'dev@example.com',
   password: 'password',
 } as const
 
@@ -84,11 +85,12 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
     }
 
     const [org] = await tx.insert(organization).values({ name: FIXTURE.organizationName, budgetCents: 50_000 }).returning({ id: organization.id })
-    const [ada, vik] = await tx
+    const [ada, vik, dev] = await tx
       .insert(userAccount)
       .values([
         { orgId: org.id, email: FIXTURE.adminEmail, name: 'Ada Lovelace', passwordHash, orgRole: UserRole.OrgAdmin },
         { orgId: org.id, email: FIXTURE.viewerEmail, name: 'Vik Rao', passwordHash, orgRole: UserRole.OrgMember },
+        { orgId: org.id, email: FIXTURE.developerEmail, name: 'Dev Ito', passwordHash, orgRole: UserRole.OrgMember },
       ])
       .returning({ id: userAccount.id })
 
@@ -112,6 +114,8 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
       { orgId: org.id, userId: ada.id, subject: UserRole.OrgAdmin, scope: ORG_SCOPE },
       { orgId: org.id, userId: vik.id, subject: UserRole.OrgMember, scope: ORG_SCOPE },
       { orgId: org.id, userId: vik.id, subject: ApplicationRole.Viewer, scope: applicationIds.get('shop') as string },
+      { orgId: org.id, userId: dev.id, subject: UserRole.OrgMember, scope: ORG_SCOPE },
+      { orgId: org.id, userId: dev.id, subject: ApplicationRole.Developer, scope: applicationIds.get('shop') as string },
     ])
 
     for (const fixture of TASKS) {
