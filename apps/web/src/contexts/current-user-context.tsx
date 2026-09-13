@@ -1,5 +1,6 @@
 import * as React from "react";
 import type { components } from "@stackbox/contract";
+import { UserRole } from "@stackbox/contract";
 import { getCurrentUser as getStoredUser } from "@/lib/common";
 import { AUTH_SESSION_CHANGED } from "@/lib/auth-events";
 
@@ -38,7 +39,7 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
   const value = React.useMemo<CurrentUserValue>(
     () => ({
       user,
-      isOrgAdmin: user?.role === "OrgAdmin",
+      isOrgAdmin: user?.role === UserRole.OrgAdmin,
       organisationId: user?.organisation_id ?? null,
       loading,
       refresh,

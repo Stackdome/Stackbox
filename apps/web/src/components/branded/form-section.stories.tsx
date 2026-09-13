@@ -94,7 +94,7 @@ export const Stacked: Story = {
 /** A label that will not fit, beside a state word that still has to survive. */
 export const LongLabel: Story = {
   args: {
-    label: 'Pre-deployment step',
+    label: 'Pre-release step',
     state: 'runs before the main container starts, every time',
     children: twoFields,
   },
@@ -149,7 +149,7 @@ export const WithActions: Story = {
  */
 export const ActionsUnderPressure: Story = {
   args: {
-    label: 'Pre-deployment step',
+    label: 'Pre-release step',
     state: 'runs before the main container starts, every time',
     children: twoFields,
     actions: (

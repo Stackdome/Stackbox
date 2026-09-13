@@ -7,6 +7,7 @@ import { SheetHeader } from './sheet-header'
 import { BreadcrumbProvider } from '@/contexts/breadcrumb-context'
 import { useJourney } from '@/hooks/use-journey'
 import { Button } from '@/components/ui/button'
+import { ROUTES } from '@/lib/routes'
 
 /** Stands in for the shell's collapse toggle, which `AppLayout` passes in. */
 const COLLAPSE = (
@@ -60,7 +61,7 @@ function Harness({
   if (step < 2) return null
   return (
     <BreadcrumbProvider>
-      {journey && <DeclareJourney origin="/instances" />}
+      {journey && <DeclareJourney origin={ROUTES.instances} />}
       <div className="bg-card w-[1186px] max-w-full">
         <SheetHeader leading={COLLAPSE} />
       </div>
@@ -73,7 +74,7 @@ const meta = {
   title: 'Branded/SheetHeader',
   component: SheetHeader,
   parameters: { layout: 'fullscreen' },
-  render: () => <Harness path="/instances" />,
+  render: () => <Harness path={ROUTES.instances} />,
 } satisfies Meta<typeof SheetHeader>
 
 export default meta
@@ -130,6 +131,6 @@ export const BackFallsBackToOrigin: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     await userEvent.click(canvas.getByRole('button', { name: 'Back' }))
-    await expect(canvas.getByTestId('where')).toHaveTextContent('/instances')
+    await expect(canvas.getByTestId('where')).toHaveTextContent(ROUTES.instances)
   },
 }

@@ -103,12 +103,12 @@ Story copy fixed (banned word `Stack`/`Project` in visible text, not code): `dia
 | `apps/web/src/components/branded/eyebrow-label.tsx` | `frontend/src/components/branded/eyebrow-label.tsx` | copied verbatim | `Branded/EyebrowLabel` (fresh) |
 | `apps/web/src/components/branded/panel.tsx` | `frontend/src/components/branded/panel.tsx` | copied verbatim | `Branded/Panel` (fresh) |
 | `apps/web/src/components/branded/field-error.tsx` | `frontend/src/components/branded/field-error.tsx` | copied verbatim | `Branded/FieldError` (fresh) |
-| `apps/web/src/components/branded/field-shell.tsx` | `frontend/src/components/branded/field-shell.tsx` | copied verbatim | `Branded/FieldShell` |
-| `apps/web/src/components/branded/form-section.tsx` | `frontend/src/components/branded/form-section.tsx` | copied verbatim | `Branded/FormSection` |
+| `apps/web/src/components/branded/field-shell.tsx` | `frontend/src/components/branded/field-shell.tsx` | repaired: em dash prose restructured, history comments removed | `Branded/FieldShell` |
+| `apps/web/src/components/branded/form-section.tsx` | `frontend/src/components/branded/form-section.tsx` | repaired: em dash prose restructured, history comments removed | `Branded/FormSection` |
 | `apps/web/src/components/branded/record-row.tsx` | `frontend/src/components/branded/record-row.tsx` | copied verbatim | `Branded/RecordRow` |
 | `apps/web/src/components/branded/search-field.tsx` | `frontend/src/components/branded/search-field.tsx` | copied verbatim | `Branded/SearchField` |
 | `apps/web/src/components/branded/view-toggle.tsx` | `frontend/src/components/branded/view-toggle.tsx` | repaired (storage key) | `Branded/ViewToggle` |
-| `apps/web/src/components/branded/picker-row.tsx` | `frontend/src/components/branded/picker-row.tsx` | copied verbatim | `Branded/PickerRow` |
+| `apps/web/src/components/branded/picker-row.tsx` | `frontend/src/components/branded/picker-row.tsx` | repaired: em dash prose restructured, history comments removed | `Branded/PickerRow` |
 | `apps/web/src/components/branded/index.ts` | `frontend/src/components/branded/index.ts` | repaired: barrel trimmed to the components extracted so far | none |
 | `apps/web/src/components/ui/command.tsx` | `frontend/src/components/ui/command.tsx` | copied verbatim | `Primitives/Command` |
 | `apps/web/src/components/ui/multi-select.tsx` | `frontend/src/components/ui/multi-select.tsx` | copied verbatim | `Primitives/MultiSelect` |
@@ -158,7 +158,7 @@ Story copy fixed (banned word in visible text, not code): `typography.mdx` (`Dep
 | `apps/web/src/components/sheet-header.tsx` | `frontend/src/components/sheet-header.tsx` | repaired: breaks on `@/hooks/use-preview-lineage`, dropped the lineage read and its `Previews` crumb branch; em dash prose restructured, history narration trimmed | `Branded/SheetHeader` |
 | `apps/web/src/components/nav-items.ts` | `frontend/src/components/nav-items.ts` | rewritten: `navGroups` replaced with the five items (`Tasks`, `Applications`, `Instances`, group `Organization`: `Repositories`, `Settings`); `NavItem`, `NavGroup` and `isNavItemActive` kept from source, `NavItem.path` narrowed to `RoutePath` | none |
 | `apps/web/src/components/nav-item.tsx` | `frontend/src/components/nav-item.tsx` | repaired: gains a `badge?: number` prop rendered through `SidebarMenuBadge` as a sibling of the link | `Features/NavItem` (fresh) |
-| `apps/web/src/components/nav-user.tsx` | `frontend/src/components/nav-user.tsx` | copied verbatim; em dash prose restructured | `Features/NavUser` (fresh) |
+| `apps/web/src/components/nav-user.tsx` | `frontend/src/components/nav-user.tsx` | repaired (aria-label): em dash prose restructured, history comments removed | `Features/NavUser` (fresh) |
 | `apps/web/src/components/app-sidebar.tsx` | `frontend/src/components/app-sidebar.tsx` | repaired: breaks on `StackdomeMark`, renders `StackboxMark`; gains a `badges?: Partial<Record<RoutePath, number>>` prop passed to each `NavItem` by path; brand lockup link target changed from `/stacks` to `ROUTES.tasks` with `aria-label="Stackbox"`; em dash prose restructured | `Features/AppSidebar` |
 | `apps/web/src/components/app-layout.tsx` | `frontend/src/components/app-layout.tsx` | repaired: breaks on `@/contexts/preview-lineage-context`, `@/pages/stacks/lib/canvas/header-collapse`, `@/pages/stacks/lib/routes`, `@/hooks/use-github-setup-landing`; dropped `PreviewLineageProvider`, the header-collapse (zen mode) context and its full-bleed branch, the GitHub setup-landing call and the `NEW_STACK_PATH` branch, leaving one always-padded page-content path; em dash prose restructured | `Features/AppLayout` (fresh) |
 | `apps/web/src/lib/routes.ts` | none | written fresh | none |

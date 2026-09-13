@@ -5,7 +5,7 @@ export interface NavItem {
   label: string;
   path: RoutePath;
   icon: LucideIcon;
-  /** Hidden from members. Mirrors the sidebar's previous `isOrgAdmin &&` gates. */
+  /** Hidden from members. */
   adminOnly?: boolean;
   /** Sub-paths that must NOT mark the item active: a full-bleed editor on a
    *  child route is a different screen, not the list. */

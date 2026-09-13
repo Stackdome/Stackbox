@@ -64,8 +64,8 @@ interface FieldShellProps {
 }
 
 /**
- * Form field wrapper aligning every input to the Stackdome label/hint/error
- * rhythm. Use in place of bespoke <Label> + <Tooltip Info /> + manual
+ * Form field wrapper aligning every input to the label/hint/error rhythm.
+ * Use in place of bespoke <Label> + <Tooltip Info /> + manual
  * <p text-danger> blocks.
  *
  * **The control fills the field; it never sizes to its content.** This is the

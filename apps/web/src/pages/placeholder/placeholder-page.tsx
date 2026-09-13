@@ -2,8 +2,8 @@ import { PageTitle } from '@/components/page-title'
 
 export function PlaceholderPage({ title }: { title: string }) {
   return (
-    <main>
+    <div>
       <PageTitle>{title}</PageTitle>
-    </main>
+    </div>
   )
 }

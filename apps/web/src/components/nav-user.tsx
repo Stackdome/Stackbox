@@ -59,7 +59,7 @@ export function NavUser({
                 ladder, because it carries two lines of type rather than one. */}
             <SidebarMenuButton
               size="lg"
-              aria-label={`${user.name}${user.organisation ? `, ${user.organisation}` : ""} account menu`}
+              aria-label={`${user.name}${user.organisation ? `, ${user.organisation}` : ""}, account menu`}
               // The avatar must not move when the rail collapses: same height,
               // same left inset, same padding. Only the name and the chevron
               // vacate.

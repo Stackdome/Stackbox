@@ -69,7 +69,7 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
   if (!s) return "neutral";
 
   switch (domain) {
-    // pkg/models/stack.go:75 (Deleting/Error declared but not emitted today, mapped anyway)
+    // Deleting/Error declared but not emitted today, mapped anyway.
     case "stack":
       switch (s) {
         case "pending":
@@ -115,7 +115,6 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // pkg/models/stack_resource.go:61
     case "resource":
       switch (s) {
         case "pending":
@@ -129,7 +128,7 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // pkg/models/stack_release.go:14, the one real OpenAPI enum
+    // The one real OpenAPI enum.
     case "release":
       switch (s) {
         case "pending":
@@ -146,7 +145,6 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // pkg/models/stack_release.go ReleaseHealth: components["schemas"]["ReleaseHealth"]
     case "health":
       switch (s) {
         case "ok":
@@ -161,7 +159,7 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // cluster-agent api/core/v1alpha1/stack_resource_types.go:21, exactly 4 words
+    // Exactly 4 words.
     case "rollout":
       switch (s) {
         case "pending":
@@ -175,7 +173,7 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // cluster-agent api/storage/v1alpha1/volume_types.go:15, exactly 2 words
+    // Exactly 2 words.
     case "volume":
       switch (s) {
         case "pending":
@@ -186,7 +184,6 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // pkg/models/postgres_addon.go:21-31
     case "addon":
       switch (s) {
         case "pending":
@@ -224,7 +221,6 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // pkg/models/cluster_image_registry.go:15-17
     case "registry":
       switch (s) {
         case "pending":
@@ -237,7 +233,7 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // pkg/models/stack_storage.go:17-22 (not rendered yet; mapped for when it is)
+    // Not rendered yet; mapped for when it is.
     case "storage":
       switch (s) {
         case "pending":
@@ -253,7 +249,7 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // cluster-agent api/builds/v1alpha1/imagebuild_types.go:38 (flows as raw string)
+    // Flows as raw string.
     case "build":
       switch (s) {
         case "pending":
@@ -268,7 +264,6 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // pkg/models/preview_stack.go: PreviewStackPhase vocabulary
     case "preview":
       switch (s) {
         case "provisioning":

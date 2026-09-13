@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * **The page's own name, wherever it is drawn: one rung, one definition.**
  *
- * The title is a `<span>` when it is fixed, a `<button>` when it can be
+ * The title is an `<h1>` when it is fixed, a `<button>` when it can be
  * renamed, and an `<input>` while it is being renamed. All three share one
  * rung, so `pageTitleClass` is the export: `PageTitle` is the plain case built
  * on it, and `RenameableTitle` composes it into its own elements. Two places
