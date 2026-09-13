@@ -1,7 +1,9 @@
-export function PlaceholderPage() {
+import { PageTitle } from '@/components/page-title'
+
+export function PlaceholderPage({ title }: { title: string }) {
   return (
     <main>
-      <h1 className="text-head">Stackbox</h1>
+      <PageTitle>{title}</PageTitle>
     </main>
   )
 }
