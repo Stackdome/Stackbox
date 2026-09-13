@@ -4,18 +4,15 @@ import '@testing-library/jest-dom/vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SheetHost } from './sheet-host'
-import { PageTitle } from '@/components/page-title'
 import { ROUTES } from '@/lib/routes'
 
 describe('SheetHost', () => {
-  it('renders the page title from the breadcrumb inside the sheet header', () => {
+  it('builds the sheet header trail from the current route alone', () => {
     render(
       <MemoryRouter initialEntries={[ROUTES.instances]}>
-        <SheetHost>
-          <PageTitle>Instances</PageTitle>
-        </SheetHost>
+        <SheetHost>{null}</SheetHost>
       </MemoryRouter>,
     )
-    expect(screen.getByRole('heading', { name: 'Instances' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Instances', current: 'page' })).toBeInTheDocument()
   })
 })

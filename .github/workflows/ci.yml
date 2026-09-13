@@ -42,4 +42,5 @@ jobs:
       - run: pnpm -r lint
       - run: pnpm -r typecheck
       - run: pnpm -r test:run
+      - run: pnpm --filter @stackbox/web exec storybook build --test
       - run: pnpm e2e
