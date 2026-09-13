@@ -891,6 +891,71 @@ const ReleaseEventList = z
   })
   .partial()
   .passthrough();
+const RepoProvider = z.enum(["github", "gitlab"]);
+const ConnectionStatus = z.enum(["verified", "error"]);
+const InstancePurpose = z.enum([
+  "task",
+  "preview",
+  "load_test",
+  "scratch",
+  "persistent",
+]);
+const InstanceStatus = z.enum([
+  "provisioning",
+  "ready",
+  "degraded",
+  "expired",
+  "torn_down",
+]);
+const ReleaseStatus = z.enum(["queued", "building", "live", "failed"]);
+const ReportSource = z.enum(["web", "slack", "sentry", "jam", "harness"]);
+const TaskKind = z.enum(["fix", "onboarding"]);
+const TaskPhase = z.enum([
+  "intake",
+  "preparing",
+  "reproducing",
+  "implementing",
+  "deploying",
+  "verifying",
+  "hand_over",
+  "needs_input",
+  "failed",
+  "cancelled",
+]);
+const TaskResolution = z.enum([
+  "fix_verified",
+  "fix_unverified",
+  "not_reproduced",
+  "no_change_needed",
+  "abandoned",
+]);
+const RunOutcome = z.enum(["running", "passed", "failed", "abandoned"]);
+const SandboxStatus = z.enum(["starting", "running", "stopped", "failed"]);
+const ExecutionStatus = z.enum([
+  "starting",
+  "running",
+  "succeeded",
+  "failed",
+  "timed_out",
+  "cancelled",
+]);
+const CheckKind = z.enum([
+  "instance_ready",
+  "report_reproduced",
+  "fix_verified",
+]);
+const CheckOutcome = z.enum(["passed", "failed", "inconclusive"]);
+const ArtifactOwner = z.enum(["report", "task_check", "task_message"]);
+const ArtifactKind = z.enum(["screenshot", "har", "test_log", "recording"]);
+const PrState = z.enum(["open", "merged", "closed"]);
+const MessageRole = z.enum(["user", "agent", "system"]);
+const CoarseStatus = z.enum([
+  "running",
+  "needs_you",
+  "ready_for_review",
+  "failed",
+  "cancelled",
+]);
 
 export const schemas = {
   Organisation,
@@ -1001,6 +1066,25 @@ export const schemas = {
   ReleaseEventLink,
   ReleaseEvent,
   ReleaseEventList,
+  RepoProvider,
+  ConnectionStatus,
+  InstancePurpose,
+  InstanceStatus,
+  ReleaseStatus,
+  ReportSource,
+  TaskKind,
+  TaskPhase,
+  TaskResolution,
+  RunOutcome,
+  SandboxStatus,
+  ExecutionStatus,
+  CheckKind,
+  CheckOutcome,
+  ArtifactOwner,
+  ArtifactKind,
+  PrState,
+  MessageRole,
+  CoarseStatus,
 };
 
 const endpoints = makeApi([

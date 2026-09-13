@@ -4,12 +4,21 @@ import { load } from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 import * as contract from './index'
 
+type Schema = { properties?: Record<string, unknown>; enum?: string[]; 'x-enum-varnames'?: string[] }
+
 type Document = {
   paths: Record<string, unknown>
-  components: { schemas: Record<string, { properties?: Record<string, unknown> }> }
+  components: { schemas: Record<string, Schema> }
 }
 
-const GENERATED_ENUM_COUNT = 26
+const GENERATED_ENUM_COUNT = 45
+
+const SPEC_ENUMS = [
+  'RepoProvider', 'ConnectionStatus', 'InstancePurpose', 'InstanceStatus', 'ReleaseStatus',
+  'ReportSource', 'TaskKind', 'TaskPhase', 'TaskResolution', 'RunOutcome', 'SandboxStatus',
+  'ExecutionStatus', 'CheckKind', 'CheckOutcome', 'ArtifactOwner', 'ArtifactKind', 'PrState',
+  'MessageRole', 'CoarseStatus',
+]
 
 const yamlPath = fileURLToPath(new URL('../openapi/stackbox_api.yaml', import.meta.url))
 const source = readFileSync(yamlPath, 'utf8')
@@ -38,12 +47,20 @@ describe('the committed contract', () => {
     expect(references.filter((name) => !(name in schemas))).toEqual([])
   })
 
-  it('exports exactly 26 enums from the barrel', () => {
+  it('exports exactly 45 enums from the barrel', () => {
     expect(Object.values(contract).filter(isEnum)).toHaveLength(GENERATED_ENUM_COUNT)
   })
 
   it('has no property key naming a stack', () => {
     const keys = Object.values(schemas).flatMap((schema) => Object.keys(schema.properties ?? {}))
     expect(keys.filter((key) => /stack/i.test(key))).toEqual([])
+  })
+
+  it('declares every spec section 4.1 enum with one varname per value', () => {
+    const mismatched = SPEC_ENUMS.filter((name) => {
+      const schema = schemas[name]
+      return schema?.enum === undefined || schema['x-enum-varnames']?.length !== schema.enum.length
+    })
+    expect(mismatched).toEqual([])
   })
 })

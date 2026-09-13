@@ -4666,6 +4666,47 @@ export interface components {
             /** @description Total number of pages */
             total_pages?: number;
         };
+        /** @enum {string} */
+        RepoProvider: RepoProvider;
+        /** @enum {string} */
+        ConnectionStatus: ConnectionStatus;
+        /** @enum {string} */
+        InstancePurpose: InstancePurpose;
+        /** @enum {string} */
+        InstanceStatus: InstanceStatus;
+        /** @enum {string} */
+        ReleaseStatus: ReleaseStatus;
+        /** @enum {string} */
+        ReportSource: ReportSource;
+        /** @enum {string} */
+        TaskKind: TaskKind;
+        /** @enum {string} */
+        TaskPhase: TaskPhase;
+        /** @enum {string} */
+        TaskResolution: TaskResolution;
+        /** @enum {string} */
+        RunOutcome: RunOutcome;
+        /** @enum {string} */
+        SandboxStatus: SandboxStatus;
+        /** @enum {string} */
+        ExecutionStatus: ExecutionStatus;
+        /** @enum {string} */
+        CheckKind: CheckKind;
+        /** @enum {string} */
+        CheckOutcome: CheckOutcome;
+        /** @enum {string} */
+        ArtifactOwner: ArtifactOwner;
+        /** @enum {string} */
+        ArtifactKind: ArtifactKind;
+        /** @enum {string} */
+        PrState: PrState;
+        /** @enum {string} */
+        MessageRole: MessageRole;
+        /**
+         * @description Derived from task phase by apps/api/src/tasks/calc/coarse-status.ts; not a database type.
+         * @enum {string}
+         */
+        CoarseStatus: CoarseStatus;
     };
     responses: never;
     parameters: {
@@ -5348,4 +5389,120 @@ export enum ReleaseState {
 export enum InstanceLifecycle {
     STACK_LIFECYCLE_ACTIVE = "active",
     STACK_LIFECYCLE_DELETING = "deleting"
+}
+export enum RepoProvider {
+    Github = "github",
+    Gitlab = "gitlab"
+}
+export enum ConnectionStatus {
+    Verified = "verified",
+    Error = "error"
+}
+export enum InstancePurpose {
+    Task = "task",
+    Preview = "preview",
+    LoadTest = "load_test",
+    Scratch = "scratch",
+    Persistent = "persistent"
+}
+export enum InstanceStatus {
+    Provisioning = "provisioning",
+    Ready = "ready",
+    Degraded = "degraded",
+    Expired = "expired",
+    TornDown = "torn_down"
+}
+export enum ReleaseStatus {
+    Queued = "queued",
+    Building = "building",
+    Live = "live",
+    Failed = "failed"
+}
+export enum ReportSource {
+    Web = "web",
+    Slack = "slack",
+    Sentry = "sentry",
+    Jam = "jam",
+    Harness = "harness"
+}
+export enum TaskKind {
+    Fix = "fix",
+    Onboarding = "onboarding"
+}
+export enum TaskPhase {
+    Intake = "intake",
+    Preparing = "preparing",
+    Reproducing = "reproducing",
+    Implementing = "implementing",
+    Deploying = "deploying",
+    Verifying = "verifying",
+    HandOver = "hand_over",
+    NeedsInput = "needs_input",
+    Failed = "failed",
+    Cancelled = "cancelled"
+}
+export enum TaskResolution {
+    FixVerified = "fix_verified",
+    FixUnverified = "fix_unverified",
+    NotReproduced = "not_reproduced",
+    NoChangeNeeded = "no_change_needed",
+    Abandoned = "abandoned"
+}
+export enum RunOutcome {
+    Running = "running",
+    Passed = "passed",
+    Failed = "failed",
+    Abandoned = "abandoned"
+}
+export enum SandboxStatus {
+    Starting = "starting",
+    Running = "running",
+    Stopped = "stopped",
+    Failed = "failed"
+}
+export enum ExecutionStatus {
+    Starting = "starting",
+    Running = "running",
+    Succeeded = "succeeded",
+    Failed = "failed",
+    TimedOut = "timed_out",
+    Cancelled = "cancelled"
+}
+export enum CheckKind {
+    InstanceReady = "instance_ready",
+    ReportReproduced = "report_reproduced",
+    FixVerified = "fix_verified"
+}
+export enum CheckOutcome {
+    Passed = "passed",
+    Failed = "failed",
+    Inconclusive = "inconclusive"
+}
+export enum ArtifactOwner {
+    Report = "report",
+    TaskCheck = "task_check",
+    TaskMessage = "task_message"
+}
+export enum ArtifactKind {
+    Screenshot = "screenshot",
+    Har = "har",
+    TestLog = "test_log",
+    Recording = "recording"
+}
+export enum PrState {
+    Open = "open",
+    Merged = "merged",
+    Closed = "closed"
+}
+export enum MessageRole {
+    User = "user",
+    Agent = "agent",
+    System = "system"
+}
+export enum CoarseStatus {
+    Running = "running",
+    NeedsYou = "needs_you",
+    ReadyForReview = "ready_for_review",
+    Failed = "failed",
+    Cancelled = "cancelled"
 }
