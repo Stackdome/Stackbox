@@ -1,3 +1,4 @@
+import type { TaskPhase } from '@stackbox/contract'
 import type {
   Artifact,
   Execution,
@@ -10,7 +11,7 @@ import type {
   TaskEvent,
 } from '../tasks/types'
 import { type Lease, isClaimable } from './calc/lease'
-import type { ExecutionPatch, TaskSnapshot, TaskState } from './task-state'
+import { type ExecutionPatch, PhaseConflict, type TaskSnapshot, type TaskState } from './task-state'
 
 type TaskContext = Pick<TaskSnapshot, 'organization' | 'repository' | 'connection' | 'report'>
 
@@ -73,7 +74,9 @@ export class InMemoryTaskState implements TaskState {
     }
   }
 
-  async saveTask(task: Task): Promise<void> {
+  async saveTask(task: Task, expectedPhase: TaskPhase): Promise<void> {
+    const stored = this.tasks.get(task.id)
+    if (stored && stored.phase !== expectedPhase) throw new PhaseConflict(task.id, expectedPhase, stored.phase)
     this.tasks.set(task.id, task)
   }
 

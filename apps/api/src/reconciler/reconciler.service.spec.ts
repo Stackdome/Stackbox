@@ -21,7 +21,7 @@ import {
   aTask,
   anExecution,
 } from '../tasks/test-support/builders'
-import { TaskEventKind } from '../tasks/types'
+import { type Task, TaskEventKind } from '../tasks/types'
 import { TICK_PERIOD_MS } from './calc/lease'
 import { PATCH_PATH } from './calc/run-spec'
 import { InMemoryTaskState } from './in-memory-task-state'
@@ -42,11 +42,25 @@ class StartFailingOnceRuntime extends InMemoryAgentRuntime {
   }
 }
 
-class CursorWriteFailingOnceState extends InMemoryTaskState {
+class InterruptedTaskState extends InMemoryTaskState {
   private failing = false
+  private cancelling = false
 
   failNextCursorWrite(): void {
     this.failing = true
+  }
+
+  cancelBeforeNextTaskWrite(): void {
+    this.cancelling = true
+  }
+
+  override async saveTask(task: Task, expectedPhase: TaskPhase): Promise<void> {
+    if (this.cancelling) {
+      this.cancelling = false
+      const current = (await this.load(task.id)).task
+      await super.saveTask({ ...current, phase: TaskPhase.Cancelled }, current.phase)
+    }
+    return super.saveTask(task, expectedPhase)
   }
 
   override async updateExecution(executionId: string, patch: ExecutionPatch): Promise<void> {
@@ -58,7 +72,7 @@ class CursorWriteFailingOnceState extends InMemoryTaskState {
 
 function aReconciler() {
   const clock = new InMemoryClock(new Date('2026-09-13T10:00:00Z'))
-  const state = new CursorWriteFailingOnceState()
+  const state = new InterruptedTaskState()
   const sandboxes = new InMemorySandboxProvider()
   const runtime = new StartFailingOnceRuntime(sandboxes, clock)
   const deploy = new InMemoryDeployTarget()
@@ -273,6 +287,14 @@ describe('the reconciler', () => {
       sandboxDestroyed: sandboxes.isDestroyed(environment),
       instanceTornDown: deploy.isTornDown(instance),
     }).toEqual({ sessions: [], sandboxDestroyed: true, instanceTornDown: true })
+  })
+
+  it('does not overwrite a cancel written while it was acting on the task', async () => {
+    const { state, service } = aReconciler()
+    state.seed(aSnapshot())
+    state.cancelBeforeNextTaskWrite()
+    await service.tick()
+    expect((await state.load('T1')).task.phase).toBe(TaskPhase.Cancelled)
   })
 
   it('marks a cancelled task complete once its cleanup has run, so no later tick claims it', async () => {

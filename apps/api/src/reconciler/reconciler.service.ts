@@ -30,7 +30,7 @@ import { type Decision, DecisionKind, type Observations, activeExecution, decide
 import { TICK_PERIOD_MS, leaseFor } from './calc/lease'
 import { PATCH_PATH, baseRefOf, headRefFor, runSpecFor } from './calc/run-spec'
 import { RECONCILER_SETTINGS, type ReconcilerSettings } from './settings'
-import { TASK_STATE, type TaskSnapshot, type TaskState } from './task-state'
+import { PhaseConflict, TASK_STATE, type TaskSnapshot, type TaskState } from './task-state'
 
 type DecisionOf<Kind extends Decision['kind']> = Extract<Decision, { kind: Kind }>
 
@@ -81,8 +81,14 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   private async reconcile(taskId: string): Promise<void> {
     const snapshot = await this.state.load(taskId)
     const observations = await this.observe(snapshot)
-    for (const decision of decide(snapshot, observations, this.clock.now())) {
-      await this.execute(decision, await this.state.load(taskId))
+    try {
+      for (const decision of decide(snapshot, observations, this.clock.now())) {
+        await this.execute(decision, await this.state.load(taskId))
+      }
+    } catch (error: unknown) {
+      // A phase written outside the loop wins; the next tick observes it and decides again.
+      if (error instanceof PhaseConflict) return
+      throw error
     }
   }
 
@@ -151,13 +157,13 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       case DecisionKind.TeardownInstance:
         return this.deploy.teardown({ id: decision.instanceId })
       case DecisionKind.Complete:
-        return this.state.saveTask({ ...snapshot.task, completedAt: now })
+        return this.state.saveTask({ ...snapshot.task, completedAt: now }, snapshot.task.phase)
     }
   }
 
   private async createInstance(snapshot: TaskSnapshot, now: Date): Promise<void> {
     const instance = await this.deploy.createInstance({ applicationId: snapshot.task.applicationId, services: [], variables: {} })
-    await this.state.saveTask({ ...snapshot.task, instanceId: instance.id })
+    await this.state.saveTask({ ...snapshot.task, instanceId: instance.id }, snapshot.task.phase)
     await this.event(snapshot, TaskEventKind.InstanceRequested, { instanceId: instance.id }, now)
   }
 
@@ -173,7 +179,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       status: ReleaseStatus.Queued,
       createdAt: now,
     })
-    if (decision.runId === null) await this.state.saveTask({ ...snapshot.task, originReleaseId: release.id })
+    if (decision.runId === null) await this.state.saveTask({ ...snapshot.task, originReleaseId: release.id }, snapshot.task.phase)
   }
 
   private async closeRun(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.CloseRun>, now: Date): Promise<void> {
@@ -210,7 +216,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
     })
     // Reading the key back: an earlier tick already created this session.
     if (execution.sessionRef !== null) return
-    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents })
+    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, snapshot.task.phase)
     const started = await this.runtime.startRun(
       runSpecFor({ snapshot, purpose: decision.purpose, instanceUrl: decision.instanceUrl, gitHost: this.settings.gitHost, readToken: this.settings.readToken }),
     )
@@ -220,7 +226,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   private async retrySameKey(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.RetrySameKey>): Promise<void> {
     const execution = present(snapshot.executions.find((candidate) => candidate.id === decision.executionId), `execution ${decision.executionId}`)
     const sandbox = present(snapshot.sandboxes.find((stored) => stored.id === execution.sandboxId), `sandbox ${execution.sandboxId}`)
-    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents })
+    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, snapshot.task.phase)
     const started = await this.runtime.startRun(
       runSpecFor({ snapshot, purpose: decision.purpose, instanceUrl: decision.instanceUrl, gitHost: this.settings.gitHost, readToken: this.settings.readToken }),
     )
@@ -305,12 +311,12 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   private async transition(snapshot: TaskSnapshot, to: TaskPhase, resolution: TaskResolution | null, now: Date): Promise<void> {
     const from = snapshot.task.phase
     if (!canTransition(from, to)) throw new Error(`task ${snapshot.task.id} cannot move from ${from} to ${to}`)
-    await this.state.saveTask({ ...snapshot.task, phase: to, resolution })
+    await this.state.saveTask({ ...snapshot.task, phase: to, resolution }, snapshot.task.phase)
     await this.event(snapshot, TaskEventKind.PhaseChanged, { from, to, ...(resolution === null ? {} : { resolution }) }, now)
   }
 
   private async failBudget(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.FailBudgetExceeded>, now: Date): Promise<void> {
-    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents })
+    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, snapshot.task.phase)
     await this.transition(await this.state.load(snapshot.task.id), TaskPhase.Failed, decision.resolution, now)
     await this.event(snapshot, TaskEventKind.BudgetExceeded, { costCents: decision.costCents }, now)
   }
