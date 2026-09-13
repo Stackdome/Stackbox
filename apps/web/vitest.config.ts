@@ -24,6 +24,7 @@ export default defineConfig({
           // Environment stays per-file via each spec's own @vitest-environment
           // pragma, not a project-wide default.
           include: ['src/**/*.{test,spec}.{ts,tsx}'],
+          exclude: ['src/**/*.browser.test.tsx'],
           // jsdom has no layout engine, so the geometry APIs it omits are
           // stubbed here rather than guarded at every call site. See the file.
           setupFiles: ['./src/test-support/jsdom-globals.ts'],
@@ -53,6 +54,25 @@ export default defineConfig({
           // reached when a loaded machine starves the browser. Genuine
           // breakage fails on the assertion instead, so the headroom hides
           // nothing.
+          testTimeout: 30000,
+        },
+      },
+      {
+        extends: './vite.config.ts',
+        test: {
+          name: 'themes',
+          include: ['src/**/*.browser.test.tsx'],
+          setupFiles: ['./src/test-support/storybook-annotations.ts'],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: 'chromium' }],
+            viewport: { width: 1440, height: 900 },
+          },
+          // After the story project: two browser projects running at once
+          // starve each other.
+          sequence: { groupOrder: 2 },
           testTimeout: 30000,
         },
       },

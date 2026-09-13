@@ -1,4 +1,3 @@
-import React from 'react'
 import type { Preview } from '@storybook/react-vite'
 import { MemoryRouter } from 'react-router-dom'
 import { addons } from 'storybook/preview-api'
@@ -6,6 +5,7 @@ import { mswLoader } from 'msw-storybook-addon/csf3'
 import '../src/index.css'
 import { makeUser } from './fixtures'
 import { baselineHandlers } from './msw-handlers'
+import { applyTheme, THEMES, type Theme } from './theme'
 
 // Seed before anything renders: the axios interceptor and org-id helpers read
 // these keys synchronously, and a missing authToken sends stories into the
@@ -17,17 +17,14 @@ localStorage.setItem('currentUser', JSON.stringify(makeUser()))
 // Driven off the globals channel rather than a decorator: decorators wrap
 // stories only, so the Foundations MDX pages, which document the tokens the
 // toggle exists to show, would never receive the class.
-function applyTheme({ globals }: { globals?: { theme?: string } }) {
+function applyThemeGlobal({ globals }: { globals?: { theme?: string } }) {
   const theme = globals?.theme
-  if (!theme) return
-  const root = document.documentElement
-  root.classList.remove('light', 'dark')
-  root.classList.add(theme)
+  if (theme) applyTheme(theme as Theme)
 }
 
 const channel = addons.getChannel()
-channel.on('setGlobals', applyTheme)
-channel.on('globalsUpdated', applyTheme)
+channel.on('setGlobals', applyThemeGlobal)
+channel.on('globalsUpdated', applyThemeGlobal)
 
 const preview: Preview = {
   loaders: [mswLoader()],
@@ -37,7 +34,7 @@ const preview: Preview = {
       toolbar: {
         title: 'Theme',
         icon: 'mirror',
-        items: ['light', 'dark'],
+        items: [...THEMES],
         dynamicTitle: true,
       },
     },
