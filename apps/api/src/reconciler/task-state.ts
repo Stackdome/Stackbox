@@ -33,8 +33,10 @@ export type ExecutionPatch = Partial<Pick<Execution, 'sessionRef' | 'externalId'
 
 export interface TaskState {
   claim(lease: Lease, now: Date, limit: number): Promise<Task[]>
+  // Runs ascend by number and releases by creation; decide reads the latest of each with at(-1).
   load(taskId: string): Promise<TaskSnapshot>
   saveTask(task: Task): Promise<void>
+  // A new run whose number the task already has is not inserted.
   saveRun(run: Run): Promise<void>
   saveRelease(release: Release): Promise<void>
   saveSandbox(sandbox: Sandbox): Promise<void>

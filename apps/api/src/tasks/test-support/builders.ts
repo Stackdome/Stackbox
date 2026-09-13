@@ -159,6 +159,7 @@ export function aCheck(overrides: Partial<TaskCheck> = {}): TaskCheck {
     runId: null,
     releaseId: 'release-1',
     executionId: null,
+    itemId: null,
     kind: CheckKind.InstanceReady,
     outcome: CheckOutcome.Passed,
     commitSha: 'origin-sha',

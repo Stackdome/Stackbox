@@ -25,7 +25,6 @@ import {
   type StartedRun,
 } from '../ports'
 import { canTransition, isTerminal } from '../tasks/calc/phase-transitions'
-import { runKey } from '../tasks/calc/idempotency-key'
 import { TaskEventKind, type Execution, type Sandbox } from '../tasks/types'
 import { type Decision, DecisionKind, type Observations, activeExecution, decide } from './calc/decide'
 import { TICK_PERIOD_MS, leaseFor } from './calc/lease'
@@ -189,7 +188,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       createdAt: now,
       stoppedAt: null,
     }
-    // ponytail: a sandbox row is written even when the key already exists; slice 4 does both writes in one transaction.
+    // The sandbox row is written before the key is read back, so a replayed start leaves a row with no external id.
     await this.state.saveSandbox(sandbox)
     const execution = await this.state.insertExecution({
       id: randomUUID(),
@@ -247,6 +246,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       runId: decision.runId,
       releaseId: decision.releaseId,
       executionId: decision.executionId,
+      itemId: decision.itemId,
       kind: decision.checkKind,
       outcome: decision.outcome,
       commitSha: decision.commitSha,
@@ -267,8 +267,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
 
   private async pushPatch(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.PushPatch>): Promise<void> {
     const run = present(snapshot.runs.find((candidate) => candidate.id === decision.runId), `run ${decision.runId}`)
-    const key = runKey(snapshot.task.id, run.number)
-    const execution = present(snapshot.executions.find((candidate) => candidate.idempotencyKey === key), `execution ${key}`)
+    const execution = present(snapshot.executions.find((candidate) => candidate.id === decision.executionId), `execution ${decision.executionId}`)
     const sandbox = present(snapshot.sandboxes.find((stored) => stored.id === execution.sandboxId), `sandbox ${execution.sandboxId}`)
     const patch = await this.sandboxes.readFile({ id: present(sandbox.externalId, 'environment id') }, PATCH_PATH)
     const { sha } = await this.git.pushPatch(

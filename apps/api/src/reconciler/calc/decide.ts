@@ -64,12 +64,13 @@ export type Decision =
       checkKind: CheckKind
       outcome: CheckOutcome
       executionId: string | null
+      itemId: string | null
       runId: string | null
       releaseId: string | null
       commitSha: string | null
       artifacts: CheckArtifact[]
     }
-  | { kind: typeof DecisionKind.PushPatch; runId: string }
+  | { kind: typeof DecisionKind.PushPatch; runId: string; executionId: string }
   | { kind: typeof DecisionKind.OpenPullRequest; runId: string }
   | { kind: typeof DecisionKind.Transition; to: TaskPhase; resolution: TaskResolution | null }
   | { kind: typeof DecisionKind.FailBudgetExceeded; resolution: TaskResolution.Abandoned; costCents: number }
@@ -101,15 +102,46 @@ const PURPOSE_BY_PHASE: Partial<Record<TaskPhase, RunPurpose>> = {
   [TaskPhase.Verifying]: RunPurpose.Verify,
 }
 
-export function activeExecution(snapshot: Pick<TaskSnapshot, 'executions'>): Execution | undefined {
-  return snapshot.executions.find((candidate) => candidate.sessionRef !== null && ACTIVE.includes(candidate.status))
+type RunScope = Pick<TaskSnapshot, 'task' | 'runs' | 'executions'>
+
+// Deploying and verifying act on the latest run that has pushed a candidate.
+function candidateRun(snapshot: Pick<TaskSnapshot, 'runs'>): Run | undefined {
+  return snapshot.runs.filter((run) => run.candidateSha !== null).at(-1)
+}
+
+function currentKey(snapshot: RunScope): string | undefined {
+  const taskId = snapshot.task.id
+  switch (snapshot.task.phase) {
+    case TaskPhase.Reproducing:
+      return reproKey(taskId)
+    case TaskPhase.Implementing: {
+      const run = snapshot.runs.at(-1)
+      return run && runKey(taskId, run.number)
+    }
+    case TaskPhase.Verifying: {
+      const run = candidateRun(snapshot)
+      return run && verifyKey(taskId, run.number)
+    }
+    default:
+      return undefined
+  }
+}
+
+// Only the execution keyed for the current phase is observed, so a replayed batch never reads an earlier run's items.
+export function activeExecution(snapshot: RunScope): Execution | undefined {
+  const key = currentKey(snapshot)
+  return snapshot.executions.find(
+    (candidate) => candidate.idempotencyKey === key && candidate.sessionRef !== null && ACTIVE.includes(candidate.status),
+  )
 }
 
 export function decide(snapshot: TaskSnapshot, observations: Observations, now: Date): Decision[] {
   if (snapshot.task.phase === TaskPhase.Cancelled) return cleanUp(snapshot)
   const execution = activeExecution(snapshot)
-  const turnEnd = observations.events.find(isTurnEnd)
-  const checks = execution ? observations.events.filter(isCheck).map((event) => checkFromEvent(snapshot, execution, event)) : []
+  const turnEnd = execution && observations.events.find(isTurnEnd)
+  const checks = execution
+    ? observations.events.filter(isCheck).filter((event) => !isStored(snapshot, execution, event)).map((event) => checkFromEvent(snapshot, execution, event))
+    : []
   const context: Context = {
     snapshot,
     observations,
@@ -183,13 +215,13 @@ function reproducing(c: Context): Decision[] {
 }
 
 function implementing(c: Context): Decision[] {
-  const run = c.snapshot.runs.at(-1)
-  if (c.turnEnd?.kind !== AgentEventKind.TurnCompleted || !run) return []
-  return [{ kind: DecisionKind.PushPatch, runId: run.id }, transition(TaskPhase.Deploying)]
+  const run = runOf(c)
+  if (c.turnEnd?.kind !== AgentEventKind.TurnCompleted || !c.execution || !run) return []
+  return [{ kind: DecisionKind.PushPatch, runId: run.id, executionId: c.execution.id }, transition(TaskPhase.Deploying)]
 }
 
 function deploying(c: Context): Decision[] {
-  const run = c.snapshot.runs.at(-1)
+  const run = candidateRun(c.snapshot)
   if (!run || run.candidateSha === null) return []
   const release = c.snapshot.releases.filter((candidate) => candidate.runId === run.id).at(-1)
   if (!release) return [{ kind: DecisionKind.DeployRelease, commitSha: run.candidateSha, runId: run.id }]
@@ -205,27 +237,32 @@ function deploying(c: Context): Decision[] {
 }
 
 function verifying(c: Context): Decision[] {
-  const run = c.snapshot.runs.at(-1)
+  const run = runOf(c)
   if (c.turnEnd?.kind !== AgentEventKind.TurnCompleted || !run) return []
   if (latestOutcome(c, CheckKind.FixVerified) !== CheckOutcome.Passed) return nextRunOrHandOver(c, run, TaskPhase.Verifying)
   const pullRequest: Decision[] = c.snapshot.pullRequest === null ? [{ kind: DecisionKind.OpenPullRequest, runId: run.id }] : []
-  return [
-    { kind: DecisionKind.CloseRun, runId: run.id, outcome: RunOutcome.Passed, verifiedSha: run.candidateSha },
-    ...pullRequest,
-    transition(TaskPhase.HandOver, TaskResolution.FixVerified),
-  ]
+  return [...closeRun(run, RunOutcome.Passed, run.candidateSha), ...pullRequest, transition(TaskPhase.HandOver, TaskResolution.FixVerified)]
 }
 
 function nextRunOrHandOver(c: Context, run: Run, from: typeof TaskPhase.Deploying | typeof TaskPhase.Verifying): Decision[] {
-  const closed: Decision = { kind: DecisionKind.CloseRun, runId: run.id, outcome: RunOutcome.Failed, verifiedSha: null }
+  const closed = closeRun(run, RunOutcome.Failed, null)
   if (run.number < c.snapshot.task.runLimit) {
     const next = run.number + 1
+    const opened: Decision[] = c.snapshot.runs.some((candidate) => candidate.number === next) ? [] : [{ kind: DecisionKind.OpenRun, number: next }]
     const start: RunStart = { key: runKey(c.snapshot.task.id, next), purpose: RunPurpose.Implement, runNumber: next, instanceUrl: null }
-    return startingRun(c, start, [closed, { kind: DecisionKind.OpenRun, number: next }], [transition(TaskPhase.Implementing)])
+    return startingRun(c, start, [...closed, ...opened], [transition(TaskPhase.Implementing)])
   }
   const handOver = transition(TaskPhase.HandOver, TaskResolution.FixUnverified)
   // Spec 4.3 has no deploying to hand_over edge; an exhausted run limit hands over out of implementing.
-  return from === TaskPhase.Deploying ? [closed, transition(TaskPhase.Implementing), handOver] : [closed, handOver]
+  return from === TaskPhase.Deploying ? [...closed, transition(TaskPhase.Implementing), handOver] : [...closed, handOver]
+}
+
+function closeRun(run: Run, outcome: RunOutcome, verifiedSha: string | null): Decision[] {
+  return run.outcome === RunOutcome.Running ? [{ kind: DecisionKind.CloseRun, runId: run.id, outcome, verifiedSha }] : []
+}
+
+function runOf(c: Context): Run | undefined {
+  return c.snapshot.runs.find((run) => run.id === c.execution?.runId)
 }
 
 function startingRun(c: Context, start: RunStart, before: Decision[], after: Decision[]): Decision[] {
@@ -265,6 +302,10 @@ function recordExecution(execution: Execution, events: AgentEvent[], turnEnd: Tu
   }
 }
 
+function isStored(snapshot: TaskSnapshot, execution: Execution, event: CheckEvent): boolean {
+  return snapshot.checks.some((check) => check.executionId === execution.id && check.itemId !== null && check.itemId === event.itemId)
+}
+
 function checkFromEvent(snapshot: TaskSnapshot, execution: Execution, event: CheckEvent): AppendCheck {
   const release = snapshot.releases.at(-1)
   return {
@@ -272,6 +313,7 @@ function checkFromEvent(snapshot: TaskSnapshot, execution: Execution, event: Che
     checkKind: event.checkKind,
     outcome: event.outcome,
     executionId: execution.id,
+    itemId: event.itemId ?? null,
     runId: execution.runId,
     releaseId: release?.id ?? null,
     commitSha: release?.commitSha ?? null,
@@ -285,6 +327,7 @@ function instanceReady(release: Release): AppendCheck {
     checkKind: CheckKind.InstanceReady,
     outcome: CheckOutcome.Passed,
     executionId: null,
+    itemId: null,
     runId: null,
     releaseId: release.id,
     commitSha: release.commitSha,

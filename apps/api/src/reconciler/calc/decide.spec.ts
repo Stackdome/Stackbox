@@ -102,6 +102,7 @@ describe('decide', () => {
         checkKind: CheckKind.InstanceReady,
         outcome: CheckOutcome.Passed,
         executionId: null,
+        itemId: null,
         runId: null,
         releaseId: 'release-1',
         commitSha: 'origin-sha',
@@ -167,7 +168,7 @@ describe('decide', () => {
       executions: [anExecution({ idempotencyKey: 'T1:run1', runId: 'T1-run1' })],
     })
     const decisions = decide(snapshot, observing({ events: [item('item-4', turnCompleted())] }), NOW)
-    expect(decisions.slice(0, 2)).toEqual([{ kind: DecisionKind.PushPatch, runId: 'T1-run1' }, transition(TaskPhase.Deploying)])
+    expect(decisions.slice(0, 2)).toEqual([{ kind: DecisionKind.PushPatch, runId: 'T1-run1', executionId: 'E1' }, transition(TaskPhase.Deploying)])
   })
 
   it('deploys the candidate sha of the current run', () => {

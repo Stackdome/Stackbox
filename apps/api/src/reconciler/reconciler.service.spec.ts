@@ -1,6 +1,6 @@
 import { ArtifactKind, CheckKind, CheckOutcome, ExecutionStatus, ReleaseStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
-import { TurnStatus } from '../ports'
+import { type StartRunSpec, type StartedRun, TurnStatus } from '../ports'
 import {
   InMemoryAgentRuntime,
   InMemoryClock,
@@ -14,6 +14,7 @@ import {
   aCheck,
   aRelease,
   aRepository,
+  aRun,
   aRunSpec,
   aSandbox,
   aSnapshot,
@@ -25,12 +26,41 @@ import { TICK_PERIOD_MS } from './calc/lease'
 import { PATCH_PATH } from './calc/run-spec'
 import { InMemoryTaskState } from './in-memory-task-state'
 import { ReconcilerService } from './reconciler.service'
+import type { ExecutionPatch } from './task-state'
+
+class StartFailingOnceRuntime extends InMemoryAgentRuntime {
+  private failing = false
+
+  failNextStart(): void {
+    this.failing = true
+  }
+
+  override async startRun(spec: StartRunSpec): Promise<StartedRun> {
+    if (!this.failing) return super.startRun(spec)
+    this.failing = false
+    throw new Error('503 Service Unavailable')
+  }
+}
+
+class CursorWriteFailingOnceState extends InMemoryTaskState {
+  private failing = false
+
+  failNextCursorWrite(): void {
+    this.failing = true
+  }
+
+  override async updateExecution(executionId: string, patch: ExecutionPatch): Promise<void> {
+    if (!this.failing || patch.eventCursor === undefined) return super.updateExecution(executionId, patch)
+    this.failing = false
+    throw new Error('process died before the cursor write')
+  }
+}
 
 function aReconciler() {
   const clock = new InMemoryClock(new Date('2026-09-13T10:00:00Z'))
-  const state = new InMemoryTaskState()
+  const state = new CursorWriteFailingOnceState()
   const sandboxes = new InMemorySandboxProvider()
-  const runtime = new InMemoryAgentRuntime(sandboxes, clock)
+  const runtime = new StartFailingOnceRuntime(sandboxes, clock)
   const deploy = new InMemoryDeployTarget()
   deploy.settleReleasesAs(ReleaseStatus.Live)
   const git = new InMemoryGitProvider()
@@ -184,5 +214,97 @@ describe('the reconciler', () => {
     state.seed(aSnapshot({ task: aTask({ phase: TaskPhase.Cancelled, instanceId: instance.id }) }))
     await service.tick()
     expect((await state.load('T1')).task.completedAt).not.toBeNull()
+  })
+  describe('replaying a batch that stopped part way', () => {
+    it('does not append report_reproduced twice when the implementation run fails to start once', async () => {
+      const { state, runtime, deploy, service } = aReconciler()
+      const instance = await anInstanceWithLiveOrigin(deploy)
+      runtime.queueRun({
+        events: [
+          reportCheckCall('call-1', { checkKind: CheckKind.ReportReproduced, outcome: CheckOutcome.Passed, artifacts: [] }),
+          turnCompleted(),
+        ],
+      })
+      const repro = await runtime.startRun(aRunSpec())
+      state.seed(
+        aSnapshot({
+          task: aTask({ phase: TaskPhase.Reproducing, instanceId: instance.id }),
+          releases: [aRelease()],
+          sandboxes: [aSandbox({ externalId: runtime.environmentOf(repro.sessionId).id })],
+          executions: [anExecution({ sessionRef: repro.sessionId })],
+        }),
+      )
+      runtime.failNextStart()
+      await service.tick()
+      await service.tick()
+      const { task, checks } = await state.load('T1')
+      expect({ phase: task.phase, checks: checks.map((check) => check.kind) }).toEqual({
+        phase: TaskPhase.Implementing,
+        checks: [CheckKind.ReportReproduced],
+      })
+    })
+
+    it('does not burn run 2 when its start fails once after run 1 failed verification', async () => {
+      const { state, runtime, deploy, service } = aReconciler()
+      const instance = await anInstanceWithLiveOrigin(deploy)
+      runtime.queueRun({
+        events: [
+          reportCheckCall('call-1', { checkKind: CheckKind.FixVerified, outcome: CheckOutcome.Failed, artifacts: [] }),
+          turnCompleted(),
+        ],
+      })
+      const verify = await runtime.startRun(aRunSpec())
+      state.seed(
+        aSnapshot({
+          task: aTask({ phase: TaskPhase.Verifying, instanceId: instance.id, runLimit: 2 }),
+          releases: [aRelease()],
+          runs: [aRun({ candidateSha: 'pushed-sha-1' })],
+          sandboxes: [aSandbox({ externalId: runtime.environmentOf(verify.sessionId).id })],
+          executions: [anExecution({ idempotencyKey: 'T1:run1:verify', runId: 'T1-run1', sessionRef: verify.sessionId })],
+        }),
+      )
+      runtime.failNextStart()
+      await service.tick()
+      await service.tick()
+      const { task, runs, executions } = await state.load('T1')
+      expect({
+        phase: task.phase,
+        runs: runs.map((run) => run.number),
+        startedKeys: executions.filter((execution) => execution.sessionRef !== null).map((execution) => execution.idempotencyKey),
+      }).toEqual({
+        phase: TaskPhase.Implementing,
+        runs: [1, 2],
+        startedKeys: ['T1:run1:verify', 'T1:run2'],
+      })
+    })
+
+    it('never pushes a patch from a stale repro turn replayed before its cursor was written', async () => {
+      const { state, runtime, deploy, service } = aReconciler()
+      const instance = await anInstanceWithLiveOrigin(deploy)
+      runtime.queueRun({
+        events: [
+          reportCheckCall('call-1', { checkKind: CheckKind.ReportReproduced, outcome: CheckOutcome.Passed, artifacts: [] }),
+          turnCompleted(),
+        ],
+      })
+      runtime.queueRun({ files: [{ path: PATCH_PATH, data: Buffer.from('half a patch') }], events: [] })
+      const repro = await runtime.startRun(aRunSpec())
+      state.seed(
+        aSnapshot({
+          task: aTask({ phase: TaskPhase.Reproducing, instanceId: instance.id }),
+          releases: [aRelease()],
+          sandboxes: [aSandbox({ externalId: runtime.environmentOf(repro.sessionId).id })],
+          executions: [anExecution({ sessionRef: repro.sessionId })],
+        }),
+      )
+      state.failNextCursorWrite()
+      await service.tick()
+      await service.tick()
+      const { task, runs } = await state.load('T1')
+      expect({ phase: task.phase, candidateShas: runs.map((run) => run.candidateSha) }).toEqual({
+        phase: TaskPhase.Implementing,
+        candidateShas: [null],
+      })
+    })
   })
 })

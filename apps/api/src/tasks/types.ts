@@ -124,6 +124,8 @@ export type TaskCheck = {
   runId: string | null
   releaseId: string | null
   executionId: string | null
+  // Agent item the check was read from, so a replayed item is not recorded twice; null when the reconciler observed it.
+  itemId: string | null
   kind: CheckKind
   outcome: CheckOutcome
   commitSha: string | null

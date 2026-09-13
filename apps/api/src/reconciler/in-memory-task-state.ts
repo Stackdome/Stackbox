@@ -78,6 +78,7 @@ export class InMemoryTaskState implements TaskState {
   }
 
   async saveRun(run: Run): Promise<void> {
+    if (this.runs.some((stored) => stored.taskId === run.taskId && stored.number === run.number && stored.id !== run.id)) return
     this.runs = upsert(this.runs, run)
   }
 
