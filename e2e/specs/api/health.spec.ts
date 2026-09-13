@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-test('the health endpoint reports ok against a migrated database', async ({ request }) => {
+test('the health endpoint answers 200 with ok against a migrated database', async ({ request }) => {
   const response = await request.get('/api/v1/health')
-  expect(response.ok()).toBe(true)
+  expect(response.status()).toBe(200)
   expect(await response.json()).toEqual({ status: 'ok' })
 })

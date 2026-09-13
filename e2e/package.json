@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.5",
+    "eslint": "^9.25.0",
     "typescript": "~5.8.3"
   }
 }

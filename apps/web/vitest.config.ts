@@ -43,6 +43,7 @@ export default defineConfig({
             headless: true,
             provider: playwright(),
             instances: [{ browser: 'chromium' }],
+            viewport: { width: 1440, height: 900 },
           },
           // Runs after the unit project rather than alongside it: a browser
           // project and a large jsdom suite oversubscribe the cores and
