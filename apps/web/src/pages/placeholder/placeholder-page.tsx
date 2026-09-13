@@ -1,9 +1,3 @@
-import { PageTitle } from '@/components/page-title'
-
-export function PlaceholderPage({ title }: { title: string }) {
-  return (
-    <div>
-      <PageTitle>{title}</PageTitle>
-    </div>
-  )
+export function PlaceholderPage() {
+  return <p className="text-meta text-fg-muted">Not built yet.</p>
 }

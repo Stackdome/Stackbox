@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
-import { makeUser } from './fixtures'
+import { taskHandlers } from '../src/preview/handlers/tasks'
+import { APPLICATIONS, TASK_SUMMARIES, makeUser } from './fixtures'
 
 // Auth endpoints must always resolve: an unmocked 401 sends the axios client
 // through its refresh flow and, on failure, hard-redirects the story iframe
@@ -9,4 +10,5 @@ export const baselineHandlers = [
   http.post('/api/v1/auth/refresh', () =>
     HttpResponse.json({ token: 'sb-token', refreshToken: 'sb-refresh' }),
   ),
+  ...taskHandlers(TASK_SUMMARIES, APPLICATIONS),
 ]

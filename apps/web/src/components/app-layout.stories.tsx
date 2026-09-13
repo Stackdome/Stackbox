@@ -2,7 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect, userEvent, waitFor } from 'storybook/test'
 import { withCurrentUser } from '../../.storybook/decorators'
 import { AppLayout } from './app-layout'
-import { PageTitle } from './page-title'
 import { ROUTES } from '@/lib/routes'
 
 const meta = {
@@ -15,7 +14,7 @@ const meta = {
     router: { initialEntries: [ROUTES.instances] },
   },
   args: {
-    children: <PageTitle>Instances</PageTitle>,
+    children: <p className="text-body">Instance list</p>,
   },
 } satisfies Meta<typeof AppLayout>
 
@@ -31,8 +30,11 @@ export const Default: Story = {
 /** The title row's own toggle collapses the expanded sidebar to the same
  *  56px rail the icon-only state always measures. The width change is
  *  transitioned, so it is awaited rather than read the instant the class
- *  flips. */
+ *  flips. Pinned expanded rather than relying on the test viewport crossing
+ *  the 1280px breakpoint: the live breakpoint itself is `useShellOpen`'s own
+ *  test. */
 export const ManualToggleCollapsesToRail: Story = {
+  args: { defaultSidebarOpen: true },
   play: async ({ canvasElement, canvas }) => {
     const container = canvasElement.querySelector<HTMLElement>('[data-slot="sidebar-container"]')!
     await expect(container.getBoundingClientRect().width).toBe(240)

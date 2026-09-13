@@ -36,8 +36,8 @@ export const navGroups: NavGroup[] = [
   {
     label: 'Organization',
     items: [
-      { label: 'Repositories', path: ROUTES.repositories, icon: FolderGit2 },
-      { label: 'Settings', path: ROUTES.settings, icon: Settings },
+      { label: 'Repositories', path: ROUTES.repositories, icon: FolderGit2, adminOnly: true },
+      { label: 'Settings', path: ROUTES.settings, icon: Settings, adminOnly: true },
     ],
   },
 ];

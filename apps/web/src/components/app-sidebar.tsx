@@ -8,7 +8,8 @@ import { NavUser } from "@/components/nav-user"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { getCurrentUser } from "@/lib/common"
 import { useCurrentUser } from "@/hooks/use-current-user"
-import { ROUTES, type RoutePath } from "@/lib/routes"
+import { useTasks } from "@/hooks/use-tasks"
+import { ROUTES } from "@/lib/routes"
 import {
   Sidebar,
   SidebarContent,
@@ -28,12 +29,10 @@ import {
  * a 64px brand band with the lockup inset 16px, and a 12px gutter around a
  * 32px item pitched every 34px.
  */
-export function AppSidebar({
-  badges,
-  ...props
-}: React.ComponentProps<typeof Sidebar> & { badges?: Partial<Record<RoutePath, number>> }) {
+export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
   const user = getCurrentUser();
   const { isOrgAdmin } = useCurrentUser();
+  const { needsYouCount } = useTasks();
 
   const userData = {
     name: user?.name || user?.username || "User",
@@ -112,7 +111,11 @@ export function AppSidebar({
                 {/* 34px pitch: a 32px row and a 2px gap. */}
                 <SidebarMenu className="gap-0.5">
                   {items.map((item) => (
-                    <NavItem key={item.path} item={item} badge={badges?.[item.path]} />
+                    <NavItem
+                      key={item.path}
+                      item={item}
+                      badge={item.path === ROUTES.tasks ? needsYouCount : undefined}
+                    />
                   ))}
                 </SidebarMenu>
               </SidebarGroupContent>

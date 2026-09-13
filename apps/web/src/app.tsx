@@ -7,8 +7,6 @@ import { ConfirmProvider } from '@/components/branded/confirm'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeProvider, THEME_STORAGE_KEY } from '@/contexts/theme-provider'
 
-const SHELL_EXPANDED_QUERY = '(min-width: 1280px)'
-
 export function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey={THEME_STORAGE_KEY}>
@@ -16,13 +14,13 @@ export function App() {
         <ConfirmProvider>
           <BrowserRouter>
             <Routes>
-              <Route element={<AppLayout defaultSidebarOpen={window.matchMedia(SHELL_EXPANDED_QUERY).matches} />}>
+              <Route element={<AppLayout />}>
                 <Route index element={<Navigate to={ROUTES.tasks} replace />} />
-                <Route path={ROUTES.tasks} element={<PlaceholderPage title="Tasks" />} />
-                <Route path={ROUTES.applications} element={<PlaceholderPage title="Applications" />} />
-                <Route path={ROUTES.instances} element={<PlaceholderPage title="Instances" />} />
-                <Route path={ROUTES.repositories} element={<PlaceholderPage title="Repositories" />} />
-                <Route path={ROUTES.settings} element={<PlaceholderPage title="Settings" />} />
+                <Route path={ROUTES.tasks} element={<PlaceholderPage />} />
+                <Route path={ROUTES.applications} element={<PlaceholderPage />} />
+                <Route path={ROUTES.instances} element={<PlaceholderPage />} />
+                <Route path={ROUTES.repositories} element={<PlaceholderPage />} />
+                <Route path={ROUTES.settings} element={<PlaceholderPage />} />
               </Route>
             </Routes>
           </BrowserRouter>

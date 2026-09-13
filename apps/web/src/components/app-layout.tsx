@@ -5,18 +5,22 @@ import { Outlet } from "react-router-dom";
 import { BreadcrumbProvider } from "@/contexts/breadcrumb-context";
 import { SheetHeader } from "@/components/sheet-header";
 import { PEER_SHEET_SLOT_ID } from "@/components/ui/drawer";
+import { useShellOpen } from "@/hooks/use-shell-open";
+import { TasksProvider } from "@/contexts/tasks-context";
 
 function AppLayoutContent({
   children,
-  defaultSidebarOpen = true,
+  defaultSidebarOpen,
 }: {
   children?: React.ReactNode;
-  /** Start with the sidebar collapsed to its 56px rail. Stories use this to
-   *  show the collapsed shell; the user's own toggle takes over from there. */
+  /** Start expanded or on the 56px rail instead of reading the breakpoint.
+   *  Stories pin it; the breakpoint and the user's toggle take over from
+   *  there. */
   defaultSidebarOpen?: boolean;
 }) {
+  const [open, setOpen] = useShellOpen(defaultSidebarOpen);
   return (
-    <SidebarProvider defaultOpen={defaultSidebarOpen}>
+    <SidebarProvider open={open} onOpenChange={setOpen}>
       {/* 8px gutter on every free edge (§12). The sidebar sits flush to the
           window's left edge; the sheet is inset from the other three. The
           frame is a MOUNT, not a margin. */}
@@ -77,7 +81,9 @@ export function AppLayout({
 }) {
   return (
     <BreadcrumbProvider>
-      <AppLayoutContent defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayoutContent>
+      <TasksProvider>
+        <AppLayoutContent defaultSidebarOpen={defaultSidebarOpen}>{children}</AppLayoutContent>
+      </TasksProvider>
     </BreadcrumbProvider>
   );
 }
