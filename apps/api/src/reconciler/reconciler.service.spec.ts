@@ -1,6 +1,6 @@
 import { ArtifactKind, CheckKind, CheckOutcome, ExecutionStatus, ReleaseStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
-import { type StartRunSpec, type StartedRun, TurnStatus } from '../ports'
+import type { StartRunSpec, StartedRun } from '../ports'
 import {
   InMemoryAgentRuntime,
   InMemoryClock,
@@ -109,11 +109,13 @@ describe('the reconciler', () => {
       resolution: task.resolution,
       checks: checks.map((check) => check.kind),
       draftPullRequest: pullRequest?.isDraft,
+      sessionsLeft: runtime.sessionIds(),
     }).toEqual({
       phase: TaskPhase.HandOver,
       resolution: TaskResolution.FixVerified,
       checks: [CheckKind.InstanceReady, CheckKind.ReportReproduced, CheckKind.FixVerified],
       draftPullRequest: true,
+      sessionsLeft: [],
     })
   })
 
@@ -223,11 +225,54 @@ describe('the reconciler', () => {
       }),
     )
     await service.tick()
-    expect([await runtime.turnStatus(run), sandboxes.isDestroyed(environment), deploy.isTornDown(instance)]).toEqual([
-      TurnStatus.Cancelled,
-      true,
-      true,
-    ])
+    const { executions } = await state.load('T1')
+    expect({
+      executions: executions.map((execution) => execution.status),
+      sessions: runtime.sessionIds(),
+      sandboxDestroyed: sandboxes.isDestroyed(environment),
+      instanceTornDown: deploy.isTornDown(instance),
+    }).toEqual({ executions: [ExecutionStatus.Cancelled], sessions: [], sandboxDestroyed: true, instanceTornDown: true })
+  })
+
+  it('deletes the session and destroys the sandbox of a handed over task but keeps its instance for review', async () => {
+    const { state, sandboxes, runtime, deploy, service } = aReconciler()
+    const instance = await anInstanceWithLiveOrigin(deploy)
+    const run = await runtime.startRun(aRunSpec())
+    const environment = runtime.environmentOf(run.sessionId)
+    state.seed(
+      aSnapshot({
+        task: aTask({ phase: TaskPhase.HandOver, resolution: TaskResolution.FixVerified, instanceId: instance.id }),
+        sandboxes: [aSandbox({ externalId: environment.id })],
+        executions: [anExecution({ sessionRef: run.sessionId, status: ExecutionStatus.Succeeded })],
+      }),
+    )
+    await service.tick()
+    expect({
+      sessions: runtime.sessionIds(),
+      sandboxDestroyed: sandboxes.isDestroyed(environment),
+      instanceTornDown: deploy.isTornDown(instance),
+      completed: (await state.load('T1')).task.completedAt !== null,
+    }).toEqual({ sessions: [], sandboxDestroyed: true, instanceTornDown: false, completed: true })
+  })
+
+  it('deletes the session, destroys the sandbox and tears down the instance of a failed task', async () => {
+    const { state, sandboxes, runtime, deploy, service } = aReconciler()
+    const instance = await anInstanceWithLiveOrigin(deploy)
+    const run = await runtime.startRun(aRunSpec())
+    const environment = runtime.environmentOf(run.sessionId)
+    state.seed(
+      aSnapshot({
+        task: aTask({ phase: TaskPhase.Failed, instanceId: instance.id }),
+        sandboxes: [aSandbox({ externalId: environment.id })],
+        executions: [anExecution({ sessionRef: run.sessionId, status: ExecutionStatus.Failed })],
+      }),
+    )
+    await service.tick()
+    expect({
+      sessions: runtime.sessionIds(),
+      sandboxDestroyed: sandboxes.isDestroyed(environment),
+      instanceTornDown: deploy.isTornDown(instance),
+    }).toEqual({ sessions: [], sandboxDestroyed: true, instanceTornDown: true })
   })
 
   it('marks a cancelled task complete once its cleanup has run, so no later tick claims it', async () => {

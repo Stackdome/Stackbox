@@ -24,7 +24,7 @@ import {
   type SandboxProvider,
   type StartedRun,
 } from '../ports'
-import { canTransition, isTerminal } from '../tasks/calc/phase-transitions'
+import { canTransition } from '../tasks/calc/phase-transitions'
 import { TaskEventKind, type Execution, type Sandbox } from '../tasks/types'
 import { type Decision, DecisionKind, type Observations, activeExecution, decide } from './calc/decide'
 import { TICK_PERIOD_MS, leaseFor } from './calc/lease'
@@ -143,7 +143,9 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       case DecisionKind.FailBudgetExceeded:
         return this.failBudget(snapshot, decision, now)
       case DecisionKind.CancelRun:
-        return this.runtime.cancel(decision.sessionId)
+        return this.cancelRun(decision, now)
+      case DecisionKind.DeleteSession:
+        return this.runtime.deleteSession(decision.sessionId)
       case DecisionKind.DestroySandbox:
         return this.destroySandbox(snapshot, decision.sandboxId, now)
       case DecisionKind.TeardownInstance:
@@ -303,7 +305,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   private async transition(snapshot: TaskSnapshot, to: TaskPhase, resolution: TaskResolution | null, now: Date): Promise<void> {
     const from = snapshot.task.phase
     if (!canTransition(from, to)) throw new Error(`task ${snapshot.task.id} cannot move from ${from} to ${to}`)
-    await this.state.saveTask({ ...snapshot.task, phase: to, resolution, completedAt: isTerminal(to) ? now : null })
+    await this.state.saveTask({ ...snapshot.task, phase: to, resolution })
     await this.event(snapshot, TaskEventKind.PhaseChanged, { from, to, ...(resolution === null ? {} : { resolution }) }, now)
   }
 
@@ -311,6 +313,11 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
     await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents })
     await this.transition(await this.state.load(snapshot.task.id), TaskPhase.Failed, decision.resolution, now)
     await this.event(snapshot, TaskEventKind.BudgetExceeded, { costCents: decision.costCents }, now)
+  }
+
+  private async cancelRun(decision: DecisionOf<typeof DecisionKind.CancelRun>, now: Date): Promise<void> {
+    await this.runtime.cancel(decision.sessionId)
+    await this.state.updateExecution(decision.executionId, { status: ExecutionStatus.Cancelled, endedAt: now })
   }
 
   private async destroySandbox(snapshot: TaskSnapshot, sandboxId: string, now: Date): Promise<void> {

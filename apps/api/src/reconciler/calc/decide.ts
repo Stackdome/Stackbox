@@ -9,6 +9,7 @@ import {
 } from '@stackbox/contract'
 import { AgentErrorCategory, type AgentEvent, AgentEventKind, type CheckArtifact, EnvironmentStatus } from '../../ports'
 import { costOf, wouldExceedBudget } from '../../tasks/calc/budget'
+import { isTerminal } from '../../tasks/calc/phase-transitions'
 import { reproKey, runKey, verifyKey } from '../../tasks/calc/idempotency-key'
 import type { Execution, Release, Run } from '../../tasks/types'
 import type { ExecutionPatch, TaskSnapshot } from '../task-state'
@@ -39,6 +40,7 @@ export const DecisionKind = {
   Transition: 'transition',
   FailBudgetExceeded: 'fail_budget_exceeded',
   CancelRun: 'cancel_run',
+  DeleteSession: 'delete_session',
   DestroySandbox: 'destroy_sandbox',
   TeardownInstance: 'teardown_instance',
   Complete: 'complete',
@@ -76,7 +78,8 @@ export type Decision =
   | { kind: typeof DecisionKind.OpenPullRequest; runId: string }
   | { kind: typeof DecisionKind.Transition; to: TaskPhase; resolution: TaskResolution | null }
   | { kind: typeof DecisionKind.FailBudgetExceeded; resolution: TaskResolution.Abandoned; costCents: number }
-  | { kind: typeof DecisionKind.CancelRun; sessionId: string }
+  | { kind: typeof DecisionKind.CancelRun; executionId: string; sessionId: string }
+  | { kind: typeof DecisionKind.DeleteSession; sessionId: string }
   | { kind: typeof DecisionKind.DestroySandbox; sandboxId: string }
   | { kind: typeof DecisionKind.TeardownInstance; instanceId: string }
   | { kind: typeof DecisionKind.Complete }
@@ -148,7 +151,7 @@ export function activeExecution(snapshot: RunScope): Execution | undefined {
 }
 
 export function decide(snapshot: TaskSnapshot, observations: Observations, now: Date): Decision[] {
-  if (snapshot.task.phase === TaskPhase.Cancelled) return cleanUp(snapshot)
+  if (isTerminal(snapshot.task.phase)) return cleanUp(snapshot)
   const execution = activeExecution(snapshot)
   const turnEnd = execution && observations.events.map(turnEndOf).find((end) => end !== undefined)
   const reported = execution ? observations.events.filter(isCheck).filter((event) => !isStored(snapshot, execution, event)) : []
@@ -292,18 +295,21 @@ function startingRun(c: Context, start: RunStart, before: Decision[], after: Dec
   return [...before, { kind: DecisionKind.StartRun, ...start, costCents: c.spent }, ...after]
 }
 
+// Runs once per terminal task, before completedAt stops it being claimed; a handed over instance stays up for review.
 function cleanUp(snapshot: TaskSnapshot): Decision[] {
   const cancels: Decision[] = snapshot.executions.flatMap((execution) =>
     execution.sessionRef !== null && ACTIVE.includes(execution.status)
-      ? [{ kind: DecisionKind.CancelRun, sessionId: execution.sessionRef }]
+      ? [{ kind: DecisionKind.CancelRun, executionId: execution.id, sessionId: execution.sessionRef }]
       : [],
   )
+  const sessions = new Set(snapshot.executions.flatMap((execution) => (execution.sessionRef === null ? [] : [execution.sessionRef])))
+  const deletes: Decision[] = [...sessions].map((sessionId) => ({ kind: DecisionKind.DeleteSession, sessionId }))
   const destroys: Decision[] = snapshot.sandboxes
     .filter((sandbox) => sandbox.externalId !== null && sandbox.stoppedAt === null)
     .map((sandbox) => ({ kind: DecisionKind.DestroySandbox, sandboxId: sandbox.id }))
-  const teardown: Decision[] =
-    snapshot.task.instanceId === null ? [] : [{ kind: DecisionKind.TeardownInstance, instanceId: snapshot.task.instanceId }]
-  return [...cancels, ...destroys, ...teardown, { kind: DecisionKind.Complete }]
+  const { instanceId, phase } = snapshot.task
+  const teardown: Decision[] = phase === TaskPhase.HandOver || instanceId === null ? [] : [{ kind: DecisionKind.TeardownInstance, instanceId }]
+  return [...cancels, ...deletes, ...destroys, ...teardown, { kind: DecisionKind.Complete }]
 }
 
 function recordExecution(execution: Execution, events: AgentEvent[], turnEnd: TurnEnd | undefined, now: Date): Decision {

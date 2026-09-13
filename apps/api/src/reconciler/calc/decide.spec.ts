@@ -356,7 +356,8 @@ describe('decide', () => {
       executions: [anExecution()],
     })
     expect(decide(snapshot, observing(), NOW)).toEqual([
-      { kind: DecisionKind.CancelRun, sessionId: 'session-1' },
+      { kind: DecisionKind.CancelRun, executionId: 'E1', sessionId: 'session-1' },
+      { kind: DecisionKind.DeleteSession, sessionId: 'session-1' },
       { kind: DecisionKind.DestroySandbox, sandboxId: 'S1' },
       { kind: DecisionKind.TeardownInstance, instanceId: 'instance-1' },
       { kind: DecisionKind.Complete },
