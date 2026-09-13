@@ -30,8 +30,8 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
   const [failed, setFailed] = React.useState(false);
 
   const refresh = React.useCallback(async () => {
-    // Signed out: there is no organization to ask about.
     if (!organisationId) {
+      setLoaded(NOTHING_LOADED);
       setLoading(false);
       return;
     }
@@ -60,7 +60,8 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
 
   const cancel = React.useCallback(
     async (taskId: string) => {
-      await cancelTask(organisationId as string, taskId);
+      if (!organisationId) return;
+      await cancelTask(organisationId, taskId);
       await refresh();
     },
     [organisationId, refresh],

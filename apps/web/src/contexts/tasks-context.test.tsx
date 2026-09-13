@@ -5,6 +5,7 @@ import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { APPLICATIONS, TASK_SUMMARIES, makeUser } from '../../.storybook/fixtures'
+import { clearAuthSession } from '@/lib/common'
 import { useTasks } from '@/hooks/use-tasks'
 import { taskHandlers } from '@/preview/handlers/tasks'
 import { CurrentUserProvider } from './current-user-context'
@@ -41,5 +42,14 @@ describe('TasksProvider', () => {
     await act(() => result.current.cancel('task-3'))
 
     expect(result.current.tasks.find((task) => task.id === 'task-3')?.status).toBe(CoarseStatus.Cancelled)
+  })
+
+  it('clears the loaded tasks once the user signs out', async () => {
+    const { result } = renderHook(() => useTasks(), { wrapper })
+    await waitFor(() => expect(result.current.tasks.length).toBeGreaterThan(0))
+
+    act(() => clearAuthSession())
+
+    await waitFor(() => expect(result.current.tasks.length).toBe(0))
   })
 })
