@@ -44,7 +44,9 @@ export default defineConfig({
       command:
         'pnpm --filter @stackbox/api migrate && pnpm --filter @stackbox/api seed && pnpm --filter @stackbox/api start',
       url: 'http://localhost:3000/api/v1/health',
-      reuseExistingServer: !process.env.CI,
+      // Every local run migrates and seeds fresh: a reused server would skip the
+      // reseed and leave the second run's running-task fixtures already consumed.
+      reuseExistingServer: false,
       env: {
         DATABASE_URL: process.env.DATABASE_URL ?? TEST_DATABASE_URL,
         JWT_SECRET: process.env.JWT_SECRET ?? TEST_JWT_SECRET,
