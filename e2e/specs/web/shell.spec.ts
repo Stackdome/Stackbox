@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
 
+const sidebarContent = '[data-sidebar="content"]'
+
 test('the preview opens on Tasks inside the shell', async ({ page }) => {
   await page.goto('/')
 
@@ -9,7 +11,7 @@ test('the preview opens on Tasks inside the shell', async ({ page }) => {
 test('the sidebar holds the five destinations in order for an admin', async ({ page }) => {
   await page.goto('/tasks')
 
-  await expect(page.locator('[data-sidebar="content"]').getByRole('link')).toHaveText([
+  await expect(page.locator(sidebarContent).getByRole('link')).toHaveText([
     'Tasks',
     'Applications',
     'Instances',
@@ -21,7 +23,7 @@ test('the sidebar holds the five destinations in order for an admin', async ({ p
 test('the Organization group is labelled for an admin', async ({ page }) => {
   await page.goto('/tasks')
 
-  await expect(page.locator('[data-sidebar="content"]').getByText('Organization', { exact: true })).toBeVisible()
+  await expect(page.locator(sidebarContent).getByText('Organization', { exact: true })).toBeVisible()
 })
 
 test('the Tasks badge reads the number of tasks that need you', async ({ page }) => {
@@ -42,9 +44,9 @@ test('collapsing the rail turns the badge into a dot', async ({ page }) => {
 test('the active item tracks the route', async ({ page }) => {
   await page.goto('/tasks')
 
-  await page.locator('[data-sidebar="content"]').getByRole('link', { name: 'Instances' }).click()
+  await page.locator(sidebarContent).getByRole('link', { name: 'Instances' }).click()
 
-  await expect(page.locator('[data-sidebar="content"]').getByRole('link', { name: 'Instances' })).toHaveAttribute('data-active', 'true')
+  await expect(page.locator(sidebarContent).getByRole('link', { name: 'Instances' })).toHaveAttribute('data-active', 'true')
 })
 
 for (const path of ['/tasks', '/applications', '/instances', '/repositories', '/settings']) {
