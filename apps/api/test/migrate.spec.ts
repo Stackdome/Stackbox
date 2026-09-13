@@ -5,6 +5,13 @@ import { assertTestDatabaseUrl } from './support/assert-test-database'
 
 const url = process.env.DATABASE_URL as string
 
+const DOMAIN_TABLES = [
+  'organization', 'user_account', 'repository', 'git_connection', 'application', 'service',
+  'application_instance', 'release', 'report', 'task', 'run', 'sandbox', 'execution',
+  'task_check', 'pull_request', 'artifact', 'task_message', 'task_event', 'policy',
+  'role_binding',
+]
+
 describe('assertTestDatabaseUrl', () => {
   it('refuses to reset a database whose name does not end with _test', () => {
     expect(() =>
@@ -33,10 +40,11 @@ describe('migrating an empty test database', () => {
     await client.end()
   })
 
-  it('creates the organization table on an empty database', async () => {
-    const result = await client.query(
-      "select 1 from information_schema.tables where table_schema = 'public' and table_name = 'organization'",
+  it('creates every table of the domain model on an empty database', async () => {
+    const result = await client.query<{ table_name: string }>(
+      "select table_name from information_schema.tables where table_schema = 'public'",
     )
-    expect(result.rowCount).toBe(1)
+    const created = result.rows.map((row) => row.table_name)
+    expect(DOMAIN_TABLES.filter((table) => !created.includes(table))).toEqual([])
   })
 })
