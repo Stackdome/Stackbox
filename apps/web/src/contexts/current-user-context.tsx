@@ -1,6 +1,7 @@
 import * as React from "react";
 import type { components } from "@stackbox/contract";
 import { UserRole } from "@stackbox/contract";
+import { fetchCurrentUser } from "@/api/users";
 import { getCurrentUser as getStoredUser } from "@/lib/common";
 import { AUTH_SESSION_CHANGED } from "@/lib/auth-events";
 
@@ -22,8 +23,11 @@ export function CurrentUserProvider({ children }: { children: React.ReactNode })
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
-    setUser(getStoredUser());
-    setLoading(false);
+    try {
+      setUser(await fetchCurrentUser());
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   // The provider mounts once, on /sign-in before a token exists, and
