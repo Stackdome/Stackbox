@@ -1,9 +1,10 @@
 import type { AgentRuntime, Clock } from '../ports'
+import { INVALID_REPORT_CHECK_MESSAGE, parseReportCheckArguments } from '../report-check-arguments'
 import {
+  AgentErrorCategory,
   type AgentEvent,
   AgentEventKind,
   REPORT_CHECK_FUNCTION,
-  type ReportCheckArguments,
   type RequiredAction,
   RequiredActionType,
   type RunRef,
@@ -146,8 +147,17 @@ export class InMemoryAgentRuntime implements AgentRuntime {
     const waiting: RequiredAction[] = []
     for (const action of stamped) {
       if (action.type === RequiredActionType.FunctionCall && action.name === REPORT_CHECK_FUNCTION) {
-        const args = action.arguments as ReportCheckArguments
-        this.record(session, { kind: AgentEventKind.Check, checkKind: args.checkKind, outcome: args.outcome, artifacts: args.artifacts })
+        const args = parseReportCheckArguments(action.arguments)
+        if (!args) {
+          this.emit(session.id, {
+            kind: AgentEventKind.TurnFailed,
+            category: AgentErrorCategory.Permanent,
+            message: INVALID_REPORT_CHECK_MESSAGE,
+            costCents: 0,
+          })
+          return
+        }
+        this.record(session, { kind: AgentEventKind.Check, ...args })
         this.resolve(session, action.callId, { recorded: true })
       } else {
         waiting.push(action)

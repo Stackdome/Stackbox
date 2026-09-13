@@ -1,7 +1,15 @@
 import { CheckKind, CheckOutcome } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import { aRunSpec } from '../../tasks/test-support/builders'
-import { type AgentEvent, AgentEventKind, EnvironmentStatus, RequiredActionType, SessionStatus } from '../types'
+import {
+  AgentErrorCategory,
+  type AgentEvent,
+  AgentEventKind,
+  EnvironmentStatus,
+  type ReportCheckArguments,
+  RequiredActionType,
+  SessionStatus,
+} from '../types'
 import { environmentBecomes, reportCheckCall, turnCompleted } from './agent-script'
 import { describeAgentRuntimeContract } from './agent-runtime.contract'
 import { InMemoryAgentRuntime } from './in-memory-agent-runtime'
@@ -74,6 +82,17 @@ describe('the in-memory agent runtime', () => {
     const { sessionId } = await runtime.startRun(aRunSpec())
     const patch = await sandboxes.readFile(runtime.environmentOf(sessionId), '/workspace/outputs/fix.patch')
     expect(patch.toString()).toBe('patch')
+  })
+
+  it('fails the turn permanently when a report_check call carries an outcome outside the contract', async () => {
+    const { runtime } = aRuntime()
+    const { sessionId } = await runtime.startRun(aRunSpec())
+    const invalid = { checkKind: CheckKind.FixVerified, outcome: 'probably', artifacts: [] } as unknown as ReportCheckArguments
+    runtime.emit(sessionId, reportCheckCall('call-1', invalid))
+    const received = await runtime.items(sessionId)
+    expect(received.map((event) => (event.kind === AgentEventKind.TurnFailed ? [event.kind, event.category] : [event.kind]))).toEqual([
+      [AgentEventKind.TurnFailed, AgentErrorCategory.Permanent],
+    ])
   })
 })
 

@@ -1,10 +1,10 @@
-import { type CheckKind, type CheckOutcome, MessageRole } from '@stackbox/contract'
+import { MessageRole } from '@stackbox/contract'
+import { INVALID_REPORT_CHECK_MESSAGE, parseReportCheckArguments } from '../../report-check-arguments'
 import {
   AgentErrorCategory,
   type AgentEvent,
   type AgentEventEnvelope,
   AgentEventKind,
-  type CheckArtifact,
   EnvironmentStatus,
   REPORT_CHECK_FUNCTION,
   type RequiredAction,
@@ -53,8 +53,14 @@ const ASSISTANT_ROLE = 'assistant'
 // Error codes are not documented on an indexed page; rate limits and server errors are the retryable ones.
 const TRANSIENT_CODES = ['rate_limit_exceeded', 'server_error']
 
+// Model output: text that is not JSON stays a string and fails any schema it is checked against.
 function parseArguments(raw: string | undefined): unknown {
-  return raw === undefined ? {} : JSON.parse(raw)
+  if (raw === undefined) return {}
+  try {
+    return JSON.parse(raw)
+  } catch {
+    return raw
+  }
 }
 
 export function toRequiredAction(wire: WireRequiredAction): RequiredAction {
@@ -85,8 +91,11 @@ export function toAgentEvent(sessionId: string, wire: WireEvent): AgentEvent | n
       if (wire.name !== REPORT_CHECK_FUNCTION) {
         return { ...envelope, kind: AgentEventKind.ToolCall, callId: wire.call_id ?? '', name: wire.name ?? '', arguments: args }
       }
-      const check = args as { checkKind: CheckKind; outcome: CheckOutcome; artifacts?: CheckArtifact[] }
-      return { ...envelope, kind: AgentEventKind.Check, checkKind: check.checkKind, outcome: check.outcome, artifacts: check.artifacts ?? [] }
+      const check = parseReportCheckArguments(args)
+      if (!check) {
+        return { ...envelope, kind: AgentEventKind.TurnFailed, category: AgentErrorCategory.Permanent, message: INVALID_REPORT_CHECK_MESSAGE, costCents: 0 }
+      }
+      return { ...envelope, kind: AgentEventKind.Check, ...check }
     }
     case WIRE.FunctionCallOutput:
       return { ...envelope, kind: AgentEventKind.ToolResult, callId: wire.call_id ?? '', output: wire.output }

@@ -158,6 +158,17 @@ describe('the openai event mapping', () => {
     })
   })
 
+  it('fails the turn permanently when report_check arguments are not valid JSON', () => {
+    const event = toAgentEvent('sess_1', wire('function_call', { call_id: 'call_1', name: REPORT_CHECK_FUNCTION, arguments: '{"checkKind":' }))
+    expect(event).toMatchObject({ ...envelope, kind: AgentEventKind.TurnFailed, category: AgentErrorCategory.Permanent, costCents: 0 })
+  })
+
+  it('fails the turn permanently when report_check names a check kind outside the contract', () => {
+    const args = JSON.stringify({ checkKind: 'looks_good', outcome: CheckOutcome.Passed, artifacts: [] })
+    const event = toAgentEvent('sess_1', wire('function_call', { call_id: 'call_1', name: REPORT_CHECK_FUNCTION, arguments: args }))
+    expect(event).toMatchObject({ ...envelope, kind: AgentEventKind.TurnFailed, category: AgentErrorCategory.Permanent, costCents: 0 })
+  })
+
   it('maps a report_check call with artifacts to a check carrying them', () => {
     const artifacts = [{ kind: ArtifactKind.Screenshot, url: 'https://artifacts.test/fixed.png' }]
     const args = JSON.stringify({ checkKind: CheckKind.ReportReproduced, outcome: CheckOutcome.Failed, artifacts })
