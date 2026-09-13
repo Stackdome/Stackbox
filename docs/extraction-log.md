@@ -42,3 +42,36 @@ Tracks which Stackdome source became which Stackbox component, and in which slic
 | `apps/web/vite.config.ts` | `stackdome/frontend/vite.config.ts` | 0 | repaired: `outDir: 'dist'`, dropped `emptyOutDir`, proxy target `http://localhost:3000` |
 | `apps/web/vitest.config.ts` | `stackdome/frontend/vitest.config.ts` | 0 | repaired: added `passWithNoTests: true` on root and unit project |
 | `apps/web/index.html` | `stackdome/frontend/index.html` | 0 | repaired: title changed to Stackbox, favicon links kept |
+
+## Slice 1
+
+| Stackbox path | Stackdome source path | Treatment | Story title |
+|---|---|---|---|
+| `apps/web/src/hooks/use-mobile.ts` | `frontend/src/hooks/use-mobile.ts` | copied verbatim | none |
+| `apps/web/src/hooks/use-selection-slide.ts` | `frontend/src/hooks/use-selection-slide.ts` | repaired: em dash prose restructured, one history aside deleted | none |
+| `apps/web/src/hooks/use-theme.ts` | `frontend/src/hooks/use-theme.ts` | copied verbatim | none |
+| `apps/web/src/hooks/use-breadcrumb.tsx` | `frontend/src/hooks/use-breadcrumb.tsx` | copied verbatim | none |
+| `apps/web/src/hooks/use-journey.ts` | `frontend/src/hooks/use-journey.ts` | repaired: em dash prose restructured | none |
+| `apps/web/src/contexts/theme-provider.tsx` | `frontend/src/contexts/theme-provider.tsx` | repaired: exports `THEME_STORAGE_KEY = 'stackbox-ui-theme'`, `storageKey` default now references the constant | none |
+| `apps/web/src/contexts/breadcrumb-context.tsx` | `frontend/src/contexts/breadcrumb-context.tsx` | repaired: em dash prose restructured | none |
+| `apps/web/src/components/ui/badge.tsx` | `frontend/src/components/ui/badge.tsx` | copied verbatim | `Primitives/Badge` |
+| `apps/web/src/components/ui/breadcrumb.tsx` | `frontend/src/components/ui/breadcrumb.tsx` | repaired: em dash prose restructured, one history aside deleted | `Primitives/Breadcrumb` |
+| `apps/web/src/components/ui/card.tsx` | `frontend/src/components/ui/card.tsx` | repaired: em dash prose restructured | `Primitives/Card` |
+| `apps/web/src/components/ui/checkbox.tsx` | `frontend/src/components/ui/checkbox.tsx` | repaired: em dash prose restructured | `Primitives/Checkbox` |
+| `apps/web/src/components/ui/input.tsx` | `frontend/src/components/ui/input.tsx` | repaired: em dash prose restructured | `Primitives/Input` |
+| `apps/web/src/components/ui/table.tsx` | `frontend/src/components/ui/table.tsx` | repaired: em dash prose restructured | `Primitives/Table` |
+| `apps/web/src/components/ui/switch.tsx` | `frontend/src/components/ui/switch.tsx` | repaired: em dash prose restructured | `Primitives/Switch` |
+| `apps/web/src/components/ui/radio-group.tsx` | `frontend/src/components/ui/radio-group.tsx` | copied verbatim (story repaired: em dash prose restructured, history preamble trimmed) | `Primitives/RadioGroup` |
+| `apps/web/src/components/ui/button.tsx` | `frontend/src/components/ui/button.tsx` | repaired: em dash prose restructured | `Primitives/Button` |
+| `apps/web/src/components/ui/kbd.tsx` | `frontend/src/components/ui/kbd.tsx` | repaired: em dash prose restructured, design-log history trimmed | `Primitives/Kbd` (fresh) |
+| `apps/web/src/components/ui/accordion.tsx` | `frontend/src/components/ui/accordion.tsx` | copied verbatim | `Primitives/Accordion` (fresh) |
+| `apps/web/src/components/ui/alert.tsx` | `frontend/src/components/ui/alert.tsx` | copied verbatim | `Primitives/Alert` (fresh) |
+| `apps/web/src/components/ui/avatar.tsx` | `frontend/src/components/ui/avatar.tsx` | copied verbatim | `Primitives/Avatar` (fresh) |
+| `apps/web/src/components/ui/collapsible.tsx` | `frontend/src/components/ui/collapsible.tsx` | copied verbatim | `Primitives/Collapsible` (fresh) |
+| `apps/web/src/components/ui/label.tsx` | `frontend/src/components/ui/label.tsx` | copied verbatim | `Primitives/Label` (fresh) |
+| `apps/web/src/components/ui/password-input.tsx` | `frontend/src/components/ui/password-input.tsx` | copied verbatim | `Primitives/PasswordInput` (fresh) |
+| `apps/web/src/components/ui/separator.tsx` | `frontend/src/components/ui/separator.tsx` | copied verbatim | `Primitives/Separator` (fresh) |
+| `apps/web/src/components/ui/skeleton.tsx` | `frontend/src/components/ui/skeleton.tsx` | copied verbatim | `Primitives/Skeleton` (fresh) |
+| `apps/web/src/components/ui/textarea.tsx` | `frontend/src/components/ui/textarea.tsx` | copied verbatim | `Primitives/Textarea` (fresh) |
+
+Story copy fixed (banned word `Stack`/`Project` in visible text, not code): `breadcrumb.stories.tsx` (`Projects` to `Repos`, `Stacks` to `Instances`), `input.stories.tsx` (`stack` to `instance` in placeholders and values), `button.stories.tsx` (`Deploy stack` to `Spin up instance`).
