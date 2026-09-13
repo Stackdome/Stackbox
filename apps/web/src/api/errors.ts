@@ -2,7 +2,7 @@
 // a top-level message plus per-field validation errors (details.errors[]) and
 // the credential-required detail variant. Falls back to the flat reason string
 // when no structured details are present.
-import { getErrorMessage, getErrorStatus, isAxiosError } from "./client";
+import { getErrorMessage, getErrorStatus, isAxiosError, isForbiddenError } from "./client";
 
 export type ParsedFieldError = {
   field: string;
@@ -68,6 +68,11 @@ function extractCredential(details: Record<string, unknown> | undefined): Creden
       ref: String(target.ref ?? ""),
     },
   };
+}
+
+// A 403 on cancel names the missing permission; every other failure keeps the generic toast.
+export function cancelTaskErrorMessage(error: unknown): string {
+  return isForbiddenError(error) ? "You do not have permission to cancel this task" : "The task was not cancelled";
 }
 
 export function parseApiError(error: unknown): ParsedApiError {

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { cancelTaskErrorMessage } from "@/api/errors";
 import type { Task } from "@/api/mappers/task";
 import { EmptyState, PageHeader, SearchGlyph, useConfirm } from "@/components/branded";
 import { NO_FILTER, filterTasks, type TasksFilter } from "@/components/tasks/filter-tasks";
@@ -28,8 +29,8 @@ export function TasksPage() {
     if (!confirmed) return;
     try {
       await cancel(task.id);
-    } catch {
-      toast({ title: "The task was not cancelled" });
+    } catch (error) {
+      toast({ title: cancelTaskErrorMessage(error) });
     }
   }
 
