@@ -238,6 +238,36 @@ export const DisabledItemsSayWhy: Story = {
   },
 }
 
+/** Rendered open with no play, so the themes sweep checks the panel's colours
+ *  without simulating a click first. */
+export const OpenForTheThemeSweep: Story = {
+  render: () => (
+    <DropdownMenu defaultOpen>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline">Actions</Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuGroup>
+          <DropdownMenuItem>
+            <Pencil />
+            Rename
+            <DropdownMenuShortcut>⌘R</DropdownMenuShortcut>
+          </DropdownMenuItem>
+          <DropdownMenuItem>
+            <Copy />
+            Duplicate
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive">
+          <Trash2 />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  ),
+}
+
 /** Long labels wrap inside a bounded panel rather than stretching the menu
  *  across the screen. */
 export const LongLabels: Story = {

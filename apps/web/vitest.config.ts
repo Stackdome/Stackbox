@@ -6,10 +6,11 @@ import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
-// Two projects: the jsdom unit suite, and every story run as a test in a real
-// browser. The story project renders each story and executes its play
-// function, so a component change that breaks a story fails the build instead
-// of rotting until someone opens Storybook.
+// Three projects: the jsdom unit suite, every story run as a test in a real
+// browser, and each story swept again under every theme. The story project
+// renders each story and executes its play function, so a component change
+// that breaks a story fails the build instead of rotting until someone opens
+// Storybook.
 export default defineConfig({
   test: {
     // Vitest's exit-code check reads passWithNoTests off the root config, not
@@ -29,14 +30,14 @@ export default defineConfig({
           // stubbed here rather than guarded at every call site. See the file.
           setupFiles: ['./src/test-support/jsdom-globals.ts'],
           sequence: { groupOrder: 0 },
-          // Slice 0 ships no web unit test yet; without this vitest fails a
-          // project that matches zero files.
+          // Without this, vitest fails a project that matches zero files.
           passWithNoTests: true,
         },
       },
       {
         extends: './vite.config.ts',
         plugins: [storybookTest({ configDir: path.join(dirname, '.storybook') })],
+        optimizeDeps: { entries: ['src/**/*.stories.tsx', '.storybook/preview.tsx'] },
         test: {
           name: 'storybook',
           browser: {
@@ -59,6 +60,7 @@ export default defineConfig({
       },
       {
         extends: './vite.config.ts',
+        optimizeDeps: { entries: ['src/**/*.stories.tsx', '.storybook/preview.tsx'] },
         test: {
           name: 'themes',
           include: ['src/**/*.browser.test.tsx'],

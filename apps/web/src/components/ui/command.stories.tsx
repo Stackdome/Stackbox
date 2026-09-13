@@ -117,6 +117,28 @@ export const NoResults: Story = {
   },
 }
 
+/** Rendered open with no play, so the themes sweep checks the list's colours
+ *  without simulating a keystroke first. */
+export const OpenForTheThemeSweep: Story = {
+  render: () => (
+    <Command className={PANEL}>
+      <CommandInput placeholder="Search resources…" />
+      <CommandList>
+        <CommandGroup heading="Services">
+          <CommandItem>
+            <Server />
+            web
+          </CommandItem>
+          <CommandItem>
+            <Server />
+            worker
+          </CommandItem>
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  ),
+}
+
 /** A long list scrolls inside the panel rather than growing it off screen. */
 export const LongList: Story = {
   render: () => (

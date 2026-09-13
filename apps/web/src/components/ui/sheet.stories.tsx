@@ -64,3 +64,24 @@ export const OpensIntoAPortal: Story = {
     })
   },
 }
+
+/** Rendered open with no play, so the themes sweep checks the panel's colours
+ *  without simulating a click first. */
+export const OpenForTheThemeSweep: Story = {
+  render: () => (
+    <Sheet defaultOpen>
+      <SheetTrigger asChild>
+        <Button variant="outline">Open sheet</Button>
+      </SheetTrigger>
+      <SheetContent>
+        <SheetHeader>
+          <SheetTitle>Instance details</SheetTitle>
+          <SheetDescription>A slice of the record, without leaving the page.</SheetDescription>
+        </SheetHeader>
+        <SheetFooter>
+          <Button variant="outline">Close</Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  ),
+}
