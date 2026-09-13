@@ -35,6 +35,12 @@ export default defineConfig({
       timeout: 120_000,
     },
     {
+      command: 'pnpm --filter @stackbox/web dev:mock:empty',
+      url: 'http://localhost:5274',
+      reuseExistingServer: !process.env.CI,
+      timeout: 120_000,
+    },
+    {
       command:
         'pnpm --filter @stackbox/api migrate && pnpm --filter @stackbox/api seed && pnpm --filter @stackbox/api start',
       url: 'http://localhost:3000/api/v1/health',
