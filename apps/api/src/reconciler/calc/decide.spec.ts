@@ -77,6 +77,16 @@ describe('decide', () => {
     ])
   })
 
+  it('starts preparing without requesting a second instance when the task already has one', () => {
+    const snapshot = aSnapshot({ task: aTask({ instanceId: 'instance-1' }) })
+    expect(decide(snapshot, observing(), NOW)).toEqual([transition(TaskPhase.Preparing)])
+  })
+
+  it('fails a preparing task whose origin release failed', () => {
+    const snapshot = aSnapshot({ task: aTask({ phase: TaskPhase.Preparing, instanceId: 'instance-1' }), releases: [origin] })
+    expect(decide(snapshot, observing({ releaseStatus: ReleaseStatus.Failed }), NOW)).toEqual([transition(TaskPhase.Failed)])
+  })
+
   it('deploys the target branch head once the instance exists', () => {
     const snapshot = aSnapshot({ task: aTask({ phase: TaskPhase.Preparing, instanceId: 'instance-1' }) })
     expect(decide(snapshot, observing({ headSha: 'origin-sha' }), NOW)).toEqual([
@@ -257,6 +267,23 @@ describe('decide', () => {
     const events = [item('item-4', turnFailed(AgentErrorCategory.Transient, 30))]
     expect(decide(snapshot, observing({ events }), NOW)).toEqual([
       { kind: DecisionKind.RetrySameKey, executionId: 'E1', purpose: RunPurpose.Implement, instanceUrl: null, costCents: 40 },
+    ])
+  })
+
+  it('fails the task instead of retrying the same key when a turn fails for a reason that is not transient', () => {
+    const snapshot = aSnapshot({
+      task: aTask({ phase: TaskPhase.Implementing, instanceId: 'instance-1' }),
+      runs: [aRun()],
+      executions: [anExecution({ idempotencyKey: 'T1:run1', runId: 'T1-run1' })],
+    })
+    const events = [item('item-4', turnFailed(AgentErrorCategory.Permanent))]
+    expect(decide(snapshot, observing({ events }), NOW)).toEqual([
+      transition(TaskPhase.Failed),
+      {
+        kind: DecisionKind.RecordExecution,
+        executionId: 'E1',
+        patch: { eventCursor: 'item-4', status: ExecutionStatus.Failed, costCents: 0, endedAt: NOW },
+      },
     ])
   })
 
