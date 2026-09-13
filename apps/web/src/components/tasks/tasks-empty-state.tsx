@@ -9,7 +9,7 @@ export function TasksEmptyState({ hasApplications }: { hasApplications: boolean 
       title="No tasks yet"
       description="Report a bug and the agent reproduces it, fixes it and opens a pull request."
       action={
-        <Button asChild>
+        <Button asChild variant="outline">
           <Link to={ROUTES.newTask}>New task</Link>
         </Button>
       }
@@ -19,7 +19,7 @@ export function TasksEmptyState({ hasApplications }: { hasApplications: boolean 
       title="No tasks yet"
       description="A task runs against an application. Connect one to report the first bug."
       action={
-        <Button asChild>
+        <Button asChild variant="outline">
           <Link to={ROUTES.applications}>Connect an application first</Link>
         </Button>
       }
