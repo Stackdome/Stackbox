@@ -3,6 +3,7 @@ import { ConfirmProvider } from '../src/components/branded/confirm'
 import { CurrentUserProvider } from '../src/contexts/current-user-context'
 import { BreadcrumbProvider } from '../src/contexts/breadcrumb-context'
 import { SheetHeader } from '../src/components/sheet-header'
+import { TasksProvider } from '../src/contexts/tasks-context'
 
 export const withConfirm: Decorator = (Story) => (
   <ConfirmProvider>
@@ -14,6 +15,12 @@ export const withCurrentUser: Decorator = (Story) => (
   <CurrentUserProvider>
     <Story />
   </CurrentUserProvider>
+)
+
+export const withTasks: Decorator = (Story) => (
+  <TasksProvider>
+    <Story />
+  </TasksProvider>
 )
 
 /**

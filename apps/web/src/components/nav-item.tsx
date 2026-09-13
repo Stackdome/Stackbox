@@ -9,7 +9,7 @@ import { isNavItemActive, type NavItem as NavItemData } from "@/components/nav-i
  *
  * The label is ink at rest; the grey is carried by the icon.
  */
-export function NavItem({ item, badge }: { item: NavItemData; badge?: number }) {
+export function NavItem({ item, badge = 0 }: { item: NavItemData; badge?: number }) {
   const { pathname } = useLocation();
   const Icon = item.icon;
 
@@ -27,7 +27,19 @@ export function NavItem({ item, badge }: { item: NavItemData; badge?: number }) 
           </span>
         </Link>
       </SidebarMenuButton>
-      {badge !== undefined && <SidebarMenuBadge>{badge}</SidebarMenuBadge>}
+      {badge > 0 && (
+        <>
+          <SidebarMenuBadge className="bg-warn-bg text-warn peer-hover/menu-button:text-warn peer-data-[active=true]/menu-button:text-warn">
+            {badge}
+          </SidebarMenuBadge>
+          {/* The collapsed rail has no room for the count; the dot keeps the colour. */}
+          <span
+            aria-hidden
+            data-slot="nav-item-dot"
+            className="pointer-events-none absolute right-1.5 top-1.5 hidden size-1.5 rounded-full bg-warn group-data-[collapsible=icon]:block"
+          />
+        </>
+      )}
     </SidebarMenuItem>
   );
 }

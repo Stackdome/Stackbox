@@ -1,22 +1,20 @@
 import { useEffect, useState } from 'react'
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, within } from 'storybook/test'
+import { expect, waitFor, within } from 'storybook/test'
 import { useNavigate } from 'react-router-dom'
-import { withCurrentUser } from '../../.storybook/decorators'
+import { CoarseStatus, UserRole } from '@stackbox/contract'
+import { withCurrentUser, withTasks } from '../../.storybook/decorators'
+import { APPLICATIONS, TASK_SUMMARIES, makeUser } from '../../.storybook/fixtures'
+import { baselineHandlers } from '../../.storybook/msw-handlers'
+import { taskHandlers } from '@/preview/handlers/tasks'
 import { AppSidebar } from './app-sidebar'
 import { SidebarProvider } from './ui/sidebar'
-import { ROUTES, type RoutePath } from '@/lib/routes'
+import { ROUTES } from '@/lib/routes'
 
 // The global preview decorator already supplies a MemoryRouter (nesting a
 // second one throws); hop that router to Instances so its `isActive` check
 // resolves before rendering.
-function SidebarHarness({
-  collapsed = false,
-  badges,
-}: {
-  collapsed?: boolean
-  badges?: Partial<Record<RoutePath, number>>
-}) {
+function SidebarHarness({ collapsed = false }: { collapsed?: boolean }) {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)
   useEffect(() => {
@@ -27,7 +25,7 @@ function SidebarHarness({
   return (
     <SidebarProvider defaultOpen={!collapsed}>
       <div className="flex h-[560px]">
-        <AppSidebar badges={badges} />
+        <AppSidebar />
       </div>
     </SidebarProvider>
   )
@@ -37,11 +35,23 @@ const meta = {
   title: 'Features/AppSidebar',
   component: SidebarHarness,
   tags: ['ai-generated'],
-  decorators: [withCurrentUser],
+  decorators: [withTasks, withCurrentUser],
 } satisfies Meta<typeof SidebarHarness>
 
 export default meta
 type Story = StoryObj<typeof meta>
+
+const needsYouRows = TASK_SUMMARIES.filter((row) => row.coarse_status === CoarseStatus.NeedsYou).length
+
+export const TasksBadgeCountsNeedsYouRows: Story = {
+  name: 'the sidebar Tasks badge counts only rows whose coarse status is needs_you',
+  parameters: { msw: [...taskHandlers(TASK_SUMMARIES, APPLICATIONS), ...baselineHandlers] },
+  play: async ({ canvasElement }) => {
+    await waitFor(() =>
+      expect(canvasElement.querySelector('[data-sidebar="menu-badge"]')?.textContent).toBe(String(needsYouRows)),
+    )
+  },
+}
 
 // Active route item (Instances, current path) reads as an ink tint, never
 // brand orange text or icon fill.
@@ -131,15 +141,31 @@ export const Collapsed: Story = {
   },
 }
 
-/** Five destinations, in order, grouped as the master plan specifies, and a
- *  task count reaching the sidebar through a plain prop. */
-export const FiveItemsAndATaskBadge: Story = {
-  args: { badges: { [ROUTES.tasks]: 3 } },
+/** Five destinations, in order, grouped as the master plan specifies. */
+export const FiveItems: Story = {
   play: async ({ canvasElement, canvas }) => {
     const content = within(canvasElement.querySelector<HTMLElement>('[data-sidebar="content"]')!)
     const links = content.getAllByRole('link').map((link) => link.textContent?.trim())
     await expect(links).toEqual(['Tasks', 'Applications', 'Instances', 'Repositories', 'Settings'])
     await expect(canvas.getByText('Organization')).toBeVisible()
-    await expect(canvas.getByText('3')).toBeVisible()
+  },
+}
+
+/** Prompt 01 state 4: a member sees no Organization group at all, not an empty one. */
+export const MemberHasNoOrganizationGroup: Story = {
+  beforeEach: () => {
+    localStorage.setItem('currentUser', JSON.stringify(makeUser({ role: UserRole.OrgMember })))
+    return () => localStorage.setItem('currentUser', JSON.stringify(makeUser()))
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.queryByText('Organization')).toBeNull()
+  },
+}
+
+/** Prompt 01 state 3: the collapsed rail keeps the badge as a dot. */
+export const CollapsedRailShowsTheBadgeAsADot: Story = {
+  args: { collapsed: true },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(canvasElement.querySelector('[data-slot="nav-item-dot"]')).toBeVisible())
   },
 }

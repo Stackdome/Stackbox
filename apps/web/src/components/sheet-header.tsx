@@ -163,11 +163,14 @@ export function SheetHeader({ leading }: { leading?: React.ReactNode }) {
                   </BreadcrumbItem>
                 ) : index === trailItems.length - 1 ? (
                   <BreadcrumbItem className="min-w-0">
-                    {/* The page title. The trail before it is wayfinding.
-                        The rung lives in `PageTitle`. */}
-                    <BreadcrumbPage asChild>
-                      <PageTitle>{item.name}</PageTitle>
-                    </BreadcrumbPage>
+                    {/* The page's one heading. `BreadcrumbPage` gives its own
+                        element `role="link"`, so the heading has to be the
+                        element around it, not the element it slots into. */}
+                    <h1 className="min-w-0">
+                      <BreadcrumbPage asChild>
+                        <PageTitle>{item.name}</PageTitle>
+                      </BreadcrumbPage>
+                    </h1>
                   </BreadcrumbItem>
                 ) : !item.clickable ? (
                   <BreadcrumbItem className="flex-none">
