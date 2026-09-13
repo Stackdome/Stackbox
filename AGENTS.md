@@ -46,6 +46,8 @@ Full glossary: `docs/CONTEXT.md`. Screen and code names, the short form rule, an
 - Deep modules, narrow interfaces. The ORM, the HTTP client and the sandbox vendor never leak past their module.
 - Define errors out of existence: tearing down a torn-down instance is a no-op, so is cancelling a cancelled run.
 - Separate actions, calculations and data. Phase transitions, coarse status, budget arithmetic, drift detection and timeline derivation are pure functions in `calc/` files, tested without a database.
+- Stratified design: each layer calls only the layer below. A controller never touches a store, a page never touches the HTTP client. Immutable updates at data boundaries.
+- Strategic over tactical: when a copied component fights the new domain, redesign the module instead of patching around it. Prefer polymorphism over a conditional only once the conditional has grown.
 - TDD: red, green, refactor, one behaviour per step. Shameless green first, then the smallest difference removed. An abstraction arrives with the second concrete case, not before.
 - Tests read as sentences, arranged with named builders, one reason to fail. Fakes for ports, not mocks; no mocking library in the API suite.
 - No magic strings: every phase, resolution, purpose, check kind and outcome, pull request state, coarse status and role comes from a contract-generated enum.

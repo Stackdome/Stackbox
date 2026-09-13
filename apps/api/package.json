@@ -7,6 +7,7 @@
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
     "test:run": "vitest run",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "migrate": "tsx -e \"import('./src/db/client').then(m => m.runMigrations(process.env.DATABASE_URL))\""
   },
@@ -27,6 +28,7 @@
     "@types/node": "^22.10.5",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.10",
+    "eslint": "^9.25.0",
     "typescript": "~5.8.3",
     "unplugin-swc": "^1.6.0",
     "vitest": "4.1.10"

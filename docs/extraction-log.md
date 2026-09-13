@@ -16,7 +16,7 @@ Tracks which Stackdome source became which Stackbox component, and in which slic
 | `.claude/skills/create-pr/` | `~/code/stackdome/.claude/skills/create-pr/` | 0 | repaired: pre-flight gate collapsed to one command, path/scope lines updated |
 | `.claude/skills/ingest-design-bundle/` | `~/code/stackdome/.claude/skills/ingest-design-bundle/` | 0 | repaired: path/command lines only |
 | `.claude/skills/grill-with-docs/` (3 files) | `~/code/stackdome/.claude/skills/grill-with-docs/` | 0 | repaired: path/command lines only |
-| `packages/contract/openapi/stackbox_api.yaml` | Stackdome's OpenAPI source (read by `packages/contract/scripts/transform.ts`) | 0 | rewritten: pruned unreachable schemas, flattened project-scoped paths onto `organizations/{org_id}/`, renamed `Stack*` to `ApplicationInstance*` |
+| `packages/contract/openapi/stackbox_api.yaml` | Stackdome's OpenAPI source, hand-owned from here, shape asserted by `packages/contract/src/openapi.spec.ts` | 0 | rewritten: pruned unreachable schemas, flattened project-scoped paths onto `organizations/{org_id}/`, renamed `Stack*` to `ApplicationInstance*` |
 | `apps/web/eslint.config.js` | `stackdome/frontend/eslint.config.js` | 0 | copied verbatim |
 | `apps/web/components.json` | `stackdome/frontend/components.json` | 0 | copied verbatim |
 | `apps/web/tsconfig.app.json` | `stackdome/frontend/tsconfig.app.json` | 0 | repaired: dropped `erasableSyntaxOnly` (broke `tsc -b` on contract's generated enums) |
@@ -42,3 +42,153 @@ Tracks which Stackdome source became which Stackbox component, and in which slic
 | `apps/web/vite.config.ts` | `stackdome/frontend/vite.config.ts` | 0 | repaired: `outDir: 'dist'`, dropped `emptyOutDir`, proxy target `http://localhost:3000` |
 | `apps/web/vitest.config.ts` | `stackdome/frontend/vitest.config.ts` | 0 | repaired: added `passWithNoTests: true` on root and unit project |
 | `apps/web/index.html` | `stackdome/frontend/index.html` | 0 | repaired: title changed to Stackbox, favicon links kept |
+
+## Slice 1
+
+| Stackbox path | Stackdome source path | Treatment | Story title |
+|---|---|---|---|
+| `apps/web/src/hooks/use-mobile.ts` | `frontend/src/hooks/use-mobile.ts` | copied verbatim | none |
+| `apps/web/src/hooks/use-selection-slide.ts` | `frontend/src/hooks/use-selection-slide.ts` | repaired: em dash prose restructured, one history aside deleted | none |
+| `apps/web/src/hooks/use-theme.ts` | `frontend/src/hooks/use-theme.ts` | copied verbatim | none |
+| `apps/web/src/hooks/use-breadcrumb.tsx` | `frontend/src/hooks/use-breadcrumb.tsx` | copied verbatim | none |
+| `apps/web/src/hooks/use-journey.ts` | `frontend/src/hooks/use-journey.ts` | repaired: em dash prose restructured | none |
+| `apps/web/src/contexts/theme-provider.tsx` | `frontend/src/contexts/theme-provider.tsx` | repaired: exports `THEME_STORAGE_KEY = 'stackbox-ui-theme'`, `storageKey` default now references the constant | none |
+| `apps/web/src/contexts/breadcrumb-context.tsx` | `frontend/src/contexts/breadcrumb-context.tsx` | repaired: em dash prose restructured | none |
+| `apps/web/src/components/ui/badge.tsx` | `frontend/src/components/ui/badge.tsx` | copied verbatim | `Primitives/Badge` |
+| `apps/web/src/components/ui/breadcrumb.tsx` | `frontend/src/components/ui/breadcrumb.tsx` | repaired: em dash prose restructured, one history aside deleted | `Primitives/Breadcrumb` |
+| `apps/web/src/components/ui/card.tsx` | `frontend/src/components/ui/card.tsx` | repaired: em dash prose restructured | `Primitives/Card` |
+| `apps/web/src/components/ui/checkbox.tsx` | `frontend/src/components/ui/checkbox.tsx` | repaired: em dash prose restructured | `Primitives/Checkbox` |
+| `apps/web/src/components/ui/input.tsx` | `frontend/src/components/ui/input.tsx` | repaired: em dash prose restructured | `Primitives/Input` |
+| `apps/web/src/components/ui/table.tsx` | `frontend/src/components/ui/table.tsx` | repaired: em dash prose restructured | `Primitives/Table` |
+| `apps/web/src/components/ui/switch.tsx` | `frontend/src/components/ui/switch.tsx` | repaired: em dash prose restructured | `Primitives/Switch` |
+| `apps/web/src/components/ui/radio-group.tsx` | `frontend/src/components/ui/radio-group.tsx` | copied verbatim (story repaired: em dash prose restructured, history preamble trimmed) | `Primitives/RadioGroup` |
+| `apps/web/src/components/ui/button.tsx` | `frontend/src/components/ui/button.tsx` | repaired: em dash prose restructured | `Primitives/Button` |
+| `apps/web/src/components/ui/kbd.tsx` | `frontend/src/components/ui/kbd.tsx` | repaired: em dash prose restructured, design-log history trimmed | `Primitives/Kbd` (fresh) |
+| `apps/web/src/components/ui/accordion.tsx` | `frontend/src/components/ui/accordion.tsx` | copied verbatim | `Primitives/Accordion` (fresh) |
+| `apps/web/src/components/ui/alert.tsx` | `frontend/src/components/ui/alert.tsx` | copied verbatim | `Primitives/Alert` (fresh) |
+| `apps/web/src/components/ui/avatar.tsx` | `frontend/src/components/ui/avatar.tsx` | copied verbatim | `Primitives/Avatar` (fresh) |
+| `apps/web/src/components/ui/collapsible.tsx` | `frontend/src/components/ui/collapsible.tsx` | copied verbatim | `Primitives/Collapsible` (fresh) |
+| `apps/web/src/components/ui/label.tsx` | `frontend/src/components/ui/label.tsx` | copied verbatim | `Primitives/Label` (fresh) |
+| `apps/web/src/components/ui/password-input.tsx` | `frontend/src/components/ui/password-input.tsx` | copied verbatim | `Primitives/PasswordInput` (fresh) |
+| `apps/web/src/components/ui/separator.tsx` | `frontend/src/components/ui/separator.tsx` | copied verbatim | `Primitives/Separator` (fresh) |
+| `apps/web/src/components/ui/skeleton.tsx` | `frontend/src/components/ui/skeleton.tsx` | copied verbatim | `Primitives/Skeleton` (fresh) |
+| `apps/web/src/components/ui/textarea.tsx` | `frontend/src/components/ui/textarea.tsx` | copied verbatim | `Primitives/Textarea` (fresh) |
+
+Story copy fixed (banned word `Stack`/`Project` in visible text, not code): `breadcrumb.stories.tsx` (`Projects` to `Repos`, `Stacks` to `Instances`), `input.stories.tsx` (`stack` to `instance` in placeholders and values), `button.stories.tsx` (`Deploy stack` to `Spin up instance`).
+
+| `apps/web/src/components/ui/dialog.tsx` | `frontend/src/components/ui/dialog.tsx` | repaired: em dash prose restructured | `Primitives/Dialog` |
+| `apps/web/src/components/ui/drawer.tsx` | `frontend/src/components/ui/drawer.tsx` | repaired: em dash prose restructured, one stale duplicate doc comment and several history asides deleted | `Primitives/Drawer` |
+| `apps/web/src/components/ui/popover.tsx` | `frontend/src/components/ui/popover.tsx` | repaired: em dash prose restructured, history aside trimmed | `Primitives/Popover` |
+| `apps/web/src/components/ui/tooltip.tsx` | `frontend/src/components/ui/tooltip.tsx` | copied verbatim | `Primitives/Tooltip` |
+| `apps/web/src/components/ui/dropdown-menu.tsx` | `frontend/src/components/ui/dropdown-menu.tsx` | repaired: em dash prose restructured, history asides trimmed | `Primitives/DropdownMenu` |
+| `apps/web/src/components/ui/select.tsx` | `frontend/src/components/ui/select.tsx` | repaired: em dash prose restructured, history and duplicate rationale trimmed | `Primitives/Select` |
+| `apps/web/src/components/ui/tabs.tsx` | `frontend/src/components/ui/tabs.tsx` | repaired: em dash prose restructured | `Primitives/Tabs` |
+| `apps/web/src/components/ui/segmented-control.tsx` | `frontend/src/components/ui/segmented-control.tsx` | repaired: em dash prose restructured, dated attribution trimmed | `Primitives/SegmentedControl` |
+| `apps/web/src/components/ui/toast.tsx` | `frontend/src/components/ui/toast.tsx` | repaired: em dash prose restructured, history asides trimmed (moved-then-reverted anecdote, absolute-position backstory) | `Primitives/Toast` |
+| `apps/web/src/components/ui/use-toast.tsx` | `frontend/src/components/ui/use-toast.tsx` | repaired: em dash prose restructured | `Primitives/Toast` |
+| `apps/web/src/components/ui/toaster.tsx` | `frontend/src/components/ui/toaster.tsx` | repaired: em dash prose restructured | `Primitives/Toast` |
+| `apps/web/src/components/ui/alert-dialog.tsx` | `frontend/src/components/ui/alert-dialog.tsx` | repaired: em dash prose restructured | `Primitives/AlertDialog` (fresh) |
+| `apps/web/src/components/ui/sheet.tsx` | `frontend/src/components/ui/sheet.tsx` | copied verbatim | `Primitives/Sheet` (fresh) |
+| `apps/web/src/components/ui/sidebar.tsx` | `frontend/src/components/ui/sidebar.tsx` | repaired: em dash prose restructured | `Primitives/Sidebar` |
+
+Story copy fixed (banned word `Stack`/`Project` in visible text, not code): `dialog.stories.tsx` (`Delete stack` to `Delete instance`, `the stack` to `the instance`, `this project` to `this instance`; also swaps the unavailable branded `FieldShell`/`AlertBanner` for `Label`/`Input` and `Alert`/`AlertDescription`, since `branded/` has not been extracted yet), `drawer.stories.tsx` (`New stack` to `New instance` in journey steps, `this project` to `this instance`; same branded-component swap as `dialog.stories.tsx`), `dropdown-menu.stories.tsx` (`deployment webhook` to `release webhook`), `tabs.stories.tsx` (`Environment variables` to `Config variables`), `tooltip.stories.tsx` (`About this stack` / `What is a stack?` to `instance`, tooltip body `A stack is...` to `An instance is...`), `sidebar.stories.tsx` (`Stacks` to `Instances`), `toast.stories.tsx` (`orders-api deployed to prod-us-east` to `orders-api released to checkout-web`, `the cluster` to `the instance`, `Addon created` to `Service created`, `Stacks affected` to `Instances affected`; its `open()` helper selector is repaired from `[role="status"][data-state="open"]` to `[data-swipe-direction][data-state="open"]` because the installed `@radix-ui/react-toast` (`^1.2.13`, resolved `1.2.23`) moved `role="status"` off the toast root onto a separate hidden announcer element between those patch versions).
+
+`alert-dialog.stories.tsx` is fresh and render-only: the design rule routes every real confirmation through `ConfirmProvider`, so this story only documents the raw primitive's shape. `sheet.stories.tsx` is fresh with an `OpensIntoAPortal` play that clicks the trigger and asserts `getByRole('dialog')` on the portalled content. `sidebar.stories.tsx` gains two measured plays, `Expanded` (240px) and `Rail` (56px, `defaultOpen={false}` `collapsible="icon"`), reading `[data-slot="sidebar-container"]`'s `getBoundingClientRect().width`.
+
+| `apps/web/src/components/branded/status-variant.ts` | `frontend/src/components/branded/status-variant.ts` | copied verbatim | none (covered by `StatusText`, `StatusPill`, `StatusChip`) |
+| `apps/web/src/components/branded/status-glyph.ts` | `frontend/src/components/branded/status-glyph.ts` | copied verbatim | none |
+| `apps/web/src/components/branded/status-text.tsx` | `frontend/src/components/branded/status-text.tsx` | copied verbatim | `Branded/StatusText` |
+| `apps/web/src/components/branded/status-pill.tsx` | `frontend/src/components/branded/status-pill.tsx` | copied verbatim | `Branded/StatusPill` |
+| `apps/web/src/components/branded/status-chip.tsx` | `frontend/src/components/branded/status-chip.tsx` | copied verbatim | `Branded/StatusChip` |
+| `apps/web/src/components/branded/eyebrow-label.tsx` | `frontend/src/components/branded/eyebrow-label.tsx` | copied verbatim | `Branded/EyebrowLabel` (fresh) |
+| `apps/web/src/components/branded/panel.tsx` | `frontend/src/components/branded/panel.tsx` | copied verbatim | `Branded/Panel` (fresh) |
+| `apps/web/src/components/branded/field-error.tsx` | `frontend/src/components/branded/field-error.tsx` | copied verbatim | `Branded/FieldError` (fresh) |
+| `apps/web/src/components/branded/field-shell.tsx` | `frontend/src/components/branded/field-shell.tsx` | repaired: em dash prose restructured, history comments removed | `Branded/FieldShell` |
+| `apps/web/src/components/branded/form-section.tsx` | `frontend/src/components/branded/form-section.tsx` | repaired: em dash prose restructured, history comments removed | `Branded/FormSection` |
+| `apps/web/src/components/branded/record-row.tsx` | `frontend/src/components/branded/record-row.tsx` | copied verbatim | `Branded/RecordRow` |
+| `apps/web/src/components/branded/search-field.tsx` | `frontend/src/components/branded/search-field.tsx` | copied verbatim | `Branded/SearchField` |
+| `apps/web/src/components/branded/view-toggle.tsx` | `frontend/src/components/branded/view-toggle.tsx` | repaired (storage key) | `Branded/ViewToggle` |
+| `apps/web/src/components/branded/picker-row.tsx` | `frontend/src/components/branded/picker-row.tsx` | repaired: em dash prose restructured, history comments removed | `Branded/PickerRow` |
+| `apps/web/src/components/branded/index.ts` | `frontend/src/components/branded/index.ts` | repaired: barrel trimmed to the components extracted so far | none |
+| `apps/web/src/components/ui/command.tsx` | `frontend/src/components/ui/command.tsx` | copied verbatim | `Primitives/Command` |
+| `apps/web/src/components/ui/multi-select.tsx` | `frontend/src/components/ui/multi-select.tsx` | copied verbatim | `Primitives/MultiSelect` |
+| `apps/web/src/components/branded/confirm.tsx` | `frontend/src/components/branded/confirm.tsx` | copied verbatim | `Branded/ConfirmDialog` |
+| `apps/web/src/components/branded/danger-zone.tsx` | `frontend/src/components/branded/danger-zone.tsx` | repaired: em dash prose restructured | `Branded/DangerZone` |
+| `apps/web/src/components/branded/alert-banner.tsx` | `frontend/src/components/branded/alert-banner.tsx` | repaired: em dash prose restructured | `Branded/AlertBanner` |
+| `apps/web/src/components/branded/empty-state.tsx` | `frontend/src/components/branded/empty-state.tsx` | repaired: dropped `NoSecretsGlyph` and its two SVG imports; em dash prose restructured | `Branded/EmptyState` |
+| `apps/web/src/assets/empty-states/{no-stacks,no-connection,no-results}-{light,dark}.svg` (6 files) | `frontend/src/assets/empty-states/` | copied verbatim (the two `no-secrets-*.svg` are dropped with `NoSecretsGlyph`) | none |
+| `apps/web/src/components/branded/blocked-action.tsx` | `frontend/src/components/branded/blocked-action.tsx` | repaired: em dash prose restructured | `Branded/BlockedAction` (fresh) |
+| `apps/web/src/components/branded/disclosure.tsx` | `frontend/src/components/branded/disclosure.tsx` | repaired: em dash prose restructured (the doc comment's own em-dash-as-label-separator convention is rewritten to a colon, since the product bans em dashes) | `Branded/Disclosure` (fresh) |
+| `apps/web/src/components/branded/stage-badge.tsx` | `frontend/src/components/branded/stage-badge.tsx` | copied verbatim | `Branded/StageBadge` (fresh) |
+| `apps/web/src/components/branded/log-snapshot.tsx` | `frontend/src/components/branded/log-snapshot.tsx` | copied verbatim | `Branded/LogSnapshot` (fresh) |
+| `apps/web/src/components/branded/stage-tracker.tsx` | `frontend/src/components/branded/stage-tracker.tsx` | repaired: em dash prose restructured | `Branded/StageTracker` (retitled from `Features/Deployments/StageTracker`) |
+| `apps/web/src/components/branded/event-row.tsx` | `frontend/src/components/branded/event-row.tsx` | copied verbatim | `Branded/EventRow` (retitled from `Features/Deployments/EventRow`) |
+| `apps/web/src/components/branded/failure-card.tsx` | `frontend/src/components/branded/failure-card.tsx` | repaired: `@/api/types/openapi` import replaced with `@stackbox/contract`'s `components['schemas']['Condition']` | `Branded/FailureCard` (retitled from `Features/Deployments/FailureCard`) |
+| `apps/web/.storybook/decorators.tsx` | `frontend/.storybook/decorators.tsx` | repaired: only `withConfirm` and `withHeight` carried across, everything React-Flow- and stack-page-specific dropped | none |
+
+Story copy fixed (banned word `Environment` in visible fixture text, not code): `form-section.stories.tsx` (`Environment` to `Variables` in the `CollapsibleOpen` and `WithActions` args and the matching heading query), `record-row.stories.tsx` (same fixture, `LabelledByItsOwnName`). `search-field.stories.tsx` is repaired to drop the `NothingToSearchYet` story's dependency on `branded/empty-state.tsx`, which is not part of this batch; its `EmptyState` render is replaced with an inline placeholder that keeps the same disabled-field assertion. `record-row.stories.tsx` gains the `StatusInItsOwnTrack` play (a repository row: name, meta, status in its own track), reading the row one level past the story's shared 480px bordered decorator since that decorator, not the row, is the canvas's first child.
+
+Story copy fixed (banned word in visible text, not code): `confirm.stories.tsx` (`Delete this preview environment?` to `Tear down this Application Instance?`, `Delete env` to `Tear down`, `this stack`/`Delete stack` to `this instance`/`Delete instance`, `this addon`/`Delete addon` to `this service`/`Delete service`; gains the master plan's required `RetypeRefusesUntilThePhraseMatches` play asserting the retype gate through the dialog's `alertdialog` role and the input's implicit `textbox` role), `danger-zone.stories.tsx` (`environments` to `instances`, `stack` to `instance`), `alert-banner.stories.tsx` (`Deployment failed` to `Release failed`, `Stackdome assigns the route` to `Stackbox assigns the route`), `empty-state.stories.tsx` (`No stacks yet` to `No Application Instances yet`, `No stacks match` to `No instances match`, `New stack` to `New instance`, `stack` to `instance`/`Application Instance` in descriptions; the `NothingYet` story is dropped along with its `NoSecretsGlyph` icon, since that component is repaired away), `failure-card.stories.tsx` (fixture condition message `Deployment does not have minimum availability.` to `Availability threshold not met: fewer replicas ready than required.`).
+
+| `apps/web/src/components/branded/entity-card.tsx` | `frontend/src/components/branded/entity-card.tsx` | copied verbatim; em dash prose restructured | `Branded/EntityCard/EndpointPills` |
+| `apps/web/src/components/branded/deploy-sparkline.tsx` | `frontend/src/components/branded/deploy-sparkline.tsx` | copied verbatim; em dash prose restructured, one history aside deleted | `Branded/DeploySparkline` |
+| `apps/web/src/components/branded/data-list.tsx` | `frontend/src/components/branded/data-list.tsx` | copied verbatim; em dash prose restructured, two choice-justification asides deleted | `Branded/DataList` (fresh) |
+| `apps/web/src/components/branded/detail-rows.tsx` | `frontend/src/components/branded/detail-rows.tsx` | copied verbatim; em dash prose restructured, dated/attributed history asides deleted | `Branded/DetailRows` (fresh) |
+| `apps/web/src/components/branded/key-value-rows.tsx` | `frontend/src/components/branded/key-value-rows.tsx` | copied verbatim; em dash prose restructured, history asides deleted | `Branded/KeyValueRows` (fresh, gains `AddsARow` play) |
+| `apps/web/src/components/branded/page-header.tsx` | `frontend/src/components/branded/page-header.tsx` | copied verbatim; em dash prose restructured, two history asides deleted | `Branded/PageHeader` (fresh) |
+| `apps/web/src/components/branded/brand-icon-registry.ts` | `frontend/src/components/branded/brand-icon-registry.ts` | repaired: trimmed to docker, github, gitlab, bitbucket, gitea (plus light variants); history preamble deleted; provider id narrowed to the registry keys (`ProviderId = keyof typeof BRAND_ICONS`) | none (covered by `ProviderLogo`) |
+| `apps/web/src/components/branded/brand-icons.tsx` | `frontend/src/components/branded/brand-icons.tsx` | copied verbatim; em dash prose restructured | none (covered by `ProviderLogo`) |
+| `apps/web/src/components/branded/provider-logo.tsx` | `frontend/src/components/branded/provider-logo.tsx` | repaired: `providerId` takes the registry's own `ProviderId` instead of the dropped `ProviderId` from `lib/git-integrations`; history preamble deleted; provider id narrowed to the registry keys, generic-glyph fallback removed as type-unreachable | `Branded/ProviderLogo` |
+| `apps/web/src/assets/brand/{docker,docker-light,github,github-light,gitlab,bitbucket,gitea}.svg` (7 files) | `frontend/src/assets/brand/` | copied verbatim | none |
+| `apps/web/src/components/branded/stackbox-mark.tsx` | none | written fresh: `Boxes` lucide glyph and the word "Stackbox" in `text-name` weight 500 | `Branded/StackboxMark` |
+| `apps/web/src/components/branded/index.ts` | `frontend/src/components/branded/index.ts` | repaired: extended to the full export list (every extracted branded component through this task); dropped `StackdomeMark`/`StackdomeWordmark`, `CloudAlphaBanner`, `NoSecretsGlyph`; added `StackboxMark` | none |
+| `apps/web/src/stories/foundations/colors.mdx` | `frontend/src/stories/foundations/colors.mdx` | copied verbatim; em dash prose restructured | `Foundations/Colors` |
+| `apps/web/src/stories/foundations/typography.mdx` | `frontend/src/stories/foundations/typography.mdx` | copied; em dash prose restructured, banned word fixed | `Foundations/Typography` |
+| `apps/web/src/stories/foundations/status.mdx` | `frontend/src/stories/foundations/status.mdx` | copied; em dash prose restructured, banned word fixed | `Foundations/Status` |
+| `apps/web/src/stories/foundations/token-helpers.tsx` | `frontend/src/stories/foundations/token-helpers.tsx` | copied verbatim | none |
+
+Story copy fixed (banned word in visible text, not code): `typography.mdx` (`Deployments` heading to `Releases`, `Last deployed` to `Last released`), `status.mdx` (`stack` to `application` in the domain-mapping prose and table, since `stack` names the running copy's noun).
+
+| `apps/web/src/contexts/current-user-context.tsx` | `frontend/src/contexts/current-user-context.tsx` | repaired: breaks on `@/api/users` (absent until slice 3), reads the stored session only through `lib/common`, keeps the `AUTH_SESSION_CHANGED` listener; dropped the project-scoped RBAC helpers (`roleInProject`, `canWrite`, `canWriteAnyProject`, `ProjectRole`) since the contract's `User` carries no `projects` and the domain has none; em dash prose restructured | none |
+| `apps/web/src/hooks/use-current-user.ts` | `frontend/src/hooks/use-current-user.ts` | copied verbatim | none (hook) |
+| `apps/web/src/test-support/sheet-host.tsx` | `frontend/src/test-support/sheet-host.tsx` | copied verbatim; em dash prose restructured | none |
+| `apps/web/src/components/theme-toggle.tsx` | `frontend/src/components/theme-toggle.tsx` | copied verbatim; em dash prose restructured | `Features/ThemeToggle` |
+| `apps/web/src/components/page-title.tsx` | `frontend/src/components/page-title.tsx` | repaired (renders `<h1>` instead of `<span>`, deliberate deviation: page headings are an accessibility basic and the heading-role assertions in Tasks 9 and 10 depend on it); em dash prose restructured, history narration trimmed | `Primitives/PageTitle` |
+| `apps/web/src/components/renameable-title.tsx` | `frontend/src/components/renameable-title.tsx` | repaired: `aria-label="Name"` (was `"Stack name"`), refusal copy `Give it a name.` (was `Give the stack a name.`); em dash prose restructured, history narration trimmed | `Branded/RenameableTitle` |
+| `apps/web/src/components/sheet-header.tsx` | `frontend/src/components/sheet-header.tsx` | repaired: breaks on `@/hooks/use-preview-lineage`, dropped the lineage read and its `Previews` crumb branch; em dash prose restructured, history narration trimmed | `Branded/SheetHeader` |
+| `apps/web/src/components/nav-items.ts` | `frontend/src/components/nav-items.ts` | rewritten: `navGroups` replaced with the five items (`Tasks`, `Applications`, `Instances`, group `Organization`: `Repositories`, `Settings`); `NavItem`, `NavGroup` and `isNavItemActive` kept from source, `NavItem.path` narrowed to `RoutePath` | none |
+| `apps/web/src/components/nav-item.tsx` | `frontend/src/components/nav-item.tsx` | repaired: gains a `badge?: number` prop rendered through `SidebarMenuBadge` as a sibling of the link | `Features/NavItem` (fresh) |
+| `apps/web/src/components/nav-user.tsx` | `frontend/src/components/nav-user.tsx` | repaired (aria-label): em dash prose restructured, history comments removed | `Features/NavUser` (fresh) |
+| `apps/web/src/components/app-sidebar.tsx` | `frontend/src/components/app-sidebar.tsx` | repaired: breaks on `StackdomeMark`, renders `StackboxMark`; gains a `badges?: Partial<Record<RoutePath, number>>` prop passed to each `NavItem` by path; brand lockup link target changed from `/stacks` to `ROUTES.tasks` with `aria-label="Stackbox"`; em dash prose restructured | `Features/AppSidebar` |
+| `apps/web/src/components/app-layout.tsx` | `frontend/src/components/app-layout.tsx` | repaired: breaks on `@/contexts/preview-lineage-context`, `@/pages/stacks/lib/canvas/header-collapse`, `@/pages/stacks/lib/routes`, `@/hooks/use-github-setup-landing`; dropped `PreviewLineageProvider`, the header-collapse (zen mode) context and its full-bleed branch, the GitHub setup-landing call and the `NEW_STACK_PATH` branch, leaving one always-padded page-content path; em dash prose restructured | `Features/AppLayout` (fresh) |
+| `apps/web/src/lib/routes.ts` | none | written fresh | none |
+| `apps/web/src/test-support/sheet-host.test.tsx` | none | written fresh (unit test) | none |
+| `apps/web/src/pages/placeholder/placeholder-page.tsx` | none | written fresh | `Pages/Placeholder` |
+
+`apps/web/.storybook/decorators.tsx` gains `withCurrentUser` and `withSheetHeader`, restored from Stackdome's file and repaired to import only from files this slice has extracted. `apps/web/.storybook/preview.tsx`'s router decorator now reads `parameters.router` (`{ initialEntries?: string[]; path?: string }`) instead of rendering a bare `MemoryRouter`, and a new global decorator wraps every story in `ThemeProvider` with `defaultTheme` read from the root class at render, so the themes sweep keeps proving dark.
+
+## Not extracted in slice 1
+
+Features rows in `design-kit/agent-platform/design/components-map.md` move with the slice that owns their feature:
+
+| Component group | Target slice |
+|---|---|
+| Timeline set, `BuildLogsModal` | 4 and 6 |
+| Git pickers, `IntegrationRow`, `GitIntegrationDrawer` | 5 |
+| `DeployStackCard` | 6 |
+| Canvas, editor chrome, logs and metrics | 8 |
+
+Reference-only rows in `components-map.md`, never extracted: `EnableRepoWizard`, `RepositorySettingsDrawer`, `RepositoryRail`, the `AddResourcePopover` group, `DeployPill`, `AutosaveStatus`, the `NewStackDrawer` group.
+
+Dropped files, with reason:
+
+| File | Reason |
+|---|---|
+| `branded/addon-type-icon.tsx` | addons dropped |
+| `branded/cloud-alpha-banner.tsx` | Stackdome cloud notice |
+| `branded/stackdome-mark.tsx` | replaced by `stackbox-mark.tsx` |
+| `components/project-sidebar.tsx` | projects dropped |
+| `nav-api-tokens.tsx` | settings, slice 7 |
+| `require-admin.tsx` | RBAC gate, slice 3 |
+| `sticky-action-bar.tsx` | no consumer until slice 5 |
+| `contexts/preview-lineage-context.tsx`, `hooks/use-preview-lineage.tsx`, `use-preview-envs.ts`, `use-resource-projects.ts`, `use-postgres-addons.ts`, `use-secrets.ts`, `use-object-stores.ts`, `use-github-connect.ts`, `use-github-setup-landing.ts`, `use-app-config.ts`, `use-signup-config.ts`, `lib/cluster-registry.ts`, `lib/git-integrations.ts`, `lib/yaml-parser.ts` | supporting hooks and libs for features not in slice 1 scope (preview lineage, resource projects, addons, secrets, object stores, GitHub connect and setup flows, app and signup config, cluster registry, git integrations, yaml parsing) |
