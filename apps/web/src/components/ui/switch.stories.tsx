@@ -2,9 +2,6 @@ import type { Meta, StoryObj } from '@storybook/react-vite'
 import { expect } from 'storybook/test'
 import { Switch } from './switch'
 
-// Zero dedicated story coverage existed for this primitive before this pass
-// (flagged in the Task 7 foundation-gate report; picked up here since Task 11
-// is the first page pass to touch a form: Add Cluster: that exercises it).
 const meta = {
   title: 'Primitives/Switch',
   component: Switch,
