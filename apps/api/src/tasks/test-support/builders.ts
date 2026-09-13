@@ -12,6 +12,7 @@ import {
   TaskPhase,
 } from '@stackbox/contract'
 import { EnvironmentType, NetworkAccess, type StartRunSpec } from '../../ports'
+import type { TaskSnapshot } from '../../reconciler/task-state'
 import type {
   Execution,
   GitConnection,
@@ -162,6 +163,23 @@ export function aCheck(overrides: Partial<TaskCheck> = {}): TaskCheck {
     outcome: CheckOutcome.Passed,
     commitSha: 'origin-sha',
     ranAt: AT,
+    ...overrides,
+  }
+}
+
+export function aSnapshot(overrides: Partial<TaskSnapshot> = {}): TaskSnapshot {
+  return {
+    organization: anOrganization(),
+    repository: aRepository(),
+    connection: aGitConnection(),
+    report: aReport(),
+    task: aTask(),
+    runs: [],
+    releases: [],
+    sandboxes: [],
+    executions: [],
+    checks: [],
+    pullRequest: null,
     ...overrides,
   }
 }
