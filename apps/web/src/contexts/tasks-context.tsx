@@ -35,19 +35,23 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
       return;
     }
-    try {
-      const [list, applications] = await Promise.all([fetchTasks(organisationId), fetchApplications(organisationId)]);
-      setLoaded({
+    // Independent calls: an applications failure must not hide an already-loaded task list.
+    const [tasksResult, applicationsResult] = await Promise.allSettled([
+      fetchTasks(organisationId),
+      fetchApplications(organisationId),
+    ]);
+    if (tasksResult.status === "fulfilled") {
+      const list = tasksResult.value;
+      setLoaded((previous) => ({
         tasks: list.items.map(toTask),
-        applications: applications.items.map(toApplication),
+        applications: applicationsResult.status === "fulfilled" ? applicationsResult.value.items.map(toApplication) : previous.applications,
         needsYouCount: list.needs_you_count,
-      });
+      }));
       setFailed(false);
-    } catch {
+    } else {
       setFailed(true);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   }, [organisationId]);
 
   React.useEffect(() => {

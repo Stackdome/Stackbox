@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { CoarseStatus } from '@stackbox/contract'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -42,6 +43,18 @@ describe('TasksProvider', () => {
     await act(() => result.current.cancel('task-3'))
 
     expect(result.current.tasks.find((task) => task.id === 'task-3')?.status).toBe(CoarseStatus.Cancelled)
+  })
+
+  it('keeps the tasks when only the applications call fails', async () => {
+    server.use(
+      http.get('*/api/v1/organizations/:orgId/applications', () => HttpResponse.json({ reason: 'boom' }, { status: 500 })),
+    )
+
+    const { result } = renderHook(() => useTasks(), { wrapper })
+
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current.tasks.length).toBeGreaterThan(0)
+    expect(result.current.failed).toBe(false)
   })
 
   it('clears the loaded tasks once the user signs out', async () => {
