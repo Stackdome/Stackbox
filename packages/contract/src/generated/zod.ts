@@ -891,24 +891,13 @@ const ReleaseEventList = z
   })
   .partial()
   .passthrough();
-const RepoProvider = z.enum(["github", "gitlab"]);
-const ConnectionStatus = z.enum(["verified", "error"]);
-const InstancePurpose = z.enum([
-  "task",
-  "preview",
-  "load_test",
-  "scratch",
-  "persistent",
-]);
-const InstanceStatus = z.enum([
-  "provisioning",
-  "ready",
-  "degraded",
-  "expired",
-  "torn_down",
-]);
-const ReleaseStatus = z.enum(["queued", "building", "live", "failed"]);
+const ApplicationSummary = z
+  .object({ id: z.string(), name: z.string() })
+  .passthrough();
 const ReportSource = z.enum(["web", "slack", "sentry", "jam", "harness"]);
+const TaskReport = z
+  .object({ description: z.string(), source: ReportSource })
+  .passthrough();
 const TaskKind = z.enum(["fix", "onboarding"]);
 const TaskPhase = z.enum([
   "intake",
@@ -922,6 +911,13 @@ const TaskPhase = z.enum([
   "failed",
   "cancelled",
 ]);
+const CoarseStatus = z.enum([
+  "running",
+  "needs_you",
+  "ready_for_review",
+  "failed",
+  "cancelled",
+]);
 const TaskResolution = z.enum([
   "fix_verified",
   "fix_unverified",
@@ -929,6 +925,69 @@ const TaskResolution = z.enum([
   "no_change_needed",
   "abandoned",
 ]);
+const PrState = z.enum(["open", "merged", "closed"]);
+const TaskPullRequest = z
+  .object({
+    number: z.number().int(),
+    repository_short_name: z.string(),
+    state: PrState,
+    is_draft: z.boolean(),
+  })
+  .passthrough();
+const InstanceStatus = z.enum([
+  "provisioning",
+  "ready",
+  "degraded",
+  "expired",
+  "torn_down",
+]);
+const TaskInstance = z
+  .object({
+    id: z.string(),
+    url: z.string().nullable(),
+    status: InstanceStatus,
+    expires_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .passthrough();
+const TaskSummary = z
+  .object({
+    id: z.string(),
+    application: ApplicationSummary,
+    report: TaskReport.nullable(),
+    kind: TaskKind,
+    phase: TaskPhase,
+    coarse_status: CoarseStatus,
+    resolution: TaskResolution.nullable(),
+    run_number: z.number().int().nullable(),
+    run_limit: z.number().int(),
+    blocking_question: z.string().nullable(),
+    pull_request: TaskPullRequest.nullable(),
+    instance: TaskInstance.nullable(),
+    cost_cents: z.number().int(),
+    created_at: z.string().datetime({ offset: true }),
+    completed_at: z.string().datetime({ offset: true }).nullable(),
+  })
+  .passthrough();
+const TaskList = z
+  .object({
+    items: z.array(TaskSummary),
+    total: z.number().int(),
+    needs_you_count: z.number().int(),
+  })
+  .passthrough();
+const ApplicationList = z
+  .object({ items: z.array(ApplicationSummary), total: z.number().int() })
+  .passthrough();
+const RepoProvider = z.enum(["github", "gitlab"]);
+const ConnectionStatus = z.enum(["verified", "error"]);
+const InstancePurpose = z.enum([
+  "task",
+  "preview",
+  "load_test",
+  "scratch",
+  "persistent",
+]);
+const ReleaseStatus = z.enum(["queued", "building", "live", "failed"]);
 const RunOutcome = z.enum(["running", "passed", "failed", "abandoned"]);
 const SandboxStatus = z.enum(["starting", "running", "stopped", "failed"]);
 const ExecutionStatus = z.enum([
@@ -947,15 +1006,12 @@ const CheckKind = z.enum([
 const CheckOutcome = z.enum(["passed", "failed", "inconclusive"]);
 const ArtifactOwner = z.enum(["report", "task_check", "task_message"]);
 const ArtifactKind = z.enum(["screenshot", "har", "test_log", "recording"]);
-const PrState = z.enum(["open", "merged", "closed"]);
 const MessageRole = z.enum(["user", "agent", "system"]);
-const CoarseStatus = z.enum([
-  "running",
-  "needs_you",
-  "ready_for_review",
-  "failed",
-  "cancelled",
-]);
+const ApplicationRole = z.enum(["Developer", "Viewer"]);
+const TaskListQuery = z
+  .object({ status: CoarseStatus, application_id: z.string(), q: z.string() })
+  .partial()
+  .passthrough();
 
 export const schemas = {
   Organisation,
@@ -1066,15 +1122,24 @@ export const schemas = {
   ReleaseEventLink,
   ReleaseEvent,
   ReleaseEventList,
+  ApplicationSummary,
+  ReportSource,
+  TaskReport,
+  TaskKind,
+  TaskPhase,
+  CoarseStatus,
+  TaskResolution,
+  PrState,
+  TaskPullRequest,
+  InstanceStatus,
+  TaskInstance,
+  TaskSummary,
+  TaskList,
+  ApplicationList,
   RepoProvider,
   ConnectionStatus,
   InstancePurpose,
-  InstanceStatus,
   ReleaseStatus,
-  ReportSource,
-  TaskKind,
-  TaskPhase,
-  TaskResolution,
   RunOutcome,
   SandboxStatus,
   ExecutionStatus,
@@ -1082,9 +1147,9 @@ export const schemas = {
   CheckOutcome,
   ArtifactOwner,
   ArtifactKind,
-  PrState,
   MessageRole,
-  CoarseStatus,
+  ApplicationRole,
+  TaskListQuery,
 };
 
 const endpoints = makeApi([
@@ -1574,6 +1639,32 @@ const endpoints = makeApi([
       {
         status: 500,
         description: `Internal server error`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/applications",
+    alias: "listApplications",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ApplicationList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
         schema: Error,
       },
     ],
@@ -3548,6 +3639,132 @@ whether the instance already exists.
         status: 500,
         description: `Internal server error`,
         schema: z.void(),
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/tasks",
+    alias: "listTasks",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "status",
+        type: "Query",
+        schema: z
+          .enum([
+            "running",
+            "needs_you",
+            "ready_for_review",
+            "failed",
+            "cancelled",
+          ])
+          .optional(),
+      },
+      {
+        name: "application_id",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "q",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: TaskList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id",
+    alias: "getTask",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskSummary,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id/cancel",
+    alias: "cancelTask",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskSummary,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
+        schema: Error,
+      },
+      {
+        status: 409,
+        description: `The task has already finished`,
+        schema: Error,
       },
     ],
   },
