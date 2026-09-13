@@ -1,0 +1,5 @@
+export const SANDBOX_PROVIDER = Symbol('SandboxProvider')
+export const AGENT_RUNTIME = Symbol('AgentRuntime')
+export const DEPLOY_TARGET = Symbol('DeployTarget')
+export const GIT_PROVIDER = Symbol('GitProvider')
+export const CLOCK = Symbol('Clock')
