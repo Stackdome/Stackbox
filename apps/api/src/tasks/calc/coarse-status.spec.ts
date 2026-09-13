@@ -1,8 +1,18 @@
 import { CoarseStatus, TaskPhase } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import { coarseStatusOf } from './coarse-status'
+import { isTerminal } from './phase-transitions'
 
 describe('coarse status', () => {
+  it('derives needs_you from the needs_input phase and running from every non-terminal phase', () => {
+    const working = Object.values(TaskPhase).filter((phase) => !isTerminal(phase) && phase !== TaskPhase.NeedsInput)
+
+    expect({
+      needsInput: coarseStatusOf(TaskPhase.NeedsInput),
+      working: [...new Set(working.map(coarseStatusOf))],
+    }).toEqual({ needsInput: CoarseStatus.NeedsYou, working: [CoarseStatus.Running] })
+  })
+
   it('asks for the user when the task needs input', () => {
     expect(coarseStatusOf(TaskPhase.NeedsInput)).toBe(CoarseStatus.NeedsYou)
   })
