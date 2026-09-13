@@ -7,6 +7,7 @@ import {
   EnvironmentType,
   NetworkAccess,
   REPORT_CHECK_FUNCTION,
+  type RequiredAction,
   RequiredActionType,
   type RunRef,
   type SessionStatus,
@@ -92,13 +93,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     for await (const wire of this.client.eventStream(`/v1/agents/sessions/${sessionId}/events?stream=true`)) {
       const event = toAgentEvent(sessionId, wire as WireEvent)
       if (!event) continue
-      if (event.kind === AgentEventKind.RequiresAction) await this.resolveReportChecks(sessionId)
+      if (event.kind === AgentEventKind.RequiresAction) await this.resolveReportChecks(sessionId, event.requiredActions)
       yield event
     }
   }
 
   async items(sessionId: string, opts: { after?: string; limit?: number } = {}): Promise<AgentEvent[]> {
-    await this.resolveReportChecks(sessionId)
+    await this.resolveReportChecks(sessionId, (await this.getSession(sessionId)).requiredActions)
     const query = new URLSearchParams({ order: 'asc', limit: String(opts.limit ?? 100), ...(opts.after ? { after: opts.after } : {}) })
     const page = await this.client.json<{ data: WireEvent[] }>('GET', `/v1/agents/sessions/${sessionId}/items?${query}`)
     return page.data.flatMap((wire) => toAgentEvent(sessionId, wire) ?? [])
@@ -153,9 +154,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
   }
 
-  private async resolveReportChecks(sessionId: string): Promise<void> {
-    const session = await this.getSession(sessionId)
-    for (const action of session.requiredActions) {
+  private async resolveReportChecks(sessionId: string, requiredActions: RequiredAction[]): Promise<void> {
+    for (const action of requiredActions) {
       if (action.type === RequiredActionType.FunctionCall && action.name === REPORT_CHECK_FUNCTION) {
         await this.submitFunctionResult({ sessionId, turnId: action.turnId }, action.callId, { recorded: true })
       }
