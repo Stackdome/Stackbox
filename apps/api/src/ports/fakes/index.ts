@@ -1,3 +1,5 @@
+export * from './agent-script'
+export { InMemoryAgentRuntime, type QueuedRun } from './in-memory-agent-runtime'
 export { InMemoryClock } from './in-memory-clock'
 export { InMemoryDeployTarget } from './in-memory-deploy-target'
 export { InMemoryGitProvider } from './in-memory-git-provider'
