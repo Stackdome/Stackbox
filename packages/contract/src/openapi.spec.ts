@@ -11,13 +11,26 @@ type Document = {
   components: { schemas: Record<string, Schema> }
 }
 
-const GENERATED_ENUM_COUNT = 45
+const GENERATED_ENUM_COUNT = 46
 
 const SPEC_ENUMS = [
   'RepoProvider', 'ConnectionStatus', 'InstancePurpose', 'InstanceStatus', 'ReleaseStatus',
   'ReportSource', 'TaskKind', 'TaskPhase', 'TaskResolution', 'RunOutcome', 'SandboxStatus',
   'ExecutionStatus', 'CheckKind', 'CheckOutcome', 'ArtifactOwner', 'ArtifactKind', 'PrState',
-  'MessageRole', 'CoarseStatus',
+  'MessageRole', 'CoarseStatus', 'ApplicationRole',
+]
+
+const TASK_PATHS = [
+  '/api/v1/organizations/{org_id}/tasks',
+  '/api/v1/organizations/{org_id}/tasks/{task_id}',
+  '/api/v1/organizations/{org_id}/tasks/{task_id}/cancel',
+  '/api/v1/organizations/{org_id}/applications',
+]
+
+const TASK_SUMMARY_FIELDS = [
+  'id', 'application', 'report', 'kind', 'phase', 'coarse_status', 'resolution', 'run_number',
+  'run_limit', 'blocking_question', 'pull_request', 'instance', 'cost_cents', 'created_at',
+  'completed_at',
 ]
 
 const yamlPath = fileURLToPath(new URL('../openapi/stackbox_api.yaml', import.meta.url))
@@ -47,7 +60,7 @@ describe('the committed contract', () => {
     expect(references.filter((name) => !(name in schemas))).toEqual([])
   })
 
-  it('exports exactly 45 enums from the barrel', () => {
+  it('exports exactly 46 enums from the barrel', () => {
     expect(Object.values(contract).filter(isEnum)).toHaveLength(GENERATED_ENUM_COUNT)
   })
 
@@ -62,5 +75,14 @@ describe('the committed contract', () => {
       return schema?.enum === undefined || schema['x-enum-varnames']?.length !== schema.enum.length
     })
     expect(mismatched).toEqual([])
+  })
+
+  it('declares the tasks and applications paths under the organization', () => {
+    expect(TASK_PATHS.filter((path) => !paths.includes(path))).toEqual([])
+  })
+
+  it('requires exactly the fields a Tasks list row draws on every TaskSummary', () => {
+    const summary = schemas.TaskSummary as Schema & { required?: string[] }
+    expect(summary?.required).toEqual(TASK_SUMMARY_FIELDS)
   })
 })

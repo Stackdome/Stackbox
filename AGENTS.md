@@ -52,6 +52,7 @@ Full glossary: `docs/CONTEXT.md`. Screen and code names, the short form rule, an
 - Tests read as sentences, arranged with named builders, one reason to fail. Fakes for ports, not mocks; no mocking library in the API suite.
 - No magic strings: every phase, resolution, purpose, check kind and outcome, pull request state, coarse status and role comes from a contract-generated enum.
 - No defensive nil-guards around required dependencies, no nil-check-and-panic in constructors. A missing dependency is a wiring bug the e2e suite catches.
+- Every Nest constructor parameter carries an explicit `@Inject` token. The tsx runtime emits no decorator metadata, so implicit constructor-type injection resolves to undefined on the first real request.
 - Comments state a constraint the code cannot say, never history, never a restatement of the line below.
 - No em dashes in anything a person reads. No competitor names in commits, specs, plans, issues or pull requests.
 

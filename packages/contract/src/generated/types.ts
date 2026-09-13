@@ -3770,6 +3770,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{org_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the organization's tasks, Needs you first, then newest first */
+        get: operations["listTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one task as the Tasks list draws it */
+        get: operations["getTask"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/tasks/{task_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a task that has not finished */
+        post: operations["cancelTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/applications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the organization's applications by name */
+        get: operations["listApplications"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4707,6 +4775,64 @@ export interface components {
          * @enum {string}
          */
         CoarseStatus: CoarseStatus;
+        /** @enum {string} */
+        ApplicationRole: ApplicationRole;
+        ApplicationSummary: {
+            id: string;
+            name: string;
+        };
+        ApplicationList: {
+            items: components["schemas"]["ApplicationSummary"][];
+            total: number;
+        };
+        TaskListQuery: {
+            status?: components["schemas"]["CoarseStatus"];
+            application_id?: string;
+            q?: string;
+        };
+        TaskReport: {
+            description: string;
+            source: components["schemas"]["ReportSource"];
+        };
+        TaskPullRequest: {
+            number: number;
+            repository_short_name: string;
+            state: components["schemas"]["PrState"];
+            is_draft: boolean;
+        };
+        TaskInstance: {
+            id: string;
+            url: string | null;
+            status: components["schemas"]["InstanceStatus"];
+            /** Format: date-time */
+            expires_at: string | null;
+        };
+        TaskSummary: {
+            id: string;
+            application: components["schemas"]["ApplicationSummary"];
+            report: components["schemas"]["TaskReport"] | null;
+            kind: components["schemas"]["TaskKind"];
+            phase: components["schemas"]["TaskPhase"];
+            coarse_status: components["schemas"]["CoarseStatus"];
+            resolution: components["schemas"]["TaskResolution"] | null;
+            run_number: number | null;
+            run_limit: number;
+            /** @description Body of the newest unanswered blocking message */
+            blocking_question: string | null;
+            pull_request: components["schemas"]["TaskPullRequest"] | null;
+            instance: components["schemas"]["TaskInstance"] | null;
+            cost_cents: number;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            completed_at: string | null;
+        };
+        TaskList: {
+            items: components["schemas"]["TaskSummary"][];
+            total: number;
+            /** @description Unfiltered count of the organization's tasks whose coarse status is needs_you */
+            needs_you_count: number;
+        };
     };
     responses: never;
     parameters: {
@@ -5197,6 +5323,204 @@ export interface operations {
             };
         };
     };
+    listTasks: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["CoarseStatus"];
+                application_id?: string;
+                /** @description Matches the report description */
+                q?: string;
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tasks fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Task fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskSummary"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    cancelTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Task cancelled */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskSummary"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Task not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The task has already finished */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listApplications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Applications fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApplicationList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
 }
 export enum UserRole {
     OrgAdmin = "OrgAdmin",
@@ -5505,4 +5829,8 @@ export enum CoarseStatus {
     ReadyForReview = "ready_for_review",
     Failed = "failed",
     Cancelled = "cancelled"
+}
+export enum ApplicationRole {
+    Developer = "Developer",
+    Viewer = "Viewer"
 }

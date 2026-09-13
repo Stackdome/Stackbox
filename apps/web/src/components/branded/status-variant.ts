@@ -1,3 +1,5 @@
+import { CoarseStatus } from "@stackbox/contract";
+
 /**
  * The single word→variant brain. Every status string the backend can emit is
  * mapped here, categorized by resource domain, each case listing that
@@ -62,6 +64,7 @@ export type StatusDomain =
   | "build"
   | "preview"
   | "git_integration"
+  | "task"
   | "generic";
 
 export function statusVariant(domain: StatusDomain, state?: string | null): StatusVariant {
@@ -219,6 +222,22 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "error";
         default:
           return "info";
+      }
+
+    // `pending` is the warn tier, the one colour that means Needs you across
+    // the product (the row accent and the sidebar badge spend the same token).
+    case "task":
+      switch (s) {
+        case CoarseStatus.NeedsYou:
+          return "pending";
+        case CoarseStatus.Running:
+          return "info";
+        case CoarseStatus.ReadyForReview:
+          return "ready";
+        case CoarseStatus.Failed:
+          return "error";
+        default:
+          return "neutral";
       }
 
     case "registry":

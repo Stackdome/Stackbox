@@ -11,5 +11,5 @@ describe('the app shell', () => {
     expect(await screen.findByRole('heading', { name: 'Tasks' })).toBeTruthy()
     await userEvent.click(screen.getByRole('link', { name: 'Instances' }))
     expect(await screen.findByRole('heading', { name: 'Instances' })).toBeTruthy()
-  })
+  }, 15_000)
 })

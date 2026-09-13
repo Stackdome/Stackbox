@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * **The page's own name, wherever it is drawn: one rung, one definition.**
  *
- * The title is an `<h1>` when it is fixed, a `<button>` when it can be
+ * The title is a `<span>` when it is fixed, a `<button>` when it can be
  * renamed, and an `<input>` while it is being renamed. All three share one
  * rung, so `pageTitleClass` is the export: `PageTitle` is the plain case built
  * on it, and `RenameableTitle` composes it into its own elements. Two places
@@ -18,18 +18,16 @@ import { cn } from "@/lib/utils";
 export const pageTitleClass = "text-name font-medium text-foreground";
 
 /**
- * The fixed page title: an `<h1>` so a page always has exactly one heading,
- * findable by role, that names it. A page whose name IS the object's name
- * uses `RenameableTitle` instead, which draws the same rung from the same
- * constant.
+ * The fixed page title's rung. `SheetHeader` wraps it in the page's only
+ * `<h1>`; a page that renders its own title would give the page two.
  */
 export function PageTitle({
   children,
   className,
   ...props
-}: React.ComponentProps<"h1"> & { children: ReactNode }) {
+}: React.ComponentProps<"span"> & { children: ReactNode }) {
   return (
-    <h1
+    <span
       data-slot="page-title"
       // A hard ceiling in characters, with an ellipsis under it: the title is
       // whatever the object is called, and `min-w-0` lets the row give way to
@@ -38,6 +36,6 @@ export function PageTitle({
       {...props}
     >
       {children}
-    </h1>
+    </span>
   );
 }

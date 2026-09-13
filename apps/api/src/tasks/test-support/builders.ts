@@ -24,6 +24,7 @@ import type {
   Sandbox,
   Task,
   TaskCheck,
+  TaskListRow,
 } from '../types'
 
 const AT = new Date('2026-09-13T10:00:00Z')
@@ -197,5 +198,18 @@ export function aRunSpec(overrides: Partial<StartRunSpec> = {}): StartRunSpec {
     context: { taskId: 'T1', reportDescription: 'The save button does nothing.' },
     input: 'Begin.',
     ...overrides,
+  }
+}
+
+export function aTaskListRow(overrides: { task?: Partial<Task> } & Partial<Omit<TaskListRow, 'task'>> = {}): TaskListRow {
+  const { task, ...rest } = overrides
+  return {
+    task: aTask(task),
+    application: { id: 'A1', name: 'shop' },
+    report: { description: 'The save button does nothing.', source: ReportSource.Web },
+    runNumber: 1,
+    blockingQuestion: null,
+    pullRequest: null,
+    ...rest,
   }
 }
