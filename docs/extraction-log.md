@@ -159,10 +159,36 @@ Story copy fixed (banned word in visible text, not code): `typography.mdx` (`Dep
 | `apps/web/src/components/nav-items.ts` | `frontend/src/components/nav-items.ts` | rewritten: `navGroups` replaced with the five items (`Tasks`, `Applications`, `Instances`, group `Organization`: `Repositories`, `Settings`); `NavItem`, `NavGroup` and `isNavItemActive` kept from source, `NavItem.path` narrowed to `RoutePath` | none |
 | `apps/web/src/components/nav-item.tsx` | `frontend/src/components/nav-item.tsx` | repaired: gains a `badge?: number` prop rendered through `SidebarMenuBadge` as a sibling of the link | `Features/NavItem` (fresh) |
 | `apps/web/src/components/nav-user.tsx` | `frontend/src/components/nav-user.tsx` | copied verbatim; em dash prose restructured | `Features/NavUser` (fresh) |
-| `apps/web/src/components/app-sidebar.tsx` | `frontend/src/components/app-sidebar.tsx` | repaired: breaks on `StackdomeMark`, renders `StackboxMark`; gains a `badges?: Partial<Record<RoutePath, number>>` prop passed to each `NavItem` by path; em dash prose restructured | `Features/AppSidebar` |
+| `apps/web/src/components/app-sidebar.tsx` | `frontend/src/components/app-sidebar.tsx` | repaired: breaks on `StackdomeMark`, renders `StackboxMark`; gains a `badges?: Partial<Record<RoutePath, number>>` prop passed to each `NavItem` by path; brand lockup link target changed from `/stacks` to `ROUTES.tasks` with `aria-label="Stackbox"`; em dash prose restructured | `Features/AppSidebar` |
 | `apps/web/src/components/app-layout.tsx` | `frontend/src/components/app-layout.tsx` | repaired: breaks on `@/contexts/preview-lineage-context`, `@/pages/stacks/lib/canvas/header-collapse`, `@/pages/stacks/lib/routes`, `@/hooks/use-github-setup-landing`; dropped `PreviewLineageProvider`, the header-collapse (zen mode) context and its full-bleed branch, the GitHub setup-landing call and the `NEW_STACK_PATH` branch, leaving one always-padded page-content path; em dash prose restructured | `Features/AppLayout` (fresh) |
 | `apps/web/src/lib/routes.ts` | none | written fresh | none |
 | `apps/web/src/test-support/sheet-host.test.tsx` | none | written fresh (unit test) | none |
 | `apps/web/src/pages/placeholder/placeholder-page.tsx` | none | written fresh | `Pages/Placeholder` |
 
 `apps/web/.storybook/decorators.tsx` gains `withCurrentUser` and `withSheetHeader`, restored from Stackdome's file and repaired to import only from files this slice has extracted. `apps/web/.storybook/preview.tsx`'s router decorator now reads `parameters.router` (`{ initialEntries?: string[]; path?: string }`) instead of rendering a bare `MemoryRouter`, and a new global decorator wraps every story in `ThemeProvider` with `defaultTheme` read from the root class at render, so the themes sweep keeps proving dark.
+
+## Not extracted in slice 1
+
+Features rows in `design-kit/agent-platform/design/components-map.md` move with the slice that owns their feature:
+
+| Component group | Target slice |
+|---|---|
+| Timeline set, `BuildLogsModal` | 4 and 6 |
+| Git pickers, `IntegrationRow`, `GitIntegrationDrawer` | 5 |
+| `DeployStackCard` | 6 |
+| Canvas, editor chrome, logs and metrics | 8 |
+
+Reference-only rows in `components-map.md`, never extracted: `EnableRepoWizard`, `RepositorySettingsDrawer`, `RepositoryRail`, the `AddResourcePopover` group, `DeployPill`, `AutosaveStatus`, the `NewStackDrawer` group.
+
+Dropped files, with reason:
+
+| File | Reason |
+|---|---|
+| `branded/addon-type-icon.tsx` | addons dropped |
+| `branded/cloud-alpha-banner.tsx` | Stackdome cloud notice |
+| `branded/stackdome-mark.tsx` | replaced by `stackbox-mark.tsx` |
+| `components/project-sidebar.tsx` | projects dropped |
+| `nav-api-tokens.tsx` | settings, slice 7 |
+| `require-admin.tsx` | RBAC gate, slice 3 |
+| `sticky-action-bar.tsx` | no consumer until slice 5 |
+| `contexts/preview-lineage-context.tsx`, `hooks/use-preview-lineage.tsx`, `use-preview-envs.ts`, `use-resource-projects.ts`, `use-postgres-addons.ts`, `use-secrets.ts`, `use-object-stores.ts`, `use-github-connect.ts`, `use-github-setup-landing.ts`, `use-app-config.ts`, `use-signup-config.ts`, `lib/cluster-registry.ts`, `lib/git-integrations.ts`, `lib/yaml-parser.ts` | supporting hooks and libs for features not in slice 1 scope (preview lineage, resource projects, addons, secrets, object stores, GitHub connect and setup flows, app and signup config, cluster registry, git integrations, yaml parsing) |
