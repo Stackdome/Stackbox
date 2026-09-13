@@ -3913,3 +3913,255 @@ components:
         total_pages:
           type: integer
           description: Total number of pages
+    RepoProvider:
+      type: string
+      x-stability: draft
+      enum:
+        - github
+        - gitlab
+      x-enum-varnames:
+        - Github
+        - Gitlab
+    ConnectionStatus:
+      type: string
+      x-stability: draft
+      enum:
+        - verified
+        - error
+      x-enum-varnames:
+        - Verified
+        - Error
+    InstancePurpose:
+      type: string
+      x-stability: draft
+      enum:
+        - task
+        - preview
+        - load_test
+        - scratch
+        - persistent
+      x-enum-varnames:
+        - Task
+        - Preview
+        - LoadTest
+        - Scratch
+        - Persistent
+    InstanceStatus:
+      type: string
+      x-stability: draft
+      enum:
+        - provisioning
+        - ready
+        - degraded
+        - expired
+        - torn_down
+      x-enum-varnames:
+        - Provisioning
+        - Ready
+        - Degraded
+        - Expired
+        - TornDown
+    ReleaseStatus:
+      type: string
+      x-stability: draft
+      enum:
+        - queued
+        - building
+        - live
+        - failed
+      x-enum-varnames:
+        - Queued
+        - Building
+        - Live
+        - Failed
+    ReportSource:
+      type: string
+      x-stability: draft
+      enum:
+        - web
+        - slack
+        - sentry
+        - jam
+        - harness
+      x-enum-varnames:
+        - Web
+        - Slack
+        - Sentry
+        - Jam
+        - Harness
+    TaskKind:
+      type: string
+      x-stability: draft
+      enum:
+        - fix
+        - onboarding
+      x-enum-varnames:
+        - Fix
+        - Onboarding
+    TaskPhase:
+      type: string
+      x-stability: draft
+      enum:
+        - intake
+        - preparing
+        - reproducing
+        - implementing
+        - deploying
+        - verifying
+        - hand_over
+        - needs_input
+        - failed
+        - cancelled
+      x-enum-varnames:
+        - Intake
+        - Preparing
+        - Reproducing
+        - Implementing
+        - Deploying
+        - Verifying
+        - HandOver
+        - NeedsInput
+        - Failed
+        - Cancelled
+    TaskResolution:
+      type: string
+      x-stability: draft
+      enum:
+        - fix_verified
+        - fix_unverified
+        - not_reproduced
+        - no_change_needed
+        - abandoned
+      x-enum-varnames:
+        - FixVerified
+        - FixUnverified
+        - NotReproduced
+        - NoChangeNeeded
+        - Abandoned
+    RunOutcome:
+      type: string
+      x-stability: draft
+      enum:
+        - running
+        - passed
+        - failed
+        - abandoned
+      x-enum-varnames:
+        - Running
+        - Passed
+        - Failed
+        - Abandoned
+    SandboxStatus:
+      type: string
+      x-stability: draft
+      enum:
+        - starting
+        - running
+        - stopped
+        - failed
+      x-enum-varnames:
+        - Starting
+        - Running
+        - Stopped
+        - Failed
+    ExecutionStatus:
+      type: string
+      x-stability: draft
+      enum:
+        - starting
+        - running
+        - succeeded
+        - failed
+        - timed_out
+        - cancelled
+      x-enum-varnames:
+        - Starting
+        - Running
+        - Succeeded
+        - Failed
+        - TimedOut
+        - Cancelled
+    CheckKind:
+      type: string
+      x-stability: draft
+      enum:
+        - instance_ready
+        - report_reproduced
+        - fix_verified
+      x-enum-varnames:
+        - InstanceReady
+        - ReportReproduced
+        - FixVerified
+    CheckOutcome:
+      type: string
+      x-stability: draft
+      enum:
+        - passed
+        - failed
+        - inconclusive
+      x-enum-varnames:
+        - Passed
+        - Failed
+        - Inconclusive
+    ArtifactOwner:
+      type: string
+      x-stability: draft
+      enum:
+        - report
+        - task_check
+        - task_message
+      x-enum-varnames:
+        - Report
+        - TaskCheck
+        - TaskMessage
+    ArtifactKind:
+      type: string
+      x-stability: draft
+      enum:
+        - screenshot
+        - har
+        - test_log
+        - recording
+      x-enum-varnames:
+        - Screenshot
+        - Har
+        - TestLog
+        - Recording
+    PrState:
+      type: string
+      x-stability: draft
+      enum:
+        - open
+        - merged
+        - closed
+      x-enum-varnames:
+        - Open
+        - Merged
+        - Closed
+    MessageRole:
+      type: string
+      x-stability: draft
+      enum:
+        - user
+        - agent
+        - system
+      x-enum-varnames:
+        - User
+        - Agent
+        - System
+    CoarseStatus:
+      type: string
+      x-stability: draft
+      description: Derived from task phase by apps/api/src/tasks/calc/coarse-status.ts; not a database type.
+      enum:
+        - running
+        - needs_you
+        - ready_for_review
+        - failed
+        - cancelled
+      x-enum-varnames:
+        - Running
+        - NeedsYou
+        - ReadyForReview
+        - Failed
+        - Cancelled
