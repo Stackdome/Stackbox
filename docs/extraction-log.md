@@ -107,7 +107,7 @@ Story copy fixed (banned word `Stack`/`Project` in visible text, not code): `dia
 | `apps/web/src/components/branded/form-section.tsx` | `frontend/src/components/branded/form-section.tsx` | copied verbatim | `Branded/FormSection` |
 | `apps/web/src/components/branded/record-row.tsx` | `frontend/src/components/branded/record-row.tsx` | copied verbatim | `Branded/RecordRow` |
 | `apps/web/src/components/branded/search-field.tsx` | `frontend/src/components/branded/search-field.tsx` | copied verbatim | `Branded/SearchField` |
-| `apps/web/src/components/branded/view-toggle.tsx` | `frontend/src/components/branded/view-toggle.tsx` | copied verbatim | `Branded/ViewToggle` |
+| `apps/web/src/components/branded/view-toggle.tsx` | `frontend/src/components/branded/view-toggle.tsx` | repaired (storage key) | `Branded/ViewToggle` |
 | `apps/web/src/components/branded/picker-row.tsx` | `frontend/src/components/branded/picker-row.tsx` | copied verbatim | `Branded/PickerRow` |
 | `apps/web/src/components/branded/index.ts` | `frontend/src/components/branded/index.ts` | repaired: barrel trimmed to the components extracted so far | none |
 | `apps/web/src/components/ui/command.tsx` | `frontend/src/components/ui/command.tsx` | copied verbatim | `Primitives/Command` |

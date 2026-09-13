@@ -11,7 +11,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 export const WithMessage: Story = {
-  args: { children: 'A service called orders-gateway already exists in this stack.' },
+  args: { children: 'A service called orders-gateway already exists in this instance.' },
 }
 
 /** No children means no error to show, so the component renders nothing rather

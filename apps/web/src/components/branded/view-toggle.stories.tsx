@@ -26,8 +26,8 @@ const meta = {
   args: { value: 'list', onValueChange: () => {} },
   render: () => <Harness />,
   beforeEach: () => {
-    localStorage.removeItem('stackdome.view.demo')
-    localStorage.removeItem('stackdome.view.other')
+    localStorage.removeItem('stackbox.view.demo')
+    localStorage.removeItem('stackbox.view.other')
   },
 } satisfies Meta<typeof ViewToggle>
 
@@ -68,7 +68,7 @@ export const PersistsPerPage: Story = {
     await expect(canvas.getByTestId('mode-demo')).toHaveTextContent('cards')
     // The second page is untouched: the key is per page, not global.
     await expect(canvas.getByTestId('mode-other')).toHaveTextContent('list')
-    await expect(localStorage.getItem('stackdome.view.demo')).toBe('cards')
-    await expect(localStorage.getItem('stackdome.view.other')).toBeNull()
+    await expect(localStorage.getItem('stackbox.view.demo')).toBe('cards')
+    await expect(localStorage.getItem('stackbox.view.other')).toBeNull()
   },
 }

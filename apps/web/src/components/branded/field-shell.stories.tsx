@@ -131,7 +131,7 @@ export const WithError: Story = {
         htmlFor="bad-name"
         required
         hint="Lowercase letters, numbers and dashes."
-        error="A service called orders-gateway already exists in this stack."
+        error="A service called orders-gateway already exists in this instance."
       >
         <Input id="bad-name" defaultValue="orders-gateway" aria-invalid />
       </FieldShell>

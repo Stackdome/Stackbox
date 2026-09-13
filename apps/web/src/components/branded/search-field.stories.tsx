@@ -23,8 +23,8 @@ const meta = {
   args: {
     value: '',
     onChange: () => {},
-    placeholder: 'Filter stacks…',
-    label: 'Filter stacks',
+    placeholder: 'Filter instances…',
+    label: 'Filter instances',
   },
 } satisfies Meta<typeof SearchField>
 
@@ -41,8 +41,8 @@ function Harness({
   return (
     <div style={{ width }}>
       <SearchField
-        placeholder="Filter stacks…"
-        label="Filter stacks"
+        placeholder="Filter instances…"
+        label="Filter instances"
         {...props}
         value={value}
         onChange={setValue}
@@ -64,7 +64,7 @@ export const Default: Story = {
 export const WithValue: Story = {
   render: () => <Harness value="orders" />,
   play: async ({ canvas }) => {
-    const input = canvas.getByRole('searchbox', { name: 'Filter stacks' })
+    const input = canvas.getByRole('searchbox', { name: 'Filter instances' })
     await expect(input).toHaveValue('orders')
   },
 }
@@ -78,7 +78,7 @@ export const WithValue: Story = {
 export const GlyphSharesTheFieldsInset: Story = {
   render: () => <Harness />,
   play: async ({ canvas, canvasElement }) => {
-    const input = canvas.getByRole('searchbox', { name: 'Filter stacks' })
+    const input = canvas.getByRole('searchbox', { name: 'Filter instances' })
     const glyph = canvasElement.querySelector('svg') as SVGElement
     const row = input.parentElement as HTMLElement
     const rowBox = row.getBoundingClientRect()

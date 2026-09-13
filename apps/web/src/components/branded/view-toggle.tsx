@@ -9,7 +9,7 @@ const OPTIONS = [
   { value: "cards" as const, label: "Cards", icon: <LayoutGrid /> },
 ];
 
-const storageKey = (page: string) => `stackdome.view.${page}`;
+const storageKey = (page: string) => `stackbox.view.${page}`;
 
 /**
  * Which view a page is in, remembered per page per user (§7).
