@@ -1,7 +1,7 @@
 import { type InstanceExpiryHours, InstancePurpose, InstanceStatus } from "@stackbox/contract";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { EXTEND_EXPIRY_ERROR_MESSAGE, TEARDOWN_ERROR_MESSAGE, releaseErrorMessage } from "@/api/errors";
+import { extendExpiryErrorMessage, releaseErrorMessage, teardownErrorMessage } from "@/api/errors";
 import { INSTANCE_STATUS_LABEL, isRunning } from "@/api/mappers/instance";
 import { useApplications } from "@/api/use-applications";
 import { useInstanceDetail } from "@/api/use-instance-detail";
@@ -51,8 +51,8 @@ export function InstanceDetailPage() {
   async function pickExpiry(hours: InstanceExpiryHours) {
     try {
       await extendExpiry(hours);
-    } catch {
-      toast({ title: EXTEND_EXPIRY_ERROR_MESSAGE });
+    } catch (error) {
+      toast({ title: extendExpiryErrorMessage(error) });
     }
   }
 
@@ -67,8 +67,8 @@ export function InstanceDetailPage() {
     if (!confirmed) return;
     try {
       await teardown();
-    } catch {
-      toast({ title: TEARDOWN_ERROR_MESSAGE });
+    } catch (error) {
+      toast({ title: teardownErrorMessage(error) });
     }
   }
 
@@ -78,7 +78,7 @@ export function InstanceDetailPage() {
       <EmptyState
         title="This Application Instance did not load"
         description="Check the connection and try again."
-        action={<Button variant="ghost" onClick={() => void refresh()}>Try again</Button>}
+        action={<Button variant="outline" onClick={() => void refresh()}>Try again</Button>}
       />
     );
   }
