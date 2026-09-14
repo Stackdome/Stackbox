@@ -1,5 +1,6 @@
 export { ApplicationStore } from './application-store'
 export { DbModule } from './db.module'
+export { DrizzleTaskState } from './drizzle-task-state'
 export { PolicyStore } from './policy-store'
 export { TaskStore } from './task-store'
 export { UserStore } from './user-store'

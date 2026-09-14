@@ -1,7 +1,7 @@
 import { RepoProvider } from '@stackbox/contract'
 import { sql } from 'drizzle-orm'
 import type { Database } from '../client'
-import { application, organization, repository } from '../schema'
+import { application, gitConnection, organization, repository } from '../schema'
 
 export const IDS = {
   org: '00000000-0000-4000-8000-000000000001',
@@ -17,6 +17,11 @@ export const IDS = {
   otherTask: '00000000-0000-4000-8000-00000000000b',
   run1: '00000000-0000-4000-8000-00000000000c',
   run2: '00000000-0000-4000-8000-00000000000d',
+  connection: '00000000-0000-4000-8000-00000000000e',
+  sandbox: '00000000-0000-4000-8000-00000000000f',
+  execution: '00000000-0000-4000-8000-000000000010',
+  instance: '00000000-0000-4000-8000-000000000011',
+  message: '00000000-0000-4000-8000-000000000012',
 } as const
 
 export async function emptyTables(db: Database): Promise<void> {
@@ -39,4 +44,8 @@ export async function insertApplication(
     fullName: `acme/${row.name}`,
   })
   await db.insert(application).values({ id: row.id, orgId: row.orgId, name: row.name, slug: row.name, repositoryId: row.repositoryId })
+}
+
+export async function insertGitConnection(db: Database, orgId: string): Promise<void> {
+  await db.insert(gitConnection).values({ id: IDS.connection, orgId, provider: RepoProvider.Github, installationRef: 'acme-installation' })
 }

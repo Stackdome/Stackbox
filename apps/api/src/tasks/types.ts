@@ -6,6 +6,7 @@ import type {
   CheckOutcome,
   ConnectionStatus,
   ExecutionStatus,
+  MessageRole,
   PrState,
   ReleaseStatus,
   RepoProvider,
@@ -157,6 +158,18 @@ export type PullRequest = {
 }
 
 export type TaskEvent = { id: string; taskId: string; kind: TaskEventKind; payload: Record<string, unknown>; at: Date }
+
+export type TaskMessage = {
+  id: string
+  taskId: string
+  executionId: string | null
+  repliesToId: string | null
+  role: MessageRole
+  body: string
+  blocking: boolean
+  answeredAt: Date | null
+  createdAt: Date
+}
 
 export type TaskListRow = {
   task: Task

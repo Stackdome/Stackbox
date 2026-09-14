@@ -15,6 +15,7 @@ import {
   ReportSource,
   RunOutcome,
   SandboxStatus,
+  TaskEventKind,
   TaskKind,
   TaskPhase,
   TaskResolution,
@@ -344,7 +345,7 @@ export const taskEvent = pgTable(
   {
     id: id(),
     taskId: uuid('task_id').notNull().references(() => task.id, { onDelete: 'cascade' }),
-    kind: text('kind').notNull(),
+    kind: text('kind').$type<TaskEventKind>().notNull(),
     payload: jsonb('payload').$type<Record<string, unknown>>().notNull().default({}),
     at: happenedAt('at'),
   },
