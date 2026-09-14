@@ -3,8 +3,8 @@ import api from './client'
 
 type Schemas = components['schemas']
 
-export async function fetchTasks(orgId: string): Promise<Schemas['TaskList']> {
-  const { data } = await api.get<Schemas['TaskList']>(`/organizations/${orgId}/tasks`)
+export async function fetchTasks(orgId: string, query: { applicationId?: string } = {}): Promise<Schemas['TaskList']> {
+  const { data } = await api.get<Schemas['TaskList']>(`/organizations/${orgId}/tasks`, { params: { application_id: query.applicationId } })
   return data
 }
 

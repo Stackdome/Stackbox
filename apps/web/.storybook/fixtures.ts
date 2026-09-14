@@ -4,16 +4,21 @@ import {
   CheckKind,
   CheckOutcome,
   CoarseStatus,
+  ConnectionStatus,
   MessageRole,
   PrState,
   ReportSource,
+  RepoProvider,
   RunOutcome,
+  ServiceKind,
+  StackfileSync,
   TaskEventKind,
   TaskKind,
   TaskPhase,
   TaskResolution,
   UserRole,
 } from '@stackbox/contract'
+import { type CatalogSeed, PREVIEW_HEAD_SHA, type RepositoryRow } from '../src/preview/handlers/catalog'
 
 type Schemas = components['schemas']
 export type User = Schemas['User']
@@ -346,3 +351,136 @@ export const TASK_DETAILS: TaskDetailFixture[] = [
     runs: [makeTaskRun({ id: 'task-8-run-1', outcome: RunOutcome.Abandoned, cost_cents: 20, ended_at: hoursAgo(119) })],
   }),
 ]
+
+export type GitConnection = Schemas['GitConnection']
+export type AvailableRepository = Schemas['AvailableRepository']
+export type ApplicationDetail = Schemas['ApplicationDetail']
+export type Service = Schemas['Service']
+
+export { PREVIEW_HEAD_SHA }
+
+export const PREVIEW_STALE_SHA = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
+
+export const GITHUB_CONNECTION: GitConnection = {
+  id: 'connection-acme',
+  provider: RepoProvider.Github,
+  account_login: 'acme',
+  status: ConnectionStatus.Verified,
+  repository_count: 3,
+  created_at: '2026-07-20T09:00:00Z',
+}
+
+export const GITLAB_CONNECTION: GitConnection = {
+  id: 'connection-platform',
+  provider: RepoProvider.Gitlab,
+  account_login: 'acme-platform',
+  status: ConnectionStatus.Error,
+  repository_count: 0,
+  created_at: '2026-08-02T09:00:00Z',
+}
+
+function makeRepositoryRow(overrides: Pick<RepositoryRow, 'id' | 'external_id' | 'full_name'> & Partial<RepositoryRow>): RepositoryRow {
+  return { connection_id: GITHUB_CONNECTION.id, provider: RepoProvider.Github, default_branch: 'main', created_at: '2026-07-21T09:00:00Z', ...overrides }
+}
+
+/** acme/billing backs billing and ledger, acme/design-system backs nothing, acme/shop backs shop. */
+export const REPOSITORY_ROWS: RepositoryRow[] = [
+  makeRepositoryRow({ id: 'repo-billing', external_id: 'gh-1002', full_name: 'acme/billing' }),
+  makeRepositoryRow({ id: 'repo-design-system', external_id: 'gh-1003', full_name: 'acme/design-system', created_at: '2026-08-10T09:00:00Z' }),
+  makeRepositoryRow({ id: 'repo-shop', external_id: 'gh-1001', full_name: 'acme/shop' }),
+]
+
+const catalogueOf = (entries: [string, string][]): AvailableRepository[] =>
+  entries.map(([external_id, full_name]) => ({ external_id, full_name, default_branch: 'main' }))
+
+export const PROVIDER_CATALOGUE: Record<string, AvailableRepository[]> = {
+  [GITHUB_CONNECTION.id]: catalogueOf([
+    ['gh-1001', 'acme/shop'],
+    ['gh-1002', 'acme/billing'],
+    ['gh-1003', 'acme/design-system'],
+    ['gh-1004', 'acme/acme-api'],
+    ['gh-1005', 'acme/acme-web'],
+    ['gh-1006', 'acme/infra'],
+  ]),
+  [GITLAB_CONNECTION.id]: catalogueOf([
+    ['gl-2001', 'acme-platform/infra-tools'],
+    ['gl-2002', 'acme-platform/runbooks'],
+  ]),
+}
+
+const [BILLING_REPOSITORY, , SHOP_REPOSITORY] = REPOSITORY_ROWS
+
+const refOf = (row: RepositoryRow): Schemas['RepositoryRef'] => ({ id: row.id, full_name: row.full_name, default_branch: row.default_branch })
+
+export function makeService(overrides: Pick<Service, 'id' | 'name'> & Partial<Service>): Service {
+  return { path: null, image: null, kind: ServiceKind.Source, repository: null, ...overrides }
+}
+
+function servicesOn(prefix: string, row: RepositoryRow, sources: string[]): Service[] {
+  return [
+    ...sources.map((name) => makeService({ id: `${prefix}-${name}`, name, path: `apps/${name}`, repository: refOf(row) })),
+    makeService({ id: `${prefix}-postgres`, name: 'postgres', image: 'postgres:17', kind: ServiceKind.Image }),
+  ]
+}
+
+export function makeApplicationDetail(overrides: Partial<ApplicationDetail> = {}): ApplicationDetail {
+  return {
+    id: 'app-shop',
+    name: 'shop',
+    slug: 'shop',
+    repository: refOf(SHOP_REPOSITORY),
+    stackfile_path: null,
+    sync: StackfileSync.Synced,
+    synced_at_sha: PREVIEW_HEAD_SHA,
+    head_sha: PREVIEW_HEAD_SHA,
+    validated_at: '2026-09-14T09:00:00Z',
+    validation_error: null,
+    credentials: [],
+    services: servicesOn('svc-shop', SHOP_REPOSITORY, ['api', 'web', 'worker']),
+    task_count: 0,
+    created_at: '2026-07-22T09:00:00Z',
+    ...overrides,
+  }
+}
+
+/** Prompt 06 state 2 and prompt 07 states 1 to 3: stale, validation failed, healthy, ordered by name. */
+export const APPLICATION_DETAILS: ApplicationDetail[] = [
+  makeApplicationDetail({
+    id: 'app-billing',
+    name: 'billing',
+    slug: 'billing',
+    repository: refOf(BILLING_REPOSITORY),
+    sync: StackfileSync.Stale,
+    synced_at_sha: PREVIEW_STALE_SHA,
+    credentials: [
+      { name: 'smtp', kind: 'username_password', ref: 'vault://acme/smtp' },
+      { name: 'stripe', kind: 'token', ref: 'vault://acme/stripe' },
+    ],
+    services: servicesOn('svc-billing', BILLING_REPOSITORY, ['api', 'web']),
+  }),
+  makeApplicationDetail({
+    id: 'app-ledger',
+    name: 'ledger',
+    slug: 'ledger',
+    repository: refOf(BILLING_REPOSITORY),
+    stackfile_path: 'ledger/stackfile.yaml',
+    sync: StackfileSync.ValidationFailed,
+    synced_at_sha: null,
+    validated_at: null,
+    validation_error: 'services.worker: needs a path or an image',
+    services: [],
+  }),
+  makeApplicationDetail(),
+]
+
+export const PREVIEW_APPLICATION_SUMMARIES: ApplicationSummary[] = APPLICATION_DETAILS.map(({ id, name }) => ({ id, name }))
+
+export const PREVIEW_CATALOG_SEED: CatalogSeed = {
+  connections: [GITHUB_CONNECTION, GITLAB_CONNECTION],
+  repositories: REPOSITORY_ROWS,
+  catalogue: PROVIDER_CATALOGUE,
+  applications: APPLICATION_DETAILS,
+  tasks: TASK_SUMMARIES,
+}
+
+export const EMPTY_CATALOG_SEED: CatalogSeed = { connections: [], repositories: [], catalogue: {}, applications: [], tasks: [] }

@@ -76,13 +76,16 @@ export const GLYPH: Partial<Record<StatusDomain, Record<string, LucideIcon>>> = 
     hibernated: CircleOff,
     fenced: TriangleAlert,
   },
-  // A provider is either reaching your repositories or it is not, and if it is
-  // not there are two different reasons, which is exactly the distinction the
-  // glyph has to carry.
-  git_integration: {
-    connected: CircleCheck,
-    needs_setup: CircleDashed,
-    action_needed: CircleX,
+  // A refused connection and a failed validation are both something to fix; a stale Stackfile only warns.
+  git_connection: {
+    verified: CircleCheck,
+    error: CircleX,
+  },
+  stackfile_sync: {
+    synced: CircleCheck,
+    stale: TriangleAlert,
+    not_synced: CircleDashed,
+    validation_failed: CircleX,
   },
   // A preview environment's five phases, and the distinction that matters is
   // WAITING versus BUILDING versus GONE: `Provisioning` means nothing has
