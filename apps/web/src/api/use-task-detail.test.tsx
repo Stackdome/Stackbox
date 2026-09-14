@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { TaskPhase } from '@stackbox/contract'
-import { http } from 'msw'
+import { HttpResponse, http } from 'msw'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { APPLICATIONS, ORG_ID, TASK_DETAILS, TASK_SUMMARIES } from '../../.storybook/fixtures'
@@ -64,6 +64,49 @@ describe('useTaskDetail', () => {
 
     await waitFor(() => expect(reads).toBe(3))
     server.events.removeAllListeners()
+  })
+
+  it('ignores a task read that resolves after a newer one already landed', async () => {
+    let calls = 0
+    let releaseFirst: (() => void) | undefined
+    const detail = TASK_DETAILS.find((fixture) => fixture.detail.id === 'task-1')!.detail
+    server.use(
+      http.get('*/api/v1/organizations/:orgId/tasks/task-1', async () => {
+        calls += 1
+        if (calls === 1) {
+          await new Promise<void>((resolve) => {
+            releaseFirst = resolve
+          })
+          return HttpResponse.json({ ...detail, phase: TaskPhase.Failed })
+        }
+        return HttpResponse.json(detail)
+      }),
+    )
+    const { result } = renderHook(() => useTaskDetail(ORG_ID, 'task-1'))
+    await waitFor(() => expect(calls).toBe(1))
+
+    let stale: Promise<void> | undefined
+    act(() => {
+      stale = result.current.refresh()
+    })
+    await waitFor(() => expect(calls).toBe(2))
+    await waitFor(() => expect(result.current.data).not.toBeNull())
+
+    await act(async () => {
+      releaseFirst?.()
+      await stale
+    })
+
+    expect(result.current.data?.detail.phase).not.toBe(TaskPhase.Failed)
+  })
+
+  it('resets the previous task out of view as soon as a different task id is requested', async () => {
+    const { result, rerender } = renderHook(({ taskId }) => useTaskDetail(ORG_ID, taskId), { initialProps: { taskId: 'task-1' } })
+    await waitFor(() => expect(result.current.data).not.toBeNull())
+
+    rerender({ taskId: 'task-2' })
+
+    expect({ data: result.current.data, loading: result.current.loading }).toEqual({ data: null, loading: true })
   })
 
   it('reports a failed load and keeps nothing', async () => {

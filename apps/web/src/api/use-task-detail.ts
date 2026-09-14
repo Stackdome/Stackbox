@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   type CheckView,
   type MessageView,
@@ -27,9 +27,18 @@ export function useTaskDetail(orgId: string | null, taskId: string) {
   const [data, setData] = useState<TaskDetailData | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
+  // Only the most recently started request may write state; an older poll resolving after it is dropped.
+  const latestRequest = useRef(0)
+
+  useEffect(() => {
+    setData(null)
+    setLoading(true)
+    setFailed(false)
+  }, [taskId])
 
   const refresh = useCallback(async () => {
     if (!orgId) return
+    const request = ++latestRequest.current
     try {
       const [detail, events, checks, runs, messages] = await Promise.all([
         fetchTaskDetail(orgId, taskId),
@@ -38,6 +47,7 @@ export function useTaskDetail(orgId: string | null, taskId: string) {
         fetchTaskRuns(orgId, taskId),
         fetchTaskMessages(orgId, taskId),
       ])
+      if (request !== latestRequest.current) return
       setData({
         detail: toTaskDetail(detail, events.items),
         timeline: events.items.map(toTimelineEntry),
@@ -47,9 +57,10 @@ export function useTaskDetail(orgId: string | null, taskId: string) {
       })
       setFailed(false)
     } catch {
+      if (request !== latestRequest.current) return
       setFailed(true)
     } finally {
-      setLoading(false)
+      if (request === latestRequest.current) setLoading(false)
     }
   }, [orgId, taskId])
 
