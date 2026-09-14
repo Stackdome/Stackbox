@@ -62,6 +62,9 @@ export function applicationHandlers(catalog: PreviewCatalog, delayMs: number): H
       if (catalog.hasActiveTasks(applicationId)) {
         return HttpResponse.json({ code: 'application_has_active_tasks', message: "Cancel or finish the application's running tasks first" }, { status: 409 })
       }
+      if (catalog.hasLiveInstances(applicationId)) {
+        return HttpResponse.json({ code: 'application_has_live_instances', message: "Tear down this application's instances first" }, { status: 409 })
+      }
       catalog.removeApplication(applicationId)
       return new HttpResponse(null, { status: 204 })
     }),
