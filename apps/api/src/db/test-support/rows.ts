@@ -1,7 +1,7 @@
-import { RepoProvider } from '@stackbox/contract'
+import { InstancePurpose, type InstanceStatus, RepoProvider, type ReleaseStatus } from '@stackbox/contract'
 import { sql } from 'drizzle-orm'
 import type { Database } from '../client'
-import { application, gitConnection, organization, repository } from '../schema'
+import { application, applicationInstance, gitConnection, organization, release, repository, userAccount } from '../schema'
 
 export const IDS = {
   org: '00000000-0000-4000-8000-000000000001',
@@ -26,6 +26,10 @@ export const IDS = {
   secondRepository: '00000000-0000-4000-8000-000000000014',
   secondApplication: '00000000-0000-4000-8000-000000000015',
   secondConnection: '00000000-0000-4000-8000-000000000016',
+  otherInstance: '00000000-0000-4000-8000-000000000017',
+  secondInstance: '00000000-0000-4000-8000-000000000018',
+  release: '00000000-0000-4000-8000-000000000019',
+  secondRelease: '00000000-0000-4000-8000-00000000001a',
 } as const
 
 export const TEST_INSTALLATION_REF = 'acme-installation'
@@ -87,4 +91,32 @@ export async function insertApplication(
 ): Promise<void> {
   await insertRepository(db, { orgId: row.orgId, id: row.repositoryId, name: row.name })
   await insertApplicationOn(db, row)
+}
+
+export async function insertUser(db: Database, row: { id: string; orgId: string; name: string }): Promise<void> {
+  await db.insert(userAccount).values({ id: row.id, orgId: row.orgId, name: row.name, email: `${row.id}@example.com` })
+}
+
+export async function insertInstance(
+  db: Database,
+  row: {
+    id: string
+    applicationId: string
+    purpose?: InstancePurpose
+    status?: InstanceStatus
+    taskId?: string | null
+    createdBy?: string | null
+    url?: string | null
+    expiresAt?: Date | null
+    createdAt?: Date
+  },
+): Promise<void> {
+  await db.insert(applicationInstance).values({ purpose: InstancePurpose.Scratch, ...row })
+}
+
+export async function insertRelease(
+  db: Database,
+  row: { instanceId: string; id?: string; status?: ReleaseStatus; commitSha?: string; ref?: string | null; runId?: string | null; createdAt?: Date },
+): Promise<void> {
+  await db.insert(release).values({ commitSha: 'origin-sha', ...row })
 }
