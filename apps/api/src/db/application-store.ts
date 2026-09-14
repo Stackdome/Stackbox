@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InstanceStatus, TaskPhase } from '@stackbox/contract'
-import { and, asc, count, eq, inArray, ne, notInArray, or } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, notInArray, or } from 'drizzle-orm'
 import { type ApplicationPatch, type ApplicationRecord, type NewApplication, RemoveOutcome, type ServiceRecord, type SyncWrite } from '../applications/types'
 import type { ApplicationRef } from '../repositories/types'
 import { isTerminal } from '../tasks/calc/phase-transitions'
@@ -124,7 +124,7 @@ export class ApplicationStore {
       const [live] = await tx
         .select({ id: applicationInstance.id })
         .from(applicationInstance)
-        .where(and(eq(applicationInstance.applicationId, applicationId), ne(applicationInstance.status, InstanceStatus.TornDown)))
+        .where(and(eq(applicationInstance.applicationId, applicationId), notInArray(applicationInstance.status, [InstanceStatus.Expired, InstanceStatus.TornDown])))
         .limit(1)
       if (live) return RemoveOutcome.LiveInstances
       const tasks = tx.select({ id: task.id }).from(task).where(eq(task.applicationId, applicationId))

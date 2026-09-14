@@ -175,6 +175,15 @@ describe('ApplicationStore', () => {
     expect([removed, ...left.map((rows) => rows.length)]).toEqual([RemoveOutcome.Removed, 0, 0, 0, 0])
   })
 
+  it('removes an application whose only instance has expired, taking the instance row with it', async () => {
+    const shop = await aShopApplication()
+    await insertInstance(db, { id: IDS.instance, applicationId: shop, status: InstanceStatus.Expired })
+
+    const removed = await store.removeIfIdle(shop)
+
+    expect([removed, await db.select().from(applicationInstance).where(eq(applicationInstance.id, IDS.instance))]).toEqual([RemoveOutcome.Removed, []])
+  })
+
   it('refuses to remove an application with an instance still up, then removes it once that instance is torn down', async () => {
     const shop = await aShopApplication()
     await insertInstance(db, { id: IDS.instance, applicationId: shop, status: InstanceStatus.Ready })

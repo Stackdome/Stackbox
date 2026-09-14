@@ -164,9 +164,9 @@ describe('ApplicationService', () => {
     })
   })
 
-  it('refuses to delete an application while one of its instances is not torn down', async () => {
+  it('refuses to delete an application while one of its instances is still running', async () => {
     const created = await createShop()
-    await insertInstance(db, { id: IDS.instance, applicationId: created.id, status: InstanceStatus.Expired })
+    await insertInstance(db, { id: IDS.instance, applicationId: created.id, status: InstanceStatus.Ready })
 
     const refused = await service.remove(IDS.org, created.id).catch((error: unknown) => error)
 
@@ -174,6 +174,15 @@ describe('ApplicationService', () => {
       code: 'application_has_live_instances',
       message: "Tear down the application's instances first",
     })
+  })
+
+  it('deletes an application whose only instance has expired', async () => {
+    const created = await createShop()
+    await insertInstance(db, { id: IDS.instance, applicationId: created.id, status: InstanceStatus.Expired })
+
+    await service.remove(IDS.org, created.id)
+
+    await expect(service.detail(IDS.org, created.id)).rejects.toBeInstanceOf(NotFoundException)
   })
 
   it('answers not found for an application id that is not a uuid', async () => {
