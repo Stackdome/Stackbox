@@ -50,7 +50,7 @@ export class PreviewTaskBook {
   }
 }
 
-const notFound = () => HttpResponse.json({ reason: 'task not found' }, { status: 404 })
+const notFound = () => HttpResponse.json({ message: 'task not found' }, { status: 404 })
 
 function base64Of(bytes: Uint8Array): string {
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
@@ -63,7 +63,7 @@ export function taskDetailHandlers(book: PreviewTaskBook, applications: Schemas[
     http.post('*/api/v1/organizations/:orgId/artifacts', async ({ request }) => {
       const file = (await request.formData()).get('file')
       if (!(file instanceof File) || !file.type.startsWith('image/')) {
-        return HttpResponse.json({ reason: 'attach one image file' }, { status: 400 })
+        return HttpResponse.json({ message: 'attach one image file' }, { status: 400 })
       }
       const artifact: Schemas['Artifact'] = {
         id: `artifact-${crypto.randomUUID()}`,
@@ -78,7 +78,7 @@ export function taskDetailHandlers(book: PreviewTaskBook, applications: Schemas[
     http.post('*/api/v1/organizations/:orgId/tasks', async ({ request }) => {
       const input = (await request.json()) as Schemas['TaskCreate']
       const application = applications.find((candidate) => candidate.id === input.application_id)
-      if (!application) return HttpResponse.json({ reason: 'application not found' }, { status: 404 })
+      if (!application) return HttpResponse.json({ message: 'application not found' }, { status: 404 })
       if (input.kind === TaskKind.Onboarding) {
         return HttpResponse.json({ code: 'unsupported_task_kind', message: 'Tasks of kind onboarding are not supported yet' }, { status: 400 })
       }
@@ -129,7 +129,7 @@ export function taskDetailHandlers(book: PreviewTaskBook, applications: Schemas[
       const fixture = book.find(String(params.taskId))
       if (!fixture) return notFound()
       const { body } = (await request.json()) as Schemas['TaskMessageCreate']
-      if (!/\S/.test(body)) return HttpResponse.json({ reason: 'validation failed' }, { status: 400 })
+      if (!/\S/.test(body)) return HttpResponse.json({ message: 'validation failed' }, { status: 400 })
       const now = new Date().toISOString()
       const open =
         fixture.detail.phase === TaskPhase.NeedsInput

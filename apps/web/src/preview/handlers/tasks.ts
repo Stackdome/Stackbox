@@ -25,10 +25,10 @@ export function taskHandlers(seed: TaskSummary[], applications: ApplicationSumma
     http.post('*/api/v1/organizations/:orgId/tasks/:taskId/cancel', ({ params }) => {
       const fixture = book.find(String(params.taskId))
       if (!fixture) {
-        return HttpResponse.json({ reason: 'task not found' }, { status: 404 })
+        return HttpResponse.json({ message: 'task not found' }, { status: 404 })
       }
       if (FINISHED.includes(fixture.detail.coarse_status)) {
-        return HttpResponse.json({ reason: 'task has already finished' }, { status: 409 })
+        return HttpResponse.json({ message: 'task has already finished' }, { status: 409 })
       }
       const detail = { ...fixture.detail, phase: TaskPhase.Cancelled, coarse_status: CoarseStatus.Cancelled }
       book.replace({ ...fixture, detail })
