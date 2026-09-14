@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common'
-import { agentRuntimeFor } from '../reconciler/bindings'
+import { agentRuntimeFor } from './agent-runtime'
 import { type InMemorySandboxProvider, ScriptedClock, ScriptedDeployTarget, ScriptedGitProvider, ScriptedSandboxProvider } from './fakes'
 import type { Clock } from './ports'
 import { AGENT_RUNTIME, CLOCK, DEPLOY_TARGET, GIT_PROVIDER, SANDBOX_PROVIDER } from './tokens'
