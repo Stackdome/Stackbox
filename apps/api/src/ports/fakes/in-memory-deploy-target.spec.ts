@@ -30,4 +30,12 @@ describe('the in-memory deploy target', () => {
     await deploy.teardown(instance)
     expect(deploy.isTornDown(instance)).toBe(true)
   })
+
+  it('refuses an instance and a release it has never seen', async () => {
+    const deploy = new InMemoryDeployTarget()
+
+    const refusals = await Promise.all([deploy.instanceUrl({ id: 'unknown' }), deploy.releaseStatus({ id: 'unknown' })].map((call) => call.catch((error: unknown) => error)))
+
+    expect(refusals.map((refusal) => refusal instanceof Error)).toEqual([true, true])
+  })
 })

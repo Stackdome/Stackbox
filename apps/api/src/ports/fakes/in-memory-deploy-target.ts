@@ -2,12 +2,12 @@ import { ReleaseStatus } from '@stackbox/contract'
 import type { DeployTarget } from '../ports'
 import type { InstanceRef, ReleaseRef } from '../types'
 
-type FakeInstance = { applicationId: string; tornDown: boolean }
-type FakeRelease = { instanceId: string; commitSha: string; status: ReleaseStatus }
+export type FakeInstance = { applicationId: string; tornDown: boolean }
+export type FakeRelease = { instanceId: string; commitSha: string; status: ReleaseStatus }
 
 export class InMemoryDeployTarget implements DeployTarget {
-  private readonly instances = new Map<string, FakeInstance>()
-  private readonly releases = new Map<string, FakeRelease>()
+  protected readonly instances = new Map<string, FakeInstance>()
+  protected readonly releases = new Map<string, FakeRelease>()
   private settledStatus: ReleaseStatus = ReleaseStatus.Queued
 
   settleReleasesAs(status: ReleaseStatus): void {
