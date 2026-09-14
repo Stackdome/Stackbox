@@ -46,21 +46,15 @@ export class DrizzleTaskState implements TaskState {
 
   async load(taskId: string): Promise<TaskSnapshot> {
     const [head] = await this.db
-      .select({ task, report, repository, organization })
+      .select({ task, report, repository, organization, connection: gitConnection })
       .from(task)
       .innerJoin(application, eq(task.applicationId, application.id))
       .innerJoin(organization, eq(application.orgId, organization.id))
       .innerJoin(repository, eq(application.repositoryId, repository.id))
+      .innerJoin(gitConnection, eq(repository.connectionId, gitConnection.id))
       .innerJoin(report, eq(task.reportId, report.id))
       .where(eq(task.id, taskId))
     if (!head) throw new Error(`task ${taskId} does not exist or has no report`)
-    const [connection] = await this.db
-      .select()
-      .from(gitConnection)
-      .where(and(eq(gitConnection.orgId, head.organization.id), eq(gitConnection.provider, head.repository.provider)))
-      .orderBy(asc(gitConnection.createdAt))
-      .limit(1)
-    if (!connection) throw new Error(`organization ${head.organization.id} has no ${head.repository.provider} connection`)
     const { instanceId } = head.task
     const [runs, releases, sandboxes, executions, checks, pullRequests, messages, events] = await Promise.all([
       this.db.select().from(run).where(eq(run.taskId, taskId)).orderBy(asc(run.number)),
@@ -77,7 +71,7 @@ export class DrizzleTaskState implements TaskState {
     return {
       organization: head.organization,
       repository: head.repository,
-      connection,
+      connection: head.connection,
       report: head.report,
       task: head.task,
       runs,

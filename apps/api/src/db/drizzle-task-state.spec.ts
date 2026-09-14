@@ -11,7 +11,7 @@ import type { Task } from '../tasks/types'
 import type { Database } from './client'
 import { DrizzleTaskState } from './drizzle-task-state'
 import { applicationInstance, report, task, taskMessage } from './schema'
-import { IDS, emptyTables, insertApplication, insertGitConnection, insertOrganization } from './test-support/rows'
+import { IDS, emptyTables, insertApplication, insertApplicationOn, insertGitConnection, insertOrganization, insertRepository } from './test-support/rows'
 
 const NOW = new Date('2026-09-14T10:00:00Z')
 const later = (ms: number) => new Date(NOW.getTime() + ms)
@@ -164,5 +164,16 @@ describe('DrizzleTaskState', () => {
       messages: snapshot.messages.map((message) => message.id),
       events: snapshot.events.map((event) => event.kind),
     }).toEqual({ connection: IDS.connection, runs: [1, 2], messages: [IDS.message], events: [TaskEventKind.PhaseChanged] })
+  })
+
+  it('loads the connection a repository was added through, not the organization oldest one', async () => {
+    await insertGitConnection(db, IDS.org, { id: IDS.secondConnection, installationRef: 'acme-labs-installation', accountLogin: 'acme-labs' })
+    await insertRepository(db, { orgId: IDS.org, id: IDS.secondRepository, name: 'ledger', connectionId: IDS.secondConnection })
+    await insertApplicationOn(db, { orgId: IDS.org, repositoryId: IDS.secondRepository, id: IDS.secondApplication, name: 'ledger' })
+    const id = await aStoredTask({ applicationId: IDS.secondApplication })
+
+    const snapshot = await state.load(id)
+
+    expect(snapshot.connection.id).toBe(IDS.secondConnection)
   })
 })
