@@ -27,6 +27,9 @@ export const PREVIEW_DELAY_MS = 2000
 
 const STACKFILE_NAME = 'stackfile.yaml'
 
+/** Mirrors the api's fake provider: a connection with this login can never re-verify. */
+export const NEEDS_REAUTH_LOGIN = 'needs-reauth'
+
 const ACTIVE: CoarseStatus[] = [CoarseStatus.Running, CoarseStatus.NeedsYou]
 
 const DETECTED: Schemas['DetectedService'][] = [
@@ -115,10 +118,12 @@ export class PreviewCatalog {
   }
 
   verify(connectionId: string): Schemas['GitConnection'] | null {
-    if (!this.state.connections.some((connection) => connection.id === connectionId)) return null
+    const target = this.state.connections.find((connection) => connection.id === connectionId)
+    if (!target) return null
+    const status = target.account_login === NEEDS_REAUTH_LOGIN ? ConnectionStatus.Error : ConnectionStatus.Verified
     this.commit({
       ...this.state,
-      connections: this.state.connections.map((connection) => (connection.id === connectionId ? { ...connection, status: ConnectionStatus.Verified } : connection)),
+      connections: this.state.connections.map((connection) => (connection.id === connectionId ? { ...connection, status } : connection)),
     })
     return this.connections().find((connection) => connection.id === connectionId) ?? null
   }

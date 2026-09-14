@@ -84,6 +84,28 @@ describe('the preview catalog adding repositories', () => {
   })
 })
 
+describe('the preview catalog verifying a connection', () => {
+  const seedWith = (accountLogin: string): CatalogSeed => ({
+    connections: [{ id: 'connection-1', provider: RepoProvider.Github, account_login: accountLogin, status: ConnectionStatus.Error, repository_count: 0, created_at: '2026-07-20T09:00:00Z' }],
+    repositories: [],
+    catalogue: {},
+    applications: [],
+    tasks: [],
+  })
+
+  it('keeps a needs-reauth connection at error, mirroring the api', () => {
+    const { catalog } = buildCatalog(seedWith('needs-reauth'), { delayMs: 0 })
+
+    expect(catalog.verify('connection-1')?.status).toBe(ConnectionStatus.Error)
+  })
+
+  it('verifies every other connection', () => {
+    const { catalog } = buildCatalog(seedWith('acme'), { delayMs: 0 })
+
+    expect(catalog.verify('connection-1')?.status).toBe(ConnectionStatus.Verified)
+  })
+})
+
 describe('the preview catalog against a blocked sessionStorage', () => {
   const throwing: Storage = {
     length: 0,

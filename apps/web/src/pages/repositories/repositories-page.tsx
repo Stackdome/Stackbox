@@ -1,4 +1,4 @@
-import { RepoProvider } from "@stackbox/contract";
+import { ConnectionStatus, RepoProvider } from "@stackbox/contract";
 import { useState } from "react";
 import { type GitConnectionView, PROVIDER_LABEL, type RepositoryView } from "@/api/mappers/repository";
 import { useRepositories } from "@/api/use-repositories";
@@ -67,7 +67,10 @@ export function RepositoriesPage() {
 
   async function reconnect(connection: GitConnectionView) {
     try {
-      await verify(connection.id);
+      const verified = await verify(connection.id);
+      if (verified?.status === ConnectionStatus.Error) {
+        toast({ title: `${connection.title} still needs re-auth` });
+      }
     } catch {
       toast({ title: `${connection.title} was not verified` });
     }
