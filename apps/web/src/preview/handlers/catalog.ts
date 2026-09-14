@@ -76,10 +76,9 @@ export class PreviewCatalog {
   private readonly persistKey: string | undefined
 
   constructor(seed: CatalogSeed, persistKey?: string, taskBook?: PreviewTaskBook) {
-    const stored = persistKey ? sessionStorage.getItem(persistKey) : null
-    this.state = stored
-      ? (JSON.parse(stored) as CatalogState)
-      : { connections: seed.connections, repositories: seed.repositories, catalogue: seed.catalogue, applications: seed.applications }
+    const seeded = { connections: seed.connections, repositories: seed.repositories, catalogue: seed.catalogue, applications: seed.applications }
+    // A remembered catalog is a convenience; a blocked or unreadable store must not take the whole preview down with it.
+    this.state = persistKey ? readStored(persistKey) ?? seeded : seeded
     this.taskBook = taskBook ?? new PreviewTaskBook(seed.tasks, [])
     this.persistKey = persistKey
   }
@@ -263,7 +262,21 @@ export class PreviewCatalog {
 
   private commit(next: CatalogState): void {
     this.state = next
-    if (this.persistKey) sessionStorage.setItem(this.persistKey, JSON.stringify(next))
+    if (!this.persistKey) return
+    try {
+      sessionStorage.setItem(this.persistKey, JSON.stringify(next))
+    } catch {
+      // A remembered catalog is a convenience; losing it is not a failure worth surfacing.
+    }
+  }
+}
+
+function readStored(persistKey: string): CatalogState | null {
+  try {
+    const stored = sessionStorage.getItem(persistKey)
+    return stored ? (JSON.parse(stored) as CatalogState) : null
+  } catch {
+    return null
   }
 }
 

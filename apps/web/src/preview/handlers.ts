@@ -10,7 +10,8 @@ export const scenario = import.meta.env.VITE_PREVIEW_SCENARIO
 const EMPTY_SCENARIO = 'empty'
 
 // Survives a reload of the same tab; every new browser context starts from the seed.
-const PERSIST_KEY = `stackbox.preview.catalog.${scenario ?? 'populated'}`
+// Versioned so a fixture change starts fresh instead of parsing a stored shape it no longer matches.
+const PERSIST_KEY = `stackbox.preview.catalog.v1.${scenario ?? 'populated'}`
 
 const seed = scenario === EMPTY_SCENARIO ? EMPTY_CATALOG_SEED : PREVIEW_CATALOG_SEED
 const taskBook = new PreviewTaskBook(scenario === EMPTY_SCENARIO ? [] : TASK_SUMMARIES, scenario === EMPTY_SCENARIO ? [] : TASK_DETAILS)

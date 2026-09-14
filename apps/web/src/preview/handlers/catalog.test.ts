@@ -3,7 +3,7 @@ import { RepoProvider } from '@stackbox/contract'
 import { setupServer } from 'msw/node'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ORG_ID } from '../../../.storybook/fixtures'
-import { buildCatalog, type CatalogSeed } from './catalog'
+import { buildCatalog, PreviewCatalog, type CatalogSeed } from './catalog'
 import { PreviewTaskBook } from './task-detail'
 import { taskHandlers } from './tasks'
 
@@ -52,5 +52,34 @@ describe('the preview catalog and task handlers sharing one task book', () => {
     const disconnect = await fetch(`/api/v1/organizations/${ORG_ID}/applications/${created.id}`, { method: 'DELETE' })
 
     expect(disconnect.status).toBe(409)
+  })
+})
+
+describe('the preview catalog against a blocked sessionStorage', () => {
+  const throwing: Storage = {
+    length: 0,
+    clear: () => {},
+    key: () => null,
+    getItem: () => {
+      throw new Error('sessionStorage is blocked')
+    },
+    setItem: () => {
+      throw new Error('sessionStorage is blocked')
+    },
+    removeItem: () => {},
+  }
+
+  it('falls back to the seed instead of taking the whole preview down', () => {
+    const original = window.sessionStorage
+    Object.defineProperty(window, 'sessionStorage', { value: throwing, configurable: true })
+
+    try {
+      const catalog = new PreviewCatalog(SEED, 'stackbox.preview.catalog.v1.test')
+
+      expect(() => catalog.repositories()).not.toThrow()
+      expect(catalog.repositories().map((row) => row.id)).toEqual([REPOSITORY_ID])
+    } finally {
+      Object.defineProperty(window, 'sessionStorage', { value: original, configurable: true })
+    }
   })
 })
