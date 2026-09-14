@@ -2067,10 +2067,60 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+    post:
+      x-stability: draft
+      summary: Create a report and its task in one call
+      operationId: createTask
+      security:
+        - Bearer: []
+      tags:
+        - Tasks
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created in phase intake
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskDetail'
+        '400':
+          description: The body is invalid or names an unsupported task kind
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unsupported_task_kind
+                message: Tasks of kind onboarding are not supported yet
+        '401':
+          description: Auth token is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Unauthorized to perform operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Application not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/v1/organizations/{org_id}/tasks/{task_id}:
     get:
       x-stability: draft
-      summary: Get one task as the Tasks list draws it
+      summary: Get one task as the Task detail screen draws it
       operationId: getTask
       security:
         - Bearer: []
@@ -2089,7 +2139,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TaskSummary'
+                $ref: '#/components/schemas/TaskDetail'
         '401':
           description: Auth token is invalid
           content:
@@ -2155,6 +2205,228 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /api/v1/organizations/{org_id}/tasks/{task_id}/events:
+    get:
+      x-stability: draft
+      summary: List the task's timeline events, oldest first
+      operationId: listTaskEvents
+      security:
+        - Bearer: []
+      tags:
+        - Tasks
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Events fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskEventList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Task not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/tasks/{task_id}/checks:
+    get:
+      x-stability: draft
+      summary: List the task's checks, oldest first
+      operationId: listTaskChecks
+      security:
+        - Bearer: []
+      tags:
+        - Tasks
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Checks fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCheckList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Task not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/tasks/{task_id}/runs:
+    get:
+      x-stability: draft
+      summary: List the task's runs by number, each with its cost and failed check
+      operationId: listTaskRuns
+      security:
+        - Bearer: []
+      tags:
+        - Tasks
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Runs fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskRunList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Task not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/tasks/{task_id}/messages:
+    get:
+      x-stability: draft
+      summary: List the task's conversation, oldest first
+      operationId: listTaskMessages
+      security:
+        - Bearer: []
+      tags:
+        - Tasks
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Messages fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMessageList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Task not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      x-stability: draft
+      summary: Append a message; answers the open blocking question and resumes the diverted phase when the task needs input
+      operationId: createTaskMessage
+      security:
+        - Bearer: []
+      tags:
+        - Tasks
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskMessageCreate'
+      responses:
+        '200':
+          description: Message appended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskMessage'
+        '400': { description: The body is empty, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Task not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/tasks/{task_id}/artifacts:
+    get:
+      x-stability: draft
+      summary: List every artifact of the task, its report, checks and messages
+      operationId: listTaskArtifacts
+      security:
+        - Bearer: []
+      tags:
+        - Tasks
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: task_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifacts fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Task not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/artifacts:
+    post:
+      x-stability: draft
+      summary: Upload one image, at most 2 MB, stored as a data URL until object storage arrives
+      operationId: uploadArtifact
+      security:
+        - Bearer: []
+      tags:
+        - Artifacts
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Artifact stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Artifact'
+        '400': { description: No file, or the file is not an image, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '413': { description: The file is larger than 2 MB, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/artifacts/{artifact_id}:
+    get:
+      x-stability: draft
+      summary: Get one artifact of the organization
+      operationId: getArtifact
+      security:
+        - Bearer: []
+      tags:
+        - Artifacts
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: artifact_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Artifact fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Artifact'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Artifact not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /api/v1/organizations/{org_id}/applications:
     get:
       x-stability: draft
@@ -4313,6 +4585,30 @@ components:
         - User
         - Agent
         - System
+    TaskEventKind:
+      type: string
+      x-stability: draft
+      description: task_event.kind; the timeline is derived from these alone.
+      enum:
+        - phase_changed
+        - instance_requested
+        - budget_exceeded
+        - check_ignored
+        - run_started
+        - run_ended
+        - check_recorded
+        - message_sent
+        - message_send_failed
+      x-enum-varnames:
+        - PhaseChanged
+        - InstanceRequested
+        - BudgetExceeded
+        - CheckIgnored
+        - RunStarted
+        - RunEnded
+        - CheckRecorded
+        - MessageSent
+        - MessageSendFailed
     CoarseStatus:
       type: string
       x-stability: draft
@@ -4501,3 +4797,362 @@ components:
         needs_you_count:
           type: integer
           description: Unfiltered count of the organization's tasks whose coarse status is needs_you
+    TaskCreate:
+      type: object
+      x-stability: draft
+      required:
+        - application_id
+        - description
+      properties:
+        application_id:
+          type: string
+        description:
+          type: string
+          minLength: 1
+          maxLength: 10000
+          pattern: '\S'
+        expected_behaviour:
+          type: string
+          maxLength: 10000
+        screenshot_artifact_id:
+          type: string
+          format: uuid
+        target_branch:
+          type: string
+          minLength: 1
+        run_limit:
+          type: integer
+          minimum: 1
+          maximum: 5
+          default: 2
+        kind:
+          allOf:
+            - $ref: '#/components/schemas/TaskKind'
+          default: fix
+    Artifact:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - kind
+        - url
+        - meta
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/ArtifactKind'
+        url:
+          type: string
+          description: A data URL this slice; an object storage URL once the sandbox vendor lands.
+        meta:
+          type: object
+          additionalProperties: true
+    ArtifactList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Artifact'
+    TaskDetailReport:
+      type: object
+      x-stability: draft
+      required:
+        - description
+        - expected_behaviour
+        - reporter
+        - source
+        - screenshots
+      properties:
+        description:
+          type: string
+        expected_behaviour:
+          type: string
+          nullable: true
+        reporter:
+          type: string
+          nullable: true
+        source:
+          $ref: '#/components/schemas/ReportSource'
+        screenshots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Artifact'
+    TaskDetailPullRequest:
+      type: object
+      x-stability: draft
+      required:
+        - number
+        - repository_full_name
+        - state
+        - is_draft
+        - head_ref
+        - base_ref
+      properties:
+        number:
+          type: integer
+        repository_full_name:
+          type: string
+        state:
+          $ref: '#/components/schemas/PrState'
+        is_draft:
+          type: boolean
+        head_ref:
+          type: string
+          nullable: true
+        base_ref:
+          type: string
+          nullable: true
+    TaskDetail:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - application
+        - report
+        - kind
+        - phase
+        - coarse_status
+        - resolution
+        - run_number
+        - run_limit
+        - blocking_question
+        - pull_request
+        - instance
+        - cost_cents
+        - created_at
+        - completed_at
+        - target_branch
+        - budget_cents
+        - pull_requests
+      properties:
+        id:
+          type: string
+        application:
+          $ref: '#/components/schemas/ApplicationSummary'
+        report:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TaskDetailReport'
+        kind:
+          $ref: '#/components/schemas/TaskKind'
+        phase:
+          $ref: '#/components/schemas/TaskPhase'
+        coarse_status:
+          $ref: '#/components/schemas/CoarseStatus'
+        resolution:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TaskResolution'
+        run_number:
+          type: integer
+          nullable: true
+        run_limit:
+          type: integer
+        blocking_question:
+          type: string
+          nullable: true
+        pull_request:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TaskPullRequest'
+        instance:
+          nullable: true
+          description: Null until the instances module lands.
+          allOf:
+            - $ref: '#/components/schemas/TaskInstance'
+        cost_cents:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        target_branch:
+          type: string
+          nullable: true
+        budget_cents:
+          type: integer
+          nullable: true
+          description: Null means only the organization budget applies.
+        pull_requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskDetailPullRequest'
+    TaskEvent:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - kind
+        - payload
+        - at
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/TaskEventKind'
+        payload:
+          type: object
+          additionalProperties: true
+        at:
+          type: string
+          format: date-time
+    TaskEventList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskEvent'
+    TaskCheck:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - kind
+        - outcome
+        - run_number
+        - commit_sha
+        - ran_at
+        - artifacts
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/CheckKind'
+        outcome:
+          $ref: '#/components/schemas/CheckOutcome'
+        run_number:
+          type: integer
+          nullable: true
+        commit_sha:
+          type: string
+          nullable: true
+        ran_at:
+          type: string
+          format: date-time
+        artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Artifact'
+    TaskCheckList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskCheck'
+    TaskRun:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - number
+        - outcome
+        - candidate_sha
+        - verified_sha
+        - started_at
+        - ended_at
+        - cost_cents
+        - failed_check
+      properties:
+        id:
+          type: string
+        number:
+          type: integer
+        outcome:
+          $ref: '#/components/schemas/RunOutcome'
+        candidate_sha:
+          type: string
+          nullable: true
+        verified_sha:
+          type: string
+          nullable: true
+        started_at:
+          type: string
+          format: date-time
+        ended_at:
+          type: string
+          format: date-time
+          nullable: true
+        cost_cents:
+          type: integer
+          description: Sum of the run's execution costs.
+        failed_check:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TaskCheck'
+    TaskRunList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskRun'
+    TaskMessage:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - role
+        - body
+        - blocking
+        - answered_at
+        - replies_to_id
+        - created_at
+      properties:
+        id:
+          type: string
+        role:
+          $ref: '#/components/schemas/MessageRole'
+        body:
+          type: string
+        blocking:
+          type: boolean
+        answered_at:
+          type: string
+          format: date-time
+          nullable: true
+        replies_to_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    TaskMessageList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskMessage'
+    TaskMessageCreate:
+      type: object
+      x-stability: draft
+      required:
+        - body
+      properties:
+        body:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          pattern: '\S'

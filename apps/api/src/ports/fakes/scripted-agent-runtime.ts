@@ -1,7 +1,7 @@
 import type { AgentRuntime, Clock } from '../ports'
 import type { AgentEvent, RunRef, SessionView, StartedRun, StartRunSpec, TurnStatus } from '../types'
 import { DEFAULT_SCRIPT, type ScriptStep } from './agent-script'
-import { InMemoryAgentRuntime } from './in-memory-agent-runtime'
+import { InMemoryAgentRuntime, type QueuedRun } from './in-memory-agent-runtime'
 import type { InMemorySandboxProvider } from './in-memory-sandbox-provider'
 
 type Progress = { startedAt: number; surfaced: number }
@@ -14,11 +14,13 @@ export class ScriptedAgentRuntime implements AgentRuntime {
     private readonly clock: Clock,
     sandboxes: InMemorySandboxProvider,
     private readonly script: readonly ScriptStep[] = DEFAULT_SCRIPT,
+    private readonly files: NonNullable<QueuedRun['files']> = [],
   ) {
     this.inner = new InMemoryAgentRuntime(sandboxes, clock)
   }
 
   async startRun(spec: StartRunSpec): Promise<StartedRun> {
+    this.inner.queueRun({ files: [...this.files], events: [] })
     const run = await this.inner.startRun(spec)
     this.progress.set(run.sessionId, { startedAt: this.clock.now().getTime(), surfaced: 0 })
     this.surface(run.sessionId)

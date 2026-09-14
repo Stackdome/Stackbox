@@ -1,8 +1,12 @@
 import {
+  ArtifactKind,
+  ArtifactOwner,
   CheckKind,
   CheckOutcome,
   ConnectionStatus,
   ExecutionStatus,
+  MessageRole,
+  PrState,
   ReleaseStatus,
   RepoProvider,
   ReportSource,
@@ -13,7 +17,10 @@ import {
 } from '@stackbox/contract'
 import { EnvironmentType, NetworkAccess, type StartRunSpec } from '../../ports'
 import type { TaskSnapshot } from '../../reconciler/task-state'
+import { TaskEventKind } from '../types'
 import type {
+  Artifact,
+  CheckRow,
   Execution,
   GitConnection,
   Organization,
@@ -24,7 +31,10 @@ import type {
   Sandbox,
   Task,
   TaskCheck,
+  TaskDetailRow,
+  TaskEvent,
   TaskListRow,
+  TaskMessage,
 } from '../types'
 
 const AT = new Date('2026-09-13T10:00:00Z')
@@ -182,6 +192,40 @@ export function aSnapshot(overrides: Partial<TaskSnapshot> = {}): TaskSnapshot {
     executions: [],
     checks: [],
     pullRequest: null,
+    messages: [],
+    events: [],
+    ...overrides,
+  }
+}
+
+export function aTaskEvent(overrides: Partial<TaskEvent> = {}): TaskEvent {
+  return { id: 'V1', taskId: 'T1', kind: TaskEventKind.PhaseChanged, payload: {}, at: AT, ...overrides }
+}
+
+export function aMessage(overrides: Partial<TaskMessage> = {}): TaskMessage {
+  return {
+    id: 'M1',
+    taskId: 'T1',
+    executionId: null,
+    repliesToId: null,
+    role: MessageRole.Agent,
+    body: 'Which browser shows it?',
+    blocking: false,
+    answeredAt: null,
+    createdAt: AT,
+    ...overrides,
+  }
+}
+
+export function anArtifact(overrides: Partial<Artifact> = {}): Artifact {
+  return {
+    id: 'F1',
+    ownerType: ArtifactOwner.Report,
+    ownerId: 'P1',
+    kind: ArtifactKind.Screenshot,
+    url: 'data:image/png;base64,iVBORw0KGgo=',
+    meta: {},
+    createdAt: AT,
     ...overrides,
   }
 }
@@ -211,5 +255,25 @@ export function aTaskListRow(overrides: { task?: Partial<Task> } & Partial<Omit<
     blockingQuestion: null,
     pullRequest: null,
     ...rest,
+  }
+}
+
+export function aCheckRow(overrides: Partial<CheckRow> = {}): CheckRow {
+  return { ...aCheck(), runNumber: null, artifacts: [], ...overrides }
+}
+
+export function aTaskDetailRow(overrides: Partial<TaskDetailRow> = {}): TaskDetailRow {
+  return {
+    summary: aTaskListRow(),
+    report: {
+      id: 'P1',
+      description: 'The save button does nothing.',
+      expectedBehaviour: 'Saving stores the form.',
+      reporter: 'Ada Lovelace',
+      source: ReportSource.Web,
+      screenshots: [anArtifact()],
+    },
+    pullRequests: [{ number: 142, isDraft: true, state: PrState.Open, headRef: 'stackbox/T1', baseRef: 'main', repositoryFullName: 'acme/shop' }],
+    ...overrides,
   }
 }

@@ -1,5 +1,8 @@
 export { ApplicationStore } from './application-store'
+export { ArtifactStore } from './artifact-store'
 export { DbModule } from './db.module'
+export { DrizzleTaskState } from './drizzle-task-state'
 export { PolicyStore } from './policy-store'
+export { ScreenshotNotFound } from './task-store'
 export { TaskStore } from './task-store'
 export { UserStore } from './user-store'

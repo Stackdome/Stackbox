@@ -975,6 +975,137 @@ const TaskList = z
     needs_you_count: z.number().int(),
   })
   .passthrough();
+const TaskCreate = z
+  .object({
+    application_id: z.string(),
+    description: z.string().min(1).max(10000).regex(/\S/),
+    expected_behaviour: z.string().max(10000).optional(),
+    screenshot_artifact_id: z.string().uuid().optional(),
+    target_branch: z.string().min(1).optional(),
+    run_limit: z.number().int().gte(1).lte(5).optional().default(2),
+    kind: TaskKind.optional().default("fix"),
+  })
+  .passthrough();
+const ArtifactKind = z.enum(["screenshot", "har", "test_log", "recording"]);
+const Artifact = z
+  .object({
+    id: z.string(),
+    kind: ArtifactKind,
+    url: z.string(),
+    meta: z.object({}).partial().passthrough(),
+  })
+  .passthrough();
+const TaskDetailReport = z
+  .object({
+    description: z.string(),
+    expected_behaviour: z.string().nullable(),
+    reporter: z.string().nullable(),
+    source: ReportSource,
+    screenshots: z.array(Artifact),
+  })
+  .passthrough();
+const TaskDetailPullRequest = z
+  .object({
+    number: z.number().int(),
+    repository_full_name: z.string(),
+    state: PrState,
+    is_draft: z.boolean(),
+    head_ref: z.string().nullable(),
+    base_ref: z.string().nullable(),
+  })
+  .passthrough();
+const TaskDetail = z
+  .object({
+    id: z.string(),
+    application: ApplicationSummary,
+    report: TaskDetailReport.nullable(),
+    kind: TaskKind,
+    phase: TaskPhase,
+    coarse_status: CoarseStatus,
+    resolution: TaskResolution.nullable(),
+    run_number: z.number().int().nullable(),
+    run_limit: z.number().int(),
+    blocking_question: z.string().nullable(),
+    pull_request: TaskPullRequest.nullable(),
+    instance: TaskInstance.nullable(),
+    cost_cents: z.number().int(),
+    created_at: z.string().datetime({ offset: true }),
+    completed_at: z.string().datetime({ offset: true }).nullable(),
+    target_branch: z.string().nullable(),
+    budget_cents: z.number().int().nullable(),
+    pull_requests: z.array(TaskDetailPullRequest),
+  })
+  .passthrough();
+const TaskEventKind = z.enum([
+  "phase_changed",
+  "instance_requested",
+  "budget_exceeded",
+  "check_ignored",
+  "run_started",
+  "run_ended",
+  "check_recorded",
+  "message_sent",
+  "message_send_failed",
+]);
+const TaskEvent = z
+  .object({
+    id: z.string(),
+    kind: TaskEventKind,
+    payload: z.object({}).partial().passthrough(),
+    at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const TaskEventList = z.object({ items: z.array(TaskEvent) }).passthrough();
+const CheckKind = z.enum([
+  "instance_ready",
+  "report_reproduced",
+  "fix_verified",
+]);
+const CheckOutcome = z.enum(["passed", "failed", "inconclusive"]);
+const TaskCheck = z
+  .object({
+    id: z.string(),
+    kind: CheckKind,
+    outcome: CheckOutcome,
+    run_number: z.number().int().nullable(),
+    commit_sha: z.string().nullable(),
+    ran_at: z.string().datetime({ offset: true }),
+    artifacts: z.array(Artifact),
+  })
+  .passthrough();
+const TaskCheckList = z.object({ items: z.array(TaskCheck) }).passthrough();
+const RunOutcome = z.enum(["running", "passed", "failed", "abandoned"]);
+const TaskRun = z
+  .object({
+    id: z.string(),
+    number: z.number().int(),
+    outcome: RunOutcome,
+    candidate_sha: z.string().nullable(),
+    verified_sha: z.string().nullable(),
+    started_at: z.string().datetime({ offset: true }),
+    ended_at: z.string().datetime({ offset: true }).nullable(),
+    cost_cents: z.number().int(),
+    failed_check: TaskCheck.nullable(),
+  })
+  .passthrough();
+const TaskRunList = z.object({ items: z.array(TaskRun) }).passthrough();
+const MessageRole = z.enum(["user", "agent", "system"]);
+const TaskMessage = z
+  .object({
+    id: z.string(),
+    role: MessageRole,
+    body: z.string(),
+    blocking: z.boolean(),
+    answered_at: z.string().datetime({ offset: true }).nullable(),
+    replies_to_id: z.string().nullable(),
+    created_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const TaskMessageList = z.object({ items: z.array(TaskMessage) }).passthrough();
+const TaskMessageCreate = z
+  .object({ body: z.string().min(1).max(4000).regex(/\S/) })
+  .passthrough();
+const ArtifactList = z.object({ items: z.array(Artifact) }).passthrough();
 const ApplicationList = z
   .object({ items: z.array(ApplicationSummary), total: z.number().int() })
   .passthrough();
@@ -988,7 +1119,6 @@ const InstancePurpose = z.enum([
   "persistent",
 ]);
 const ReleaseStatus = z.enum(["queued", "building", "live", "failed"]);
-const RunOutcome = z.enum(["running", "passed", "failed", "abandoned"]);
 const SandboxStatus = z.enum(["starting", "running", "stopped", "failed"]);
 const ExecutionStatus = z.enum([
   "starting",
@@ -998,15 +1128,7 @@ const ExecutionStatus = z.enum([
   "timed_out",
   "cancelled",
 ]);
-const CheckKind = z.enum([
-  "instance_ready",
-  "report_reproduced",
-  "fix_verified",
-]);
-const CheckOutcome = z.enum(["passed", "failed", "inconclusive"]);
 const ArtifactOwner = z.enum(["report", "task_check", "task_message"]);
-const ArtifactKind = z.enum(["screenshot", "har", "test_log", "recording"]);
-const MessageRole = z.enum(["user", "agent", "system"]);
 const ApplicationRole = z.enum(["Developer", "Viewer"]);
 const TaskListQuery = z
   .object({ status: CoarseStatus, application_id: z.string(), q: z.string() })
@@ -1135,19 +1257,35 @@ export const schemas = {
   TaskInstance,
   TaskSummary,
   TaskList,
+  TaskCreate,
+  ArtifactKind,
+  Artifact,
+  TaskDetailReport,
+  TaskDetailPullRequest,
+  TaskDetail,
+  TaskEventKind,
+  TaskEvent,
+  TaskEventList,
+  CheckKind,
+  CheckOutcome,
+  TaskCheck,
+  TaskCheckList,
+  RunOutcome,
+  TaskRun,
+  TaskRunList,
+  MessageRole,
+  TaskMessage,
+  TaskMessageList,
+  TaskMessageCreate,
+  ArtifactList,
   ApplicationList,
   RepoProvider,
   ConnectionStatus,
   InstancePurpose,
   ReleaseStatus,
-  RunOutcome,
   SandboxStatus,
   ExecutionStatus,
-  CheckKind,
-  CheckOutcome,
   ArtifactOwner,
-  ArtifactKind,
-  MessageRole,
   ApplicationRole,
   TaskListQuery,
 };
@@ -1665,6 +1803,83 @@ const endpoints = makeApi([
       {
         status: 403,
         description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/v1/organizations/:org_id/artifacts",
+    alias: "uploadArtifact",
+    requestFormat: "form-data",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z.object({ file: z.instanceof(File) }).passthrough(),
+      },
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: Artifact,
+    errors: [
+      {
+        status: 400,
+        description: `No file`,
+        schema: Error,
+      },
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 413,
+        description: `The file is larger than 2 MB`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/artifacts/:artifact_id",
+    alias: "getArtifact",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "artifact_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: Artifact,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Artifact not found`,
         schema: Error,
       },
     ],
@@ -3692,6 +3907,47 @@ whether the instance already exists.
     ],
   },
   {
+    method: "post",
+    path: "/api/v1/organizations/:org_id/tasks",
+    alias: "createTask",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: TaskCreate,
+      },
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskDetail,
+    errors: [
+      {
+        status: 400,
+        description: `The body is invalid or names an unsupported task kind`,
+        schema: Error,
+      },
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Application not found`,
+        schema: Error,
+      },
+    ],
+  },
+  {
     method: "get",
     path: "/api/v1/organizations/:org_id/tasks/:task_id",
     alias: "getTask",
@@ -3708,7 +3964,43 @@ whether the instance already exists.
         schema: z.string(),
       },
     ],
-    response: TaskSummary,
+    response: TaskDetail,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id/artifacts",
+    alias: "listTaskArtifacts",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: ArtifactList,
     errors: [
       {
         status: 401,
@@ -3764,6 +4056,198 @@ whether the instance already exists.
       {
         status: 409,
         description: `The task has already finished`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id/checks",
+    alias: "listTaskChecks",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskCheckList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id/events",
+    alias: "listTaskEvents",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskEventList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id/messages",
+    alias: "listTaskMessages",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskMessageList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id/messages",
+    alias: "createTaskMessage",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ body: z.string().min(1).max(4000).regex(/\S/) })
+          .passthrough(),
+      },
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskMessage,
+    errors: [
+      {
+        status: 400,
+        description: `The body is empty`,
+        schema: Error,
+      },
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/tasks/:task_id/runs",
+    alias: "listTaskRuns",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "task_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: TaskRunList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `Task not found`,
         schema: Error,
       },
     ],

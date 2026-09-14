@@ -9,6 +9,7 @@ import type {
   Task,
   TaskCheck,
   TaskEvent,
+  TaskMessage,
 } from '../tasks/types'
 import { type Lease, isClaimable } from './calc/lease'
 import { type ExecutionPatch, PhaseConflict, type TaskSnapshot, type TaskState } from './task-state'
@@ -32,6 +33,7 @@ export class InMemoryTaskState implements TaskState {
   private artifacts: Artifact[] = []
   private events: TaskEvent[] = []
   private pullRequests: PullRequest[] = []
+  private messages: TaskMessage[] = []
 
   seed(snapshot: TaskSnapshot): void {
     const { organization, repository, connection, report, task } = snapshot
@@ -42,6 +44,8 @@ export class InMemoryTaskState implements TaskState {
     this.sandboxes = [...this.sandboxes, ...snapshot.sandboxes]
     this.executions = [...this.executions, ...snapshot.executions]
     this.checks = [...this.checks, ...snapshot.checks]
+    this.messages = [...this.messages, ...snapshot.messages]
+    this.events = [...this.events, ...snapshot.events]
     if (snapshot.pullRequest) this.pullRequests = [...this.pullRequests, snapshot.pullRequest]
   }
 
@@ -71,6 +75,8 @@ export class InMemoryTaskState implements TaskState {
       executions: this.executions.filter((execution) => execution.taskId === taskId),
       checks: this.checks.filter((check) => check.taskId === taskId),
       pullRequest: this.pullRequests.find((pullRequest) => pullRequest.taskId === taskId) ?? null,
+      messages: this.messages.filter((message) => message.taskId === taskId),
+      events: this.eventsOf(taskId),
     }
   }
 
@@ -120,8 +126,8 @@ export class InMemoryTaskState implements TaskState {
     this.pullRequests = upsert(this.pullRequests, pullRequest)
   }
 
-  async releaseLease(taskId: string): Promise<void> {
+  async releaseLease(taskId: string, owner: string): Promise<void> {
     const task = this.tasks.get(taskId)
-    if (task) this.tasks.set(taskId, { ...task, leaseOwner: null, leaseExpiresAt: null })
+    if (task && task.leaseOwner === owner) this.tasks.set(taskId, { ...task, leaseOwner: null, leaseExpiresAt: null })
   }
 }

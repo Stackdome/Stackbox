@@ -59,6 +59,10 @@ export class InMemoryAgentRuntime implements AgentRuntime {
     return this.session(sessionId).spec
   }
 
+  inboxOf(sessionId: string): string[] {
+    return [...this.session(sessionId).inbox]
+  }
+
   emit(sessionId: string, body: AgentEventBody): void {
     const session = this.session(sessionId)
     switch (body.kind) {

@@ -43,6 +43,7 @@ function present<T>(value: T | null | undefined, what: string): T {
 export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(ReconcilerService.name)
   private timer: ReturnType<typeof setInterval> | undefined
+  private running = false
 
   constructor(
     @Inject(TASK_STATE) private readonly state: TaskState,
@@ -55,6 +56,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   ) {}
 
   onApplicationBootstrap(): void {
+    if (!this.settings.tickEnabled) return
     this.timer = setInterval(() => {
       this.tick().catch((error: unknown) => this.logger.error(error))
     }, TICK_PERIOD_MS)
@@ -65,25 +67,38 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   }
 
   async tick(): Promise<void> {
-    const now = this.clock.now()
-    const tasks = await this.state.claim(leaseFor(this.settings.owner, now), now, this.settings.claimLimit)
-    for (const task of tasks) {
-      try {
-        await this.reconcile(task.id)
-      } catch (error: unknown) {
-        this.logger.error(`task ${task.id} did not reconcile`, error instanceof Error ? error.stack : String(error))
-      } finally {
-        await this.state.releaseLease(task.id)
+    // A tick that outlasts its own lease must not overlap the next timer firing.
+    if (this.running) return
+    this.running = true
+    try {
+      const now = this.clock.now()
+      const tasks = await this.state.claim(leaseFor(this.settings.owner, now), now, this.settings.claimLimit)
+      for (const task of tasks) {
+        try {
+          await this.reconcile(task.id)
+        } catch (error: unknown) {
+          this.logger.error(`task ${task.id} did not reconcile`, error instanceof Error ? error.stack : String(error))
+        } finally {
+          await this.state.releaseLease(task.id, this.settings.owner)
+        }
       }
+    } finally {
+      this.running = false
     }
   }
 
   private async reconcile(taskId: string): Promise<void> {
     const snapshot = await this.state.load(taskId)
     const observations = await this.observe(snapshot)
+    // The phase each decision was decided from; a stored phase that has since moved on stops the batch.
+    let expectedPhase = snapshot.task.phase
     try {
       for (const decision of decide(snapshot, observations, this.clock.now())) {
-        await this.execute(decision, await this.state.load(taskId))
+        const fresh = await this.state.load(taskId)
+        if (fresh.task.phase !== expectedPhase) throw new PhaseConflict(taskId, expectedPhase, fresh.task.phase)
+        await this.execute(decision, fresh, expectedPhase)
+        if (decision.kind === DecisionKind.Transition) expectedPhase = decision.to
+        if (decision.kind === DecisionKind.FailBudgetExceeded) expectedPhase = TaskPhase.Failed
       }
     } catch (error: unknown) {
       // A phase written outside the loop wins; the next tick observes it and decides again.
@@ -110,32 +125,25 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
     }
   }
 
-  private async execute(decision: Decision, snapshot: TaskSnapshot): Promise<void> {
+  private async execute(decision: Decision, snapshot: TaskSnapshot, expectedPhase: TaskPhase): Promise<void> {
     const now = this.clock.now()
     switch (decision.kind) {
       case DecisionKind.CreateInstance:
-        return this.createInstance(snapshot, now)
+        return this.createInstance(snapshot, expectedPhase, now)
       case DecisionKind.DeployRelease:
-        return this.deployRelease(snapshot, decision, now)
+        return this.deployRelease(snapshot, expectedPhase, decision, now)
       case DecisionKind.OpenRun:
-        return this.state.saveRun({
-          id: randomUUID(),
-          taskId: snapshot.task.id,
-          number: decision.number,
-          candidateSha: null,
-          verifiedSha: null,
-          outcome: RunOutcome.Running,
-          startedAt: now,
-          endedAt: null,
-        })
+        return this.openRun(snapshot, decision, now)
       case DecisionKind.CloseRun:
         return this.closeRun(snapshot, decision, now)
       case DecisionKind.StartRun:
-        return this.startRun(snapshot, decision, now)
+        return this.startRun(snapshot, expectedPhase, decision, now)
       case DecisionKind.RetrySameKey:
-        return this.retrySameKey(snapshot, decision)
+        return this.retrySameKey(snapshot, expectedPhase, decision)
       case DecisionKind.RecordExecution:
         return this.state.updateExecution(decision.executionId, decision.patch)
+      case DecisionKind.SendMessage:
+        return this.sendMessage(snapshot, decision, now)
       case DecisionKind.AppendCheck:
         return this.appendCheck(snapshot, decision, now)
       case DecisionKind.IgnoreCheck:
@@ -145,9 +153,9 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       case DecisionKind.OpenPullRequest:
         return this.openPullRequest(snapshot)
       case DecisionKind.Transition:
-        return this.transition(snapshot, decision.to, decision.resolution, now)
+        return this.transition(snapshot, expectedPhase, decision.to, decision.resolution, now)
       case DecisionKind.FailBudgetExceeded:
-        return this.failBudget(snapshot, decision, now)
+        return this.failBudget(snapshot, expectedPhase, decision, now)
       case DecisionKind.CancelRun:
         return this.cancelRun(decision, now)
       case DecisionKind.DeleteSession:
@@ -157,17 +165,17 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       case DecisionKind.TeardownInstance:
         return this.deploy.teardown({ id: decision.instanceId })
       case DecisionKind.Complete:
-        return this.state.saveTask({ ...snapshot.task, completedAt: now }, snapshot.task.phase)
+        return this.state.saveTask({ ...snapshot.task, completedAt: now }, expectedPhase)
     }
   }
 
-  private async createInstance(snapshot: TaskSnapshot, now: Date): Promise<void> {
+  private async createInstance(snapshot: TaskSnapshot, expectedPhase: TaskPhase, now: Date): Promise<void> {
     const instance = await this.deploy.createInstance({ applicationId: snapshot.task.applicationId, services: [], variables: {} })
-    await this.state.saveTask({ ...snapshot.task, instanceId: instance.id }, snapshot.task.phase)
+    await this.state.saveTask({ ...snapshot.task, instanceId: instance.id }, expectedPhase)
     await this.event(snapshot, TaskEventKind.InstanceRequested, { instanceId: instance.id }, now)
   }
 
-  private async deployRelease(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.DeployRelease>, now: Date): Promise<void> {
+  private async deployRelease(snapshot: TaskSnapshot, expectedPhase: TaskPhase, decision: DecisionOf<typeof DecisionKind.DeployRelease>, now: Date): Promise<void> {
     const instanceId = present(snapshot.task.instanceId, 'task instance')
     const release = await this.deploy.deployRelease({ id: instanceId }, { commitSha: decision.commitSha, variables: {} })
     await this.state.saveRelease({
@@ -179,15 +187,42 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       status: ReleaseStatus.Queued,
       createdAt: now,
     })
-    if (decision.runId === null) await this.state.saveTask({ ...snapshot.task, originReleaseId: release.id }, snapshot.task.phase)
+    if (decision.runId === null) await this.state.saveTask({ ...snapshot.task, originReleaseId: release.id }, expectedPhase)
+  }
+
+  private async openRun(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.OpenRun>, now: Date): Promise<void> {
+    await this.state.saveRun({
+      id: randomUUID(),
+      taskId: snapshot.task.id,
+      number: decision.number,
+      candidateSha: null,
+      verifiedSha: null,
+      outcome: RunOutcome.Running,
+      startedAt: now,
+      endedAt: null,
+    })
+    await this.event(snapshot, TaskEventKind.RunStarted, { number: decision.number }, now)
   }
 
   private async closeRun(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.CloseRun>, now: Date): Promise<void> {
     const run = present(snapshot.runs.find((candidate) => candidate.id === decision.runId), `run ${decision.runId}`)
     await this.state.saveRun({ ...run, outcome: decision.outcome, verifiedSha: decision.verifiedSha, endedAt: now })
+    await this.event(snapshot, TaskEventKind.RunEnded, { number: run.number, outcome: decision.outcome }, now)
   }
 
-  private async startRun(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.StartRun>, now: Date): Promise<void> {
+  private async sendMessage(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.SendMessage>, now: Date): Promise<void> {
+    // The key is recorded before the remote call: a crash between the two drops the reply rather than sending it twice.
+    await this.event(snapshot, TaskEventKind.MessageSent, { key: decision.key, messageId: decision.messageId }, now)
+    try {
+      await this.runtime.sendMessage(decision.sessionId, decision.body)
+    } catch (error: unknown) {
+      // message_sent already guards against a retry this slice; this only records that the agent never received it.
+      const reason = error instanceof Error ? error.message : String(error)
+      await this.event(snapshot, TaskEventKind.MessageSendFailed, { messageId: decision.messageId, reason }, now)
+    }
+  }
+
+  private async startRun(snapshot: TaskSnapshot, expectedPhase: TaskPhase, decision: DecisionOf<typeof DecisionKind.StartRun>, now: Date): Promise<void> {
     const run = snapshot.runs.find((candidate) => candidate.number === decision.runNumber)
     const sandbox: Sandbox = {
       id: randomUUID(),
@@ -216,17 +251,17 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
     })
     // Reading the key back: an earlier tick already created this session.
     if (execution.sessionRef !== null) return
-    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, snapshot.task.phase)
+    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, expectedPhase)
     const started = await this.runtime.startRun(
       runSpecFor({ snapshot, purpose: decision.purpose, instanceUrl: decision.instanceUrl, gitHost: this.settings.gitHost, readToken: this.settings.readToken }),
     )
     await this.recordStart(execution, started, snapshot.sandboxes.find((stored) => stored.id === execution.sandboxId) ?? sandbox, {})
   }
 
-  private async retrySameKey(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.RetrySameKey>): Promise<void> {
+  private async retrySameKey(snapshot: TaskSnapshot, expectedPhase: TaskPhase, decision: DecisionOf<typeof DecisionKind.RetrySameKey>): Promise<void> {
     const execution = present(snapshot.executions.find((candidate) => candidate.id === decision.executionId), `execution ${decision.executionId}`)
     const sandbox = present(snapshot.sandboxes.find((stored) => stored.id === execution.sandboxId), `sandbox ${execution.sandboxId}`)
-    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, snapshot.task.phase)
+    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, expectedPhase)
     const started = await this.runtime.startRun(
       runSpecFor({ snapshot, purpose: decision.purpose, instanceUrl: decision.instanceUrl, gitHost: this.settings.gitHost, readToken: this.settings.readToken }),
     )
@@ -273,6 +308,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
         createdAt: now,
       })
     }
+    await this.event(snapshot, TaskEventKind.CheckRecorded, { checkId, checkKind: decision.checkKind, outcome: decision.outcome, runId: decision.runId }, now)
   }
 
   private async pushPatch(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.PushPatch>): Promise<void> {
@@ -308,16 +344,16 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
     })
   }
 
-  private async transition(snapshot: TaskSnapshot, to: TaskPhase, resolution: TaskResolution | null, now: Date): Promise<void> {
-    const from = snapshot.task.phase
+  private async transition(snapshot: TaskSnapshot, expectedPhase: TaskPhase, to: TaskPhase, resolution: TaskResolution | null, now: Date): Promise<void> {
+    const from = expectedPhase
     if (!canTransition(from, to)) throw new Error(`task ${snapshot.task.id} cannot move from ${from} to ${to}`)
-    await this.state.saveTask({ ...snapshot.task, phase: to, resolution }, snapshot.task.phase)
+    await this.state.saveTask({ ...snapshot.task, phase: to, resolution }, expectedPhase)
     await this.event(snapshot, TaskEventKind.PhaseChanged, { from, to, ...(resolution === null ? {} : { resolution }) }, now)
   }
 
-  private async failBudget(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.FailBudgetExceeded>, now: Date): Promise<void> {
-    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, snapshot.task.phase)
-    await this.transition(await this.state.load(snapshot.task.id), TaskPhase.Failed, decision.resolution, now)
+  private async failBudget(snapshot: TaskSnapshot, expectedPhase: TaskPhase, decision: DecisionOf<typeof DecisionKind.FailBudgetExceeded>, now: Date): Promise<void> {
+    await this.state.saveTask({ ...snapshot.task, costCents: decision.costCents }, expectedPhase)
+    await this.transition(await this.state.load(snapshot.task.id), expectedPhase, TaskPhase.Failed, decision.resolution, now)
     await this.event(snapshot, TaskEventKind.BudgetExceeded, { costCents: decision.costCents }, now)
   }
 

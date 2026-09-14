@@ -27,16 +27,24 @@ export class InMemoryDeployTarget implements DeployTarget {
   }
 
   async createInstance(spec: Parameters<DeployTarget['createInstance']>[0]): Promise<InstanceRef> {
-    const id = `instance-${this.instances.size + 1}`
+    const id = this.newInstanceId(this.instances.size + 1)
     this.instances.set(id, { applicationId: spec.applicationId, tornDown: false })
     return { id }
   }
 
   async deployRelease(ref: InstanceRef, spec: Parameters<DeployTarget['deployRelease']>[1]): Promise<ReleaseRef> {
     this.instance(ref)
-    const id = `release-${this.releases.size + 1}`
+    const id = this.newReleaseId(this.releases.size + 1)
     this.releases.set(id, { instanceId: ref.id, commitSha: spec.commitSha, status: this.settledStatus })
     return { id }
+  }
+
+  protected newInstanceId(count: number): string {
+    return `instance-${count}`
+  }
+
+  protected newReleaseId(count: number): string {
+    return `release-${count}`
   }
 
   async releaseStatus(ref: ReleaseRef): Promise<{ status: ReleaseStatus }> {

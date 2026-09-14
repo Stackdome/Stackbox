@@ -1,23 +1,15 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
+import { bearer, type Session, signIn } from './support'
 
 const ADMIN = { email: 'ada@example.com', password: 'password' }
 const VIEWER = { email: 'vik@example.com', password: 'password' }
 const DEVELOPER = { email: 'dev@example.com', password: 'password' }
 
-type Session = { token: string; refresh_token: string; user: { email: string; organisation_id: string } }
 type TaskList = { items: { id: string; application: { name: string } }[] }
-
-const bearer = (token: string) => ({ Authorization: `Bearer ${token}` })
-
-async function signIn(request: APIRequestContext, credentials: typeof ADMIN): Promise<Session> {
-  const response = await request.post('/api/v1/auth/login', { data: credentials })
-  expect(response.status()).toBe(200)
-  return response.json()
-}
 
 async function aTaskFor(request: APIRequestContext, session: Session, applicationName: string, query = ''): Promise<string> {
   const response = await request.get(`/api/v1/organizations/${session.user.organisation_id}/tasks${query}`, {
-    headers: bearer(session.token),
+    headers: bearer(session),
   })
   const list: TaskList = await response.json()
   return list.items.filter((item) => item.application.name === applicationName)[0].id
@@ -52,7 +44,7 @@ test('signing in sets an httpOnly auth_token cookie', async ({ request }) => {
 test('the current user answers the admin when called with the Bearer token', async ({ request }) => {
   const session = await signIn(request, ADMIN)
 
-  const response = await request.get('/api/v1/users/current', { headers: bearer(session.token) })
+  const response = await request.get('/api/v1/users/current', { headers: bearer(session) })
 
   expect((await response.json()).email).toBe(ADMIN.email)
 })
@@ -80,7 +72,7 @@ test("a Viewer's cancel on a running task is forbidden", async ({ request }) => 
   const viewer = await signIn(request, VIEWER)
 
   const response = await request.post(`/api/v1/organizations/${viewer.user.organisation_id}/tasks/${taskId}/cancel`, {
-    headers: bearer(viewer.token),
+    headers: bearer(viewer),
   })
 
   expect(response.status()).toBe(403)
@@ -92,7 +84,7 @@ test("a Developer's cancel on a running shop task succeeds", async ({ request })
   const developer = await signIn(request, DEVELOPER)
 
   const response = await request.post(`/api/v1/organizations/${developer.user.organisation_id}/tasks/${taskId}/cancel`, {
-    headers: bearer(developer.token),
+    headers: bearer(developer),
   })
 
   expect(response.status()).toBe(200)
@@ -104,7 +96,7 @@ test("a Developer's cancel on a running billing task is forbidden", async ({ req
   const developer = await signIn(request, DEVELOPER)
 
   const response = await request.post(`/api/v1/organizations/${developer.user.organisation_id}/tasks/${taskId}/cancel`, {
-    headers: bearer(developer.token),
+    headers: bearer(developer),
   })
 
   expect(response.status()).toBe(403)
@@ -116,7 +108,7 @@ test("the admin's GET on another organization's id with a shop task id is forbid
   const otherOrgId = '00000000-0000-4000-8000-000000000000'
 
   const response = await request.get(`/api/v1/organizations/${otherOrgId}/tasks/${taskId}`, {
-    headers: bearer(admin.token),
+    headers: bearer(admin),
   })
 
   expect(response.status()).toBe(403)
@@ -126,7 +118,7 @@ test("an admin's cancel succeeds once and conflicts when repeated", async ({ req
   const admin = await signIn(request, ADMIN)
   const taskId = await aRunningBillingTask(request, admin)
   const cancel = () =>
-    request.post(`/api/v1/organizations/${admin.user.organisation_id}/tasks/${taskId}/cancel`, { headers: bearer(admin.token) })
+    request.post(`/api/v1/organizations/${admin.user.organisation_id}/tasks/${taskId}/cancel`, { headers: bearer(admin) })
 
   const statuses = [(await cancel()).status(), (await cancel()).status()]
 

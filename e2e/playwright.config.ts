@@ -18,12 +18,20 @@ export default defineConfig({
   projects: [
     {
       name: 'web',
-      testMatch: 'web/**',
+      testMatch: 'web/**/*.spec.ts',
       use: { baseURL: 'http://localhost:5273' },
     },
     {
       name: 'api',
-      testMatch: 'api/**',
+      testMatch: 'api/**/*.spec.ts',
+      testIgnore: 'api/tasks.spec.ts',
+      use: { baseURL: 'http://localhost:3000' },
+    },
+    {
+      // auth.spec.ts cancels the newest running tasks, which would include the task tasks.spec.ts creates.
+      name: 'api-tasks',
+      testMatch: 'api/tasks.spec.ts',
+      dependencies: ['api'],
       use: { baseURL: 'http://localhost:3000' },
     },
   ],
@@ -50,6 +58,8 @@ export default defineConfig({
       env: {
         DATABASE_URL: process.env.DATABASE_URL ?? TEST_DATABASE_URL,
         JWT_SECRET: process.env.JWT_SECRET ?? TEST_JWT_SECRET,
+        RECONCILER_ENABLED: 'true',
+        AGENT_RUNTIME: 'scripted',
       },
       timeout: 120_000,
     },

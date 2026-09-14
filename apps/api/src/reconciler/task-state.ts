@@ -13,6 +13,7 @@ import type {
   Task,
   TaskCheck,
   TaskEvent,
+  TaskMessage,
 } from '../tasks/types'
 import type { Lease } from './calc/lease'
 
@@ -28,6 +29,10 @@ export type TaskSnapshot = {
   executions: Execution[]
   checks: TaskCheck[]
   pullRequest: PullRequest | null
+  // Oldest first; decide reads replies from these.
+  messages: TaskMessage[]
+  // By at, then id; decide reads the message_sent keys already recorded.
+  events: TaskEvent[]
 }
 
 export type ExecutionPatch = Partial<Pick<Execution, 'sessionRef' | 'externalId' | 'status' | 'costCents' | 'eventCursor' | 'endedAt'>>
@@ -49,7 +54,8 @@ export interface TaskState {
   appendArtifact(artifact: Artifact): Promise<void>
   appendEvent(event: TaskEvent): Promise<void>
   savePullRequest(pullRequest: PullRequest): Promise<void>
-  releaseLease(taskId: string): Promise<void>
+  // Clears the lease only while owner still holds it, so a tick that outlived its lease cannot clear a later tick's claim.
+  releaseLease(taskId: string, owner: string): Promise<void>
 }
 
 export class PhaseConflict extends Error {

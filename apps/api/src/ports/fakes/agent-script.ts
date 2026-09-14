@@ -45,3 +45,18 @@ export const DEFAULT_SCRIPT: readonly ScriptStep[] = [
   },
   { afterMs: 5_000, event: turnCompleted(25) },
 ]
+
+// Every run reports both checks; decide keeps only the kind the run's purpose may report and records the rest as check_ignored.
+export const DEMO_FIX_SCRIPT: readonly ScriptStep[] = [
+  { afterMs: 0, event: environmentBecomes(EnvironmentStatus.Provisioning) },
+  { afterMs: 200, event: environmentBecomes(EnvironmentStatus.Connected) },
+  {
+    afterMs: 400,
+    event: reportCheckCall('call-repro', { checkKind: CheckKind.ReportReproduced, outcome: CheckOutcome.Passed, artifacts: [] }),
+  },
+  {
+    afterMs: 600,
+    event: reportCheckCall('call-verify', { checkKind: CheckKind.FixVerified, outcome: CheckOutcome.Passed, artifacts: [] }),
+  },
+  { afterMs: 800, event: turnCompleted(25) },
+]

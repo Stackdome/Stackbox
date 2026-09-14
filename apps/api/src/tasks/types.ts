@@ -1,3 +1,4 @@
+import { TaskEventKind } from '@stackbox/contract'
 import type {
   ArtifactKind,
   ArtifactOwner,
@@ -5,6 +6,7 @@ import type {
   CheckOutcome,
   ConnectionStatus,
   ExecutionStatus,
+  MessageRole,
   PrState,
   ReleaseStatus,
   RepoProvider,
@@ -15,6 +17,8 @@ import type {
   TaskPhase,
   TaskResolution,
 } from '@stackbox/contract'
+
+export { TaskEventKind }
 
 export type Organization = { id: string; name: string; budgetCents: number; createdAt: Date }
 
@@ -153,15 +157,19 @@ export type PullRequest = {
   state: PrState
 }
 
-export const TaskEventKind = {
-  PhaseChanged: 'phase_changed',
-  InstanceRequested: 'instance_requested',
-  BudgetExceeded: 'budget_exceeded',
-  CheckIgnored: 'check_ignored',
-} as const
-export type TaskEventKind = (typeof TaskEventKind)[keyof typeof TaskEventKind]
-
 export type TaskEvent = { id: string; taskId: string; kind: TaskEventKind; payload: Record<string, unknown>; at: Date }
+
+export type TaskMessage = {
+  id: string
+  taskId: string
+  executionId: string | null
+  repliesToId: string | null
+  role: MessageRole
+  body: string
+  blocking: boolean
+  answeredAt: Date | null
+  createdAt: Date
+}
 
 export type TaskListRow = {
   task: Task
@@ -170,4 +178,26 @@ export type TaskListRow = {
   runNumber: number | null
   blockingQuestion: string | null
   pullRequest: { number: number; isDraft: boolean; state: PrState; repositoryFullName: string } | null
+}
+
+export type ReportDetail = Pick<Report, 'id' | 'description' | 'expectedBehaviour' | 'reporter' | 'source'> & { screenshots: Artifact[] }
+
+export type PullRequestDetail = Pick<PullRequest, 'number' | 'isDraft' | 'state' | 'headRef' | 'baseRef'> & { repositoryFullName: string }
+
+export type TaskDetailRow = { summary: TaskListRow; report: ReportDetail | null; pullRequests: PullRequestDetail[] }
+
+export type CheckRow = TaskCheck & { runNumber: number | null; artifacts: Artifact[] }
+
+export type RunRow = Run & { costCents: number }
+
+export type NewTask = {
+  orgId: string
+  applicationId: string
+  description: string
+  expectedBehaviour: string | null
+  reporter: string
+  screenshotArtifactId: string | null
+  targetBranch: string | null
+  runLimit: number
+  kind: TaskKind
 }

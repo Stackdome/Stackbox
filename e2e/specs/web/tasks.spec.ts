@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test'
-
-const EMPTY_PREVIEW = 'http://localhost:5274'
-const rows = '[data-slot="data-list-row"]'
+import { EMPTY_PREVIEW, rows } from './selectors'
 
 test('the list shows the eight tasks of the organization', async ({ page }) => {
   await page.goto('/tasks')

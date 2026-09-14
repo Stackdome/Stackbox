@@ -1,8 +1,11 @@
 import * as React from "react";
 import { fetchApplications } from "@/api/applications";
+import { uploadScreenshot as uploadScreenshotFile } from "@/api/artifacts";
 import { toApplication, type Application } from "@/api/mappers/application";
+import { type NewTaskDraft, toTaskCreate } from "@/api/mappers/new-task";
 import { toTask, type Task } from "@/api/mappers/task";
-import { cancelTask, fetchTasks } from "@/api/tasks";
+import { type ArtifactView, toArtifact } from "@/api/mappers/task-detail";
+import { cancelTask, createTask, fetchTasks } from "@/api/tasks";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 export const TASKS_REFRESH_MS = 15_000;
@@ -15,6 +18,8 @@ export interface TasksValue {
   failed: boolean;
   refresh: () => Promise<void>;
   cancel: (taskId: string) => Promise<void>;
+  create: (draft: NewTaskDraft) => Promise<string>;
+  uploadScreenshot: (file: File) => Promise<ArtifactView>;
 }
 
 export const TasksContext = React.createContext<TasksValue | undefined>(undefined);
@@ -71,9 +76,27 @@ export function TasksProvider({ children }: { children: React.ReactNode }) {
     [organisationId, refresh],
   );
 
+  const create = React.useCallback(
+    async (draft: NewTaskDraft) => {
+      if (!organisationId) throw new Error("no organization to create the task in");
+      const created = await createTask(organisationId, toTaskCreate(draft));
+      await refresh();
+      return created.id;
+    },
+    [organisationId, refresh],
+  );
+
+  const uploadScreenshot = React.useCallback(
+    async (file: File) => {
+      if (!organisationId) throw new Error("no organization to upload the screenshot to");
+      return toArtifact(await uploadScreenshotFile(organisationId, file));
+    },
+    [organisationId],
+  );
+
   const value = React.useMemo<TasksValue>(
-    () => ({ ...loaded, loading, failed, refresh, cancel }),
-    [loaded, loading, failed, refresh, cancel],
+    () => ({ ...loaded, loading, failed, refresh, cancel, create, uploadScreenshot }),
+    [loaded, loading, failed, refresh, cancel, create, uploadScreenshot],
   );
   return <TasksContext.Provider value={value}>{children}</TasksContext.Provider>;
 }

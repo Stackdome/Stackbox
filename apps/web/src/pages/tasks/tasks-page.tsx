@@ -4,16 +4,19 @@ import { cancelTaskErrorMessage } from "@/api/errors";
 import type { Task } from "@/api/mappers/task";
 import { EmptyState, PageHeader, SearchGlyph, useConfirm } from "@/components/branded";
 import { NO_FILTER, filterTasks, type TasksFilter } from "@/components/tasks/filter-tasks";
+import { NewTaskDrawer } from "@/components/tasks/new-task-drawer";
 import { TaskList, TaskListSkeleton } from "@/components/tasks/task-list";
 import { TasksEmptyState } from "@/components/tasks/tasks-empty-state";
 import { TasksToolbar } from "@/components/tasks/tasks-toolbar";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useTasks } from "@/hooks/use-tasks";
 import { ROUTES, taskPath } from "@/lib/routes";
 
-export function TasksPage() {
-  const { tasks, applications, loading, failed, refresh, cancel } = useTasks();
+export function TasksPage({ newTaskOpen = false }: { newTaskOpen?: boolean }) {
+  const { tasks, applications, loading, failed, refresh, cancel, create, uploadScreenshot } = useTasks();
+  const { user } = useCurrentUser();
   const [filter, setFilter] = useState<TasksFilter>(NO_FILTER);
   const navigate = useNavigate();
   const confirm = useConfirm();
@@ -74,6 +77,21 @@ export function TasksPage() {
         }
       />
       {body()}
+      {newTaskOpen && (
+        <NewTaskDrawer
+          open
+          onOpenChange={(open) => {
+            if (!open) navigate(ROUTES.tasks);
+          }}
+          applications={applications}
+          reporterName={user?.name ?? ""}
+          onUpload={uploadScreenshot}
+          onSubmit={async (draft) => {
+            await create(draft);
+            navigate(ROUTES.tasks);
+          }}
+        />
+      )}
     </>
   );
 }
