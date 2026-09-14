@@ -138,9 +138,13 @@ export class PreviewCatalog {
 
   add(input: Schemas['RepositoryAdd']): Schemas['Repository'][] | null {
     const connection = this.state.connections.find((candidate) => candidate.id === input.connection_id)
-    const offered = this.available(input.connection_id) ?? []
-    const picked = input.external_ids.map((externalId) => offered.find((entry) => entry.external_id === externalId))
-    if (!connection || !picked.every((entry): entry is Schemas['AvailableRepository'] => entry !== undefined)) return null
+    const catalogue = this.state.catalogue[input.connection_id]
+    if (!connection || !catalogue) return null
+    const alreadyAdded = new Set(this.state.repositories.filter((row) => row.connection_id === input.connection_id).map((row) => row.external_id))
+    const picked = input.external_ids
+      .filter((externalId) => !alreadyAdded.has(externalId))
+      .map((externalId) => catalogue.find((entry) => entry.external_id === externalId))
+    if (!picked.every((entry): entry is Schemas['AvailableRepository'] => entry !== undefined)) return null
     const rows: RepositoryRow[] = picked.map((entry) => ({
       id: `repo-${entry.external_id}`,
       connection_id: connection.id,
