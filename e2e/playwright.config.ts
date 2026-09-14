@@ -18,7 +18,7 @@ export default defineConfig({
   projects: [
     {
       name: 'web',
-      testMatch: 'web/**',
+      testMatch: 'web/**/*.spec.ts',
       use: { baseURL: 'http://localhost:5273' },
     },
     {
