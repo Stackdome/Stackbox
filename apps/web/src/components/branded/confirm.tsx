@@ -133,7 +133,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      <AlertDialog open={open} onOpenChange={(o) => !o && settle(false)}>
+      <AlertDialog open={open} onOpenChange={(o) => !o && !running && settle(false)}>
         <AlertDialogContent>
           {/* A confirm with no gate has no content band at all: the body is
               just the header, and the footer still breaks at 32. */}
@@ -186,7 +186,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
 
           <AlertDialogFooter>
             {/* Red button LAST, after Cancel (§6a). */}
-            <AlertDialogCancel>{pending?.opts.cancelLabel ?? "Cancel"}</AlertDialogCancel>
+            <AlertDialogCancel disabled={running}>{pending?.opts.cancelLabel ?? "Cancel"}</AlertDialogCancel>
             <AlertDialogAction
               variant={pending?.opts.variant}
               // Rendered DISABLED, not hidden: the cost has to be visible

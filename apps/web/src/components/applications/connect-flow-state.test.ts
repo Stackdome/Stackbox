@@ -11,7 +11,12 @@ const chosen = connectFlowReducer(initialConnectFlow, {
   shortName: 'design-system',
 })
 const detecting = connectFlowReducer(chosen, { type: 'detect started' })
-const detected = connectFlowReducer(detecting, { type: 'detect succeeded', detection })
+const detected = connectFlowReducer(detecting, {
+  type: 'detect succeeded',
+  detection,
+  repositoryId: chosen.repositoryId,
+  stackfilePath: chosen.stackfilePath,
+})
 
 describe('the connect application flow', () => {
   it('keeps Next disabled until a repository is chosen', () => {
@@ -50,5 +55,24 @@ describe('the connect application flow', () => {
     const pathed = connectFlowReducer(chosen, { type: 'path changed', stackfilePath: '  admin/stackfile.yaml ' })
 
     expect([stackfilePathOf(chosen), stackfilePathOf(pathed)]).toEqual([null, 'admin/stackfile.yaml'])
+  })
+
+  it('ignores a detect success whose repository or path no longer matches the current state', () => {
+    const switched = connectFlowReducer(chosen, {
+      type: 'repository chosen',
+      repositoryId: 'repo-other',
+      fullName: 'acme/other',
+      shortName: 'other',
+    })
+    const stillDetecting = connectFlowReducer(switched, { type: 'detect started' })
+
+    const stale = connectFlowReducer(stillDetecting, {
+      type: 'detect succeeded',
+      detection,
+      repositoryId: chosen.repositoryId,
+      stackfilePath: chosen.stackfilePath,
+    })
+
+    expect(stale.detect).toEqual({ status: 'detecting' })
   })
 })

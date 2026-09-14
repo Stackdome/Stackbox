@@ -48,10 +48,11 @@ export function useRepositories(orgId: string | null) {
   )
 
   const verify = useCallback(
-    async (connectionId: string) => {
-      if (!orgId) return
-      await verifyGitConnection(orgId, connectionId)
+    async (connectionId: string): Promise<GitConnectionView | null> => {
+      if (!orgId) return null
+      const verified = toGitConnection(await verifyGitConnection(orgId, connectionId))
       await refresh()
+      return verified
     },
     [orgId, refresh],
   )

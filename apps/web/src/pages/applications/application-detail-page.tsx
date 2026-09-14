@@ -89,7 +89,11 @@ export function ApplicationDetailPage() {
       <ApplicationDetail
         data={data}
         syncing={syncing}
-        onSync={sync}
+        onSync={() =>
+          sync().catch(() => {
+            toast({ title: "The Stackfile was not re-synced" });
+          })
+        }
         onSaveStackfilePath={setStackfilePath}
         onDisconnect={() => void askToDisconnect()}
         onOpenTask={(task) => navigate(taskPath(task.id))}

@@ -48,6 +48,18 @@ export class PreviewTaskBook {
   prepend(next: TaskDetailFixture): void {
     this.fixtures = [next, ...this.fixtures]
   }
+
+  /** The application row is deleted; its tasks go with it, same as the cascade on the api's side. */
+  removeForApplication(applicationId: string): void {
+    this.fixtures = this.fixtures.filter((fixture) => fixture.detail.application.id !== applicationId)
+  }
+
+  /** Keeps every task row's embedded application name in step with a rename. */
+  renameApplication(applicationId: string, name: string): void {
+    this.fixtures = this.fixtures.map((fixture) =>
+      fixture.detail.application.id === applicationId ? { ...fixture, detail: { ...fixture.detail, application: { ...fixture.detail.application, name } } } : fixture,
+    )
+  }
 }
 
 const notFound = () => HttpResponse.json({ message: 'task not found' }, { status: 404 })
@@ -56,7 +68,7 @@ function base64Of(bytes: Uint8Array): string {
   return btoa(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))
 }
 
-export function taskDetailHandlers(book: PreviewTaskBook, applications: Schemas['ApplicationSummary'][]): HttpHandler[] {
+export function taskDetailHandlers(book: PreviewTaskBook, applicationOf: (id: string) => Schemas['ApplicationSummary'] | null): HttpHandler[] {
   const uploads = new Map<string, Schemas['Artifact']>()
 
   return [
@@ -77,7 +89,7 @@ export function taskDetailHandlers(book: PreviewTaskBook, applications: Schemas[
 
     http.post('*/api/v1/organizations/:orgId/tasks', async ({ request }) => {
       const input = (await request.json()) as Schemas['TaskCreate']
-      const application = applications.find((candidate) => candidate.id === input.application_id)
+      const application = applicationOf(input.application_id)
       if (!application) return HttpResponse.json({ message: 'application not found' }, { status: 404 })
       if (input.kind === TaskKind.Onboarding) {
         return HttpResponse.json({ code: 'unsupported_task_kind', message: 'Tasks of kind onboarding are not supported yet' }, { status: 400 })

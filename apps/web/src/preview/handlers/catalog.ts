@@ -2,6 +2,7 @@ import { CoarseStatus, ConnectionStatus, ServiceKind, StackfileSync, type compon
 import type { HttpHandler } from 'msw'
 import { applicationHandlers } from './applications'
 import { repositoryHandlers } from './repositories'
+import { PreviewTaskBook } from './task-detail'
 
 type Schemas = components['schemas']
 
@@ -15,7 +16,8 @@ export type CatalogSeed = {
   tasks: Schemas['TaskSummary'][]
 }
 
-export type CatalogOptions = { delayMs?: number; persistKey?: string }
+/** `taskBook` shares one task book with the task handlers; omitted, the catalog keeps its own built from `seed.tasks`. */
+export type CatalogOptions = { delayMs?: number; persistKey?: string; taskBook?: PreviewTaskBook }
 
 type CatalogState = Omit<CatalogSeed, 'tasks'>
 
@@ -24,6 +26,9 @@ export const PREVIEW_HEAD_SHA = '9f8e7d6c5b4a39281706f5e4d3c2b1a098765432'
 export const PREVIEW_DELAY_MS = 2000
 
 const STACKFILE_NAME = 'stackfile.yaml'
+
+/** Mirrors the api's fake provider: a connection with this login can never re-verify. */
+export const NEEDS_REAUTH_LOGIN = 'needs-reauth'
 
 const ACTIVE: CoarseStatus[] = [CoarseStatus.Running, CoarseStatus.NeedsYou]
 
@@ -70,15 +75,14 @@ function synced(detail: Schemas['ApplicationDetail']): Schemas['ApplicationDetai
 /** One set of handlers owns one catalog: a change lives as long as the handlers, or as long as the tab when a persist key is given. */
 export class PreviewCatalog {
   private state: CatalogState
-  private readonly tasks: Schemas['TaskSummary'][]
+  private readonly taskBook: PreviewTaskBook
   private readonly persistKey: string | undefined
 
-  constructor(seed: CatalogSeed, persistKey?: string) {
-    const stored = persistKey ? sessionStorage.getItem(persistKey) : null
-    this.state = stored
-      ? (JSON.parse(stored) as CatalogState)
-      : { connections: seed.connections, repositories: seed.repositories, catalogue: seed.catalogue, applications: seed.applications }
-    this.tasks = seed.tasks
+  constructor(seed: CatalogSeed, persistKey?: string, taskBook?: PreviewTaskBook) {
+    const seeded = { connections: seed.connections, repositories: seed.repositories, catalogue: seed.catalogue, applications: seed.applications }
+    // A remembered catalog is a convenience; a blocked or unreadable store must not take the whole preview down with it.
+    this.state = persistKey ? readStored(persistKey) ?? seeded : seeded
+    this.taskBook = taskBook ?? new PreviewTaskBook(seed.tasks, [])
     this.persistKey = persistKey
   }
 
@@ -114,10 +118,12 @@ export class PreviewCatalog {
   }
 
   verify(connectionId: string): Schemas['GitConnection'] | null {
-    if (!this.state.connections.some((connection) => connection.id === connectionId)) return null
+    const target = this.state.connections.find((connection) => connection.id === connectionId)
+    if (!target) return null
+    const status = target.account_login === NEEDS_REAUTH_LOGIN ? ConnectionStatus.Error : ConnectionStatus.Verified
     this.commit({
       ...this.state,
-      connections: this.state.connections.map((connection) => (connection.id === connectionId ? { ...connection, status: ConnectionStatus.Verified } : connection)),
+      connections: this.state.connections.map((connection) => (connection.id === connectionId ? { ...connection, status } : connection)),
     })
     return this.connections().find((connection) => connection.id === connectionId) ?? null
   }
@@ -137,9 +143,13 @@ export class PreviewCatalog {
 
   add(input: Schemas['RepositoryAdd']): Schemas['Repository'][] | null {
     const connection = this.state.connections.find((candidate) => candidate.id === input.connection_id)
-    const offered = this.available(input.connection_id) ?? []
-    const picked = input.external_ids.map((externalId) => offered.find((entry) => entry.external_id === externalId))
-    if (!connection || !picked.every((entry): entry is Schemas['AvailableRepository'] => entry !== undefined)) return null
+    const catalogue = this.state.catalogue[input.connection_id]
+    if (!connection || !catalogue) return null
+    const alreadyAdded = new Set(this.state.repositories.filter((row) => row.connection_id === input.connection_id).map((row) => row.external_id))
+    const picked = input.external_ids
+      .filter((externalId) => !alreadyAdded.has(externalId))
+      .map((externalId) => catalogue.find((entry) => entry.external_id === externalId))
+    if (!picked.every((entry): entry is Schemas['AvailableRepository'] => entry !== undefined)) return null
     const rows: RepositoryRow[] = picked.map((entry) => ({
       id: `repo-${entry.external_id}`,
       connection_id: connection.id,
@@ -187,6 +197,11 @@ export class PreviewCatalog {
     return detail ? { ...detail, task_count: this.taskCountOf(detail.id) } : null
   }
 
+  applicationSummary(applicationId: string): Schemas['ApplicationSummary'] | null {
+    const detail = this.application(applicationId)
+    return detail ? { id: detail.id, name: detail.name } : null
+  }
+
   detect(input: Schemas['StackfileDetect']): Schemas['StackfileDetection'] | null {
     return this.hasRepository(input.repository_id) ? detectionAt(input.stackfile_path ?? null) : null
   }
@@ -225,6 +240,7 @@ export class PreviewCatalog {
     const next =
       input.stackfile_path === undefined || input.stackfile_path === detail.stackfile_path ? renamed : synced({ ...renamed, stackfile_path: input.stackfile_path })
     this.replaceApplication(next)
+    if (input.name !== undefined) this.taskBook.renameApplication(applicationId, input.name)
     return next
   }
 
@@ -237,11 +253,12 @@ export class PreviewCatalog {
   }
 
   hasActiveTasks(applicationId: string): boolean {
-    return this.tasks.some((row) => row.application.id === applicationId && ACTIVE.includes(row.coarse_status))
+    return this.taskBook.rows().some((row) => row.application.id === applicationId && ACTIVE.includes(row.coarse_status))
   }
 
   removeApplication(applicationId: string): void {
     this.commit({ ...this.state, applications: this.state.applications.filter((detail) => detail.id !== applicationId) })
+    this.taskBook.removeForApplication(applicationId)
   }
 
   private replaceApplication(next: Schemas['ApplicationDetail']): void {
@@ -249,16 +266,35 @@ export class PreviewCatalog {
   }
 
   private taskCountOf(applicationId: string): number {
-    return this.tasks.filter((row) => row.application.id === applicationId).length
+    return this.taskBook.rows().filter((row) => row.application.id === applicationId).length
   }
 
   private commit(next: CatalogState): void {
     this.state = next
-    if (this.persistKey) sessionStorage.setItem(this.persistKey, JSON.stringify(next))
+    if (!this.persistKey) return
+    try {
+      sessionStorage.setItem(this.persistKey, JSON.stringify(next))
+    } catch {
+      // A remembered catalog is a convenience; losing it is not a failure worth surfacing.
+    }
   }
 }
 
+function readStored(persistKey: string): CatalogState | null {
+  try {
+    const stored = sessionStorage.getItem(persistKey)
+    return stored ? (JSON.parse(stored) as CatalogState) : null
+  } catch {
+    return null
+  }
+}
+
+/** Exposes the `PreviewCatalog` instance too, for a caller that also wires `taskHandlers` onto the same task book. */
+export function buildCatalog(seed: CatalogSeed, options: CatalogOptions = {}): { catalog: PreviewCatalog; handlers: HttpHandler[] } {
+  const catalog = new PreviewCatalog(seed, options.persistKey, options.taskBook)
+  return { catalog, handlers: [...repositoryHandlers(catalog), ...applicationHandlers(catalog, options.delayMs ?? PREVIEW_DELAY_MS)] }
+}
+
 export function catalogHandlers(seed: CatalogSeed, options: CatalogOptions = {}): HttpHandler[] {
-  const catalog = new PreviewCatalog(seed, options.persistKey)
-  return [...repositoryHandlers(catalog), ...applicationHandlers(catalog, options.delayMs ?? PREVIEW_DELAY_MS)]
+  return buildCatalog(seed, options).handlers
 }

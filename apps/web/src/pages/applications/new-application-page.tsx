@@ -20,10 +20,11 @@ export function NewApplicationPage() {
   const [state, dispatch] = useReducer(connectFlowReducer, initialConnectFlow);
 
   async function next() {
+    const { repositoryId, repositoryFullName, stackfilePath } = state;
     dispatch({ type: "detect started" });
     try {
-      const detection = await detect({ repositoryId: state.repositoryId, repositoryFullName: state.repositoryFullName, stackfilePath: stackfilePathOf(state) });
-      dispatch({ type: "detect succeeded", detection });
+      const detection = await detect({ repositoryId, repositoryFullName, stackfilePath: stackfilePathOf(state) });
+      dispatch({ type: "detect succeeded", detection, repositoryId, stackfilePath });
     } catch {
       dispatch({ type: "detect failed" });
     }
