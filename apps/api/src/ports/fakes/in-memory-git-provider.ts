@@ -5,6 +5,7 @@ import type { ConnectionRef, PullRequestSummary, RepoRef, RepoSummary } from '..
 type SeededRepository = {
   summary: RepoSummary
   branches: Map<string, string>
+  files: Record<string, Buffer>
   patches: Map<string, Buffer>
   pullRequests: PullRequestSummary[]
 }
@@ -13,10 +14,11 @@ export class InMemoryGitProvider implements GitProvider {
   private readonly repositories = new Map<string, SeededRepository>()
   private pushes = 0
 
-  seedRepository(seed: { summary: RepoSummary; headSha: string }): void {
+  seedRepository(seed: { summary: RepoSummary; headSha: string; files?: Record<string, Buffer> }): void {
     this.repositories.set(seed.summary.id, {
       summary: seed.summary,
       branches: new Map([[seed.summary.defaultBranch, seed.headSha]]),
+      files: seed.files ?? {},
       patches: new Map(),
       pullRequests: [],
     })
@@ -40,8 +42,9 @@ export class InMemoryGitProvider implements GitProvider {
     return sha
   }
 
-  async readFile(_conn: ConnectionRef, _repo: RepoRef, _ref: string, _path: string): Promise<Buffer | null> {
-    return null
+  // The fake keeps one tree per repository, so every ref reads the same files.
+  async readFile(_conn: ConnectionRef, repo: RepoRef, _ref: string, path: string): Promise<Buffer | null> {
+    return this.repository(repo).files[path] ?? null
   }
 
   async pushPatch(conn: ConnectionRef, repo: RepoRef, spec: { baseRef: string; headRef: string; patch: Buffer }): Promise<{ sha: string }> {
