@@ -1,21 +1,14 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
 import { CoarseStatus, TaskEventKind, TaskKind, TaskPhase, TaskResolution, type components } from '@stackbox/contract'
+import { bearer, type Session, signIn } from './support'
 
 type Schemas = components['schemas']
-type Session = { token: string; user: { organisation_id: string } }
 
 const ADMIN = { email: 'ada@example.com', password: 'password' }
 const VIEWER = { email: 'vik@example.com', password: 'password' }
 const BUDGET_TASK = 'Nightly invoice run exceeds its budget'
 
-const bearer = (session: Session) => ({ Authorization: `Bearer ${session.token}` })
 const orgPath = (session: Session, path: string) => `/api/v1/organizations/${session.user.organisation_id}${path}`
-
-async function signIn(request: APIRequestContext, credentials: typeof ADMIN): Promise<Session> {
-  const response = await request.post('/api/v1/auth/login', { data: credentials })
-  expect(response.status()).toBe(200)
-  return response.json()
-}
 
 async function applicationNamed(request: APIRequestContext, session: Session, name: string): Promise<string> {
   const list: Schemas['ApplicationList'] = await (await request.get(orgPath(session, '/applications'), { headers: bearer(session) })).json()

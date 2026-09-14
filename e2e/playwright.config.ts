@@ -23,7 +23,7 @@ export default defineConfig({
     },
     {
       name: 'api',
-      testMatch: 'api/**',
+      testMatch: 'api/**/*.spec.ts',
       testIgnore: 'api/tasks.spec.ts',
       use: { baseURL: 'http://localhost:3000' },
     },
