@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
-export const REPOSITORY_COLUMNS = "grid-cols-[minmax(200px,1fr)_120px_minmax(160px,1fr)_96px_32px]";
+export const REPOSITORY_COLUMNS = "grid-cols-[minmax(240px,420px)_120px_minmax(160px,1fr)_96px_32px]";
 
 export const REPOSITORY_LABELS = ["Repository", "Default branch", "Used by", "Added", ""];
 
