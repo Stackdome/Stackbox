@@ -32,6 +32,7 @@ export type ApplicationListView = {
   name: string
   slug: string
   repositoryFullName: string
+  defaultBranch: string
   stackfilePath: string
   sync: SyncView
   chips: ServiceChipSet
@@ -125,6 +126,7 @@ export function toApplicationListItem(item: Schemas['ApplicationListItem']): App
     name: item.name,
     slug: item.slug,
     repositoryFullName: item.repository.full_name,
+    defaultBranch: item.repository.default_branch,
     stackfilePath: item.stackfile_path ?? DEFAULT_STACKFILE_PATH,
     sync: syncViewOf(item.sync, item.synced_at_sha),
     chips: serviceChipsOf(item.service_names),

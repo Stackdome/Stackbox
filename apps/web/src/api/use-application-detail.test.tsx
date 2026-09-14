@@ -52,4 +52,12 @@ describe('useApplicationDetail', () => {
 
     expect(result.current.data?.detail.name).toBe('invoicing')
   })
+
+  it('loads the instances of that application, torn down ones included', async () => {
+    const { result } = await loaded('app-shop')
+
+    expect(result.current.data?.instances.map((instance) => instance.identifier).sort()).toEqual(
+      ['persistent 5e7d', 'preview 8a1f', 'scratch 6f4b', 'task 2d9b', 'task 7c3e'].sort(),
+    )
+  })
 })

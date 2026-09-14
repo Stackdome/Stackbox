@@ -1,4 +1,4 @@
-import { CoarseStatus, ConnectionStatus, StackfileSync } from "@stackbox/contract";
+import { CoarseStatus, ConnectionStatus, InstanceStatus, ReleaseStatus, StackfileSync } from "@stackbox/contract";
 
 /**
  * The single word→variant brain. Every status string the backend can emit is
@@ -64,6 +64,7 @@ export type StatusDomain =
   | "build"
   | "preview"
   | "git_connection"
+  | "instance"
   | "stackfile_sync"
   | "task"
   | "generic";
@@ -132,18 +133,32 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // The one real OpenAPI enum.
+    // The rail's spinner says a building release moves; the colour only says it has not landed.
     case "release":
       switch (s) {
-        case "pending":
-        case "inprogress":
-          return "pending";
-        case "released":
+        case ReleaseStatus.Queued:
+          return "neutral";
+        case ReleaseStatus.Building:
+          return "info";
+        case ReleaseStatus.Live:
           return "ready";
-        case "failed":
+        case ReleaseStatus.Failed:
           return "error";
-        case "superseded":
-        case "cancelled":
+        default:
+          return "info";
+      }
+
+    // Degraded still serves, so it is the warn tier; expired and torn down serve nothing and need nothing.
+    case "instance":
+      switch (s) {
+        case InstanceStatus.Provisioning:
+          return "info";
+        case InstanceStatus.Ready:
+          return "ready";
+        case InstanceStatus.Degraded:
+          return "pending";
+        case InstanceStatus.Expired:
+        case InstanceStatus.TornDown:
           return "neutral";
         default:
           return "info";

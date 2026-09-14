@@ -1,6 +1,17 @@
-import { CoarseStatus, ConnectionStatus, ServiceKind, StackfileSync, type components } from '@stackbox/contract'
+import {
+  CoarseStatus,
+  ConnectionStatus,
+  InstanceExpiryHours,
+  InstancePurpose,
+  InstanceStatus,
+  ReleaseStatus,
+  ServiceKind,
+  StackfileSync,
+  type components,
+} from '@stackbox/contract'
 import type { HttpHandler } from 'msw'
 import { applicationHandlers } from './applications'
+import { instanceHandlers } from './instances'
 import { repositoryHandlers } from './repositories'
 import { PreviewTaskBook } from './task-detail'
 
@@ -14,12 +25,63 @@ export type CatalogSeed = {
   catalogue: Record<string, Schemas['AvailableRepository'][]>
   applications: Schemas['ApplicationDetail'][]
   tasks: Schemas['TaskSummary'][]
+  instances?: Schemas['InstanceDetail'][]
 }
 
-/** `taskBook` shares one task book with the task handlers; omitted, the catalog keeps its own built from `seed.tasks`. */
-export type CatalogOptions = { delayMs?: number; persistKey?: string; taskBook?: PreviewTaskBook }
+/**
+ * `taskBook` shares one task book with the task handlers; omitted, the catalog keeps its own built from `seed.tasks`.
+ * `releaseWalkMs` is when a release the catalog created turns building, then live.
+ */
+export type CatalogOptions = { delayMs?: number; persistKey?: string; taskBook?: PreviewTaskBook; releaseWalkMs?: readonly [number, number] }
 
-type CatalogState = Omit<CatalogSeed, 'tasks'>
+type CatalogState = Omit<CatalogSeed, 'tasks' | 'instances'> & { instances: Schemas['InstanceDetail'][] }
+
+export type Refusal = { status: number; body: { code: string; message: string } }
+
+/** The signed-in preview user, who owns every instance spun up in the preview. */
+export const PREVIEW_OWNER: Schemas['InstanceOwner'] = { id: 'u1', name: 'Ada Lovelace' }
+
+export const RELEASE_WALK_MS: readonly [number, number] = [1_000, 3_000]
+
+const HOUR_MS = 3_600_000
+const URL_ID_LENGTH = 8
+const RUNNING: InstanceStatus[] = [InstanceStatus.Provisioning, InstanceStatus.Ready, InstanceStatus.Degraded]
+const IN_FLIGHT: ReleaseStatus[] = [ReleaseStatus.Queued, ReleaseStatus.Building]
+const NOT_SYNCED: StackfileSync[] = [StackfileSync.NotSynced, StackfileSync.ValidationFailed]
+
+const PURPOSE_RESERVED = { code: 'purpose_reserved', message: 'Tasks create their own instances' }
+const UNKNOWN_APPLICATION = { code: 'unknown_application', message: 'application not found' }
+const APPLICATION_NOT_SYNCED = { code: 'application_not_synced', message: "Sync the application's Stackfile before spinning up an instance" }
+const RELEASE_IN_FLIGHT = { code: 'release_in_flight', message: 'Wait for the release in flight to finish first' }
+const INSTANCE_NOT_RUNNING = { code: 'instance_not_running', message: 'This instance has expired or been torn down' }
+const INSTANCE_HAS_NO_EXPIRY = { code: 'instance_has_no_expiry', message: 'A persistent instance never expires' }
+const UNKNOWN_REF = { code: 'unknown_ref', message: 'The repository has no branch or tag with this name' }
+
+const refusal = (status: number, body: Refusal['body']): Refusal => ({ status, body })
+
+function newRelease(ref: string): Schemas['Release'] {
+  return { id: crypto.randomUUID(), commit_sha: PREVIEW_HEAD_SHA, ref, status: ReleaseStatus.Queued, run_number: null, created_at: new Date().toISOString() }
+}
+
+function expiryFor(purpose: InstancePurpose, hours: InstanceExpiryHours | null | undefined): string | null {
+  if (purpose === InstancePurpose.Persistent) return null
+  return new Date(Date.now() + (hours ?? InstanceExpiryHours.ThreeDays) * HOUR_MS).toISOString()
+}
+
+function listItemOf(detail: Schemas['InstanceDetail']): Schemas['InstanceListItem'] {
+  return {
+    id: detail.id,
+    application: detail.application,
+    purpose: detail.purpose,
+    status: detail.status,
+    url: detail.url,
+    owner: detail.owner,
+    task: detail.task,
+    latest_release: detail.latest_release,
+    expires_at: detail.expires_at,
+    created_at: detail.created_at,
+  }
+}
 
 export const PREVIEW_HEAD_SHA = '9f8e7d6c5b4a39281706f5e4d3c2b1a098765432'
 
@@ -77,9 +139,18 @@ export class PreviewCatalog {
   private state: CatalogState
   private readonly taskBook: PreviewTaskBook
   private readonly persistKey: string | undefined
+  private readonly releaseWalkMs: readonly [number, number]
+  private timers: ReturnType<typeof setTimeout>[] = []
 
-  constructor(seed: CatalogSeed, persistKey?: string, taskBook?: PreviewTaskBook) {
-    const seeded = { connections: seed.connections, repositories: seed.repositories, catalogue: seed.catalogue, applications: seed.applications }
+  constructor(seed: CatalogSeed, persistKey?: string, taskBook?: PreviewTaskBook, releaseWalkMs: readonly [number, number] = RELEASE_WALK_MS) {
+    this.releaseWalkMs = releaseWalkMs
+    const seeded = {
+      connections: seed.connections,
+      repositories: seed.repositories,
+      catalogue: seed.catalogue,
+      applications: seed.applications,
+      instances: seed.instances ?? [],
+    }
     // A remembered catalog is a convenience; a blocked or unreadable store must not take the whole preview down with it.
     this.state = persistKey ? readStored(persistKey) ?? seeded : seeded
     this.taskBook = taskBook ?? new PreviewTaskBook(seed.tasks, [])
@@ -261,6 +332,114 @@ export class PreviewCatalog {
     this.taskBook.removeForApplication(applicationId)
   }
 
+  instances(query: { applicationId: string | null; includeTornDown: boolean }): Schemas['InstanceListItem'][] {
+    return [...this.state.instances]
+      .filter((detail) => query.applicationId === null || detail.application.id === query.applicationId)
+      .filter((detail) => query.includeTornDown || detail.status !== InstanceStatus.TornDown)
+      .sort((left, right) => right.created_at.localeCompare(left.created_at))
+      .map((detail) => listItemOf({ ...detail, task: this.taskOf(detail.task?.id ?? null) }))
+  }
+
+  instance(instanceId: string): Schemas['InstanceDetail'] | null {
+    const detail = this.state.instances.find((candidate) => candidate.id === instanceId)
+    return detail ? { ...detail, task: this.taskOf(detail.task?.id ?? null) } : null
+  }
+
+  spinUp(input: Schemas['InstanceSpinUp'], owner: Schemas['InstanceOwner']): Schemas['InstanceDetail'] | Refusal {
+    if (input.purpose === InstancePurpose.Task) return refusal(400, PURPOSE_RESERVED)
+    const application = this.application(input.application_id)
+    if (!application) return refusal(404, UNKNOWN_APPLICATION)
+    if (NOT_SYNCED.includes(application.sync)) return refusal(409, APPLICATION_NOT_SYNCED)
+    const ref = input.ref ?? application.repository.default_branch
+    if (ref !== application.repository.default_branch) return refusal(404, UNKNOWN_REF)
+    const id = crypto.randomUUID()
+    const release = newRelease(ref)
+    const created: Schemas['InstanceDetail'] = {
+      id,
+      application: { id: application.id, name: application.name },
+      repository: application.repository,
+      purpose: input.purpose,
+      status: InstanceStatus.Provisioning,
+      url: `https://${id.slice(0, URL_ID_LENGTH)}.instances.stackbox.test`,
+      owner,
+      task: null,
+      latest_release: release,
+      expires_at: expiryFor(input.purpose, input.expires_in_hours),
+      created_at: new Date().toISOString(),
+      releases: [release],
+    }
+    this.commit({ ...this.state, instances: [...this.state.instances, created] })
+    this.walk(id, release.id)
+    return created
+  }
+
+  releasesOf(instanceId: string): Schemas['Release'][] | null {
+    return this.instance(instanceId)?.releases ?? null
+  }
+
+  deploy(instanceId: string, input: Schemas['ReleaseCreate']): Schemas['Release'] | Refusal | null {
+    const detail = this.instance(instanceId)
+    if (!detail) return null
+    if (!RUNNING.includes(detail.status)) return refusal(409, INSTANCE_NOT_RUNNING)
+    if (detail.releases.some((release) => IN_FLIGHT.includes(release.status))) return refusal(409, RELEASE_IN_FLIGHT)
+    const ref = input.ref ?? detail.releases[0]?.ref ?? detail.repository.default_branch
+    if (ref !== detail.repository.default_branch) return refusal(404, UNKNOWN_REF)
+    const release = newRelease(ref)
+    this.replaceInstance({ ...detail, releases: [release, ...detail.releases], latest_release: release })
+    this.walk(instanceId, release.id)
+    return release
+  }
+
+  teardown(instanceId: string): Schemas['InstanceDetail'] | null {
+    const detail = this.instance(instanceId)
+    if (!detail) return null
+    const next = { ...detail, status: InstanceStatus.TornDown }
+    this.replaceInstance(next)
+    return next
+  }
+
+  extendExpiry(instanceId: string, hours: InstanceExpiryHours): Schemas['InstanceDetail'] | Refusal | null {
+    const detail = this.instance(instanceId)
+    if (!detail) return null
+    if (detail.purpose === InstancePurpose.Persistent) return refusal(409, INSTANCE_HAS_NO_EXPIRY)
+    if (!RUNNING.includes(detail.status)) return refusal(409, INSTANCE_NOT_RUNNING)
+    const next = { ...detail, expires_at: new Date(Date.now() + hours * HOUR_MS).toISOString() }
+    this.replaceInstance(next)
+    return next
+  }
+
+  dispose(): void {
+    for (const timer of this.timers) clearTimeout(timer)
+    this.timers = []
+  }
+
+  private walk(instanceId: string, releaseId: string): void {
+    const [buildingAfterMs, liveAfterMs] = this.releaseWalkMs
+    this.timers.push(
+      setTimeout(() => this.moveRelease(instanceId, releaseId, ReleaseStatus.Building), buildingAfterMs),
+      setTimeout(() => this.moveRelease(instanceId, releaseId, ReleaseStatus.Live), liveAfterMs),
+    )
+  }
+
+  private moveRelease(instanceId: string, releaseId: string, status: ReleaseStatus): void {
+    const detail = this.instance(instanceId)
+    if (!detail) return
+    const releases = detail.releases.map((release) => (release.id === releaseId ? { ...release, status } : release))
+    const landed = status === ReleaseStatus.Live && RUNNING.includes(detail.status)
+    this.replaceInstance({ ...detail, releases, latest_release: releases[0] ?? null, status: landed ? InstanceStatus.Ready : detail.status })
+  }
+
+  private replaceInstance(next: Schemas['InstanceDetail']): void {
+    this.commit({ ...this.state, instances: this.state.instances.map((detail) => (detail.id === next.id ? next : detail)) })
+  }
+
+  /** Rebuilt from the shared task book on every read, so a rename or a phase change never goes stale on the instance. */
+  private taskOf(taskId: string | null): Schemas['InstanceTask'] | null {
+    if (taskId === null) return null
+    const row = this.taskBook.rows().find((candidate) => candidate.id === taskId)
+    return row ? { id: row.id, description: row.report?.description ?? '', coarse_status: row.coarse_status } : null
+  }
+
   private replaceApplication(next: Schemas['ApplicationDetail']): void {
     this.commit({ ...this.state, applications: this.state.applications.map((detail) => (detail.id === next.id ? next : detail)) })
   }
@@ -291,8 +470,11 @@ function readStored(persistKey: string): CatalogState | null {
 
 /** Exposes the `PreviewCatalog` instance too, for a caller that also wires `taskHandlers` onto the same task book. */
 export function buildCatalog(seed: CatalogSeed, options: CatalogOptions = {}): { catalog: PreviewCatalog; handlers: HttpHandler[] } {
-  const catalog = new PreviewCatalog(seed, options.persistKey, options.taskBook)
-  return { catalog, handlers: [...repositoryHandlers(catalog), ...applicationHandlers(catalog, options.delayMs ?? PREVIEW_DELAY_MS)] }
+  const catalog = new PreviewCatalog(seed, options.persistKey, options.taskBook, options.releaseWalkMs)
+  return {
+    catalog,
+    handlers: [...repositoryHandlers(catalog), ...applicationHandlers(catalog, options.delayMs ?? PREVIEW_DELAY_MS), ...instanceHandlers(catalog, PREVIEW_OWNER)],
+  }
 }
 
 export function catalogHandlers(seed: CatalogSeed, options: CatalogOptions = {}): HttpHandler[] {

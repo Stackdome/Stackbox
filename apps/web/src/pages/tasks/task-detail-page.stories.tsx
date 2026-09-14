@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { expect, userEvent, waitFor } from 'storybook/test'
+import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { withConfirm, withCurrentUser, withSheetHeader, withTasks } from '../../../.storybook/decorators'
 import { APPLICATIONS, TASK_DETAILS, TASK_SUMMARIES } from '../../../.storybook/fixtures'
 import { baselineHandlers } from '../../../.storybook/msw-handlers'
@@ -32,5 +32,15 @@ export const ReplyResumesTheTask: Story = {
     await expect(canvas.getByText('Implementing').closest('[data-status]')?.getAttribute('data-status')).toBe('active')
     await userEvent.click(canvas.getByRole('tab', { name: 'Conversation' }))
     await expect(canvas.getByText('Safari 17.4 on macOS 14.')).toBeVisible()
+  },
+}
+
+/** Task 1 runs against a ready Application Instance, linked from the rail with its status. */
+export const InstanceLinkOnTheRail: Story = {
+  play: async ({ canvas }) => {
+    const rail = await canvas.findByRole('region', { name: 'Application Instance' })
+
+    await expect(within(rail).getByRole('link', { name: 'task 7c3e' })).toBeVisible()
+    await expect(rail).toHaveTextContent('Ready')
   },
 }

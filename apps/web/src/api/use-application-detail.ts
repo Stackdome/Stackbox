@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { deleteApplication, fetchApplication, syncApplication, updateApplication } from './applications'
+import { fetchInstances } from './instances'
 import { type ApplicationDetailView, toApplicationDetail } from './mappers/application'
+import { type InstanceView, toInstance } from './mappers/instance'
 import { type Task, toTask } from './mappers/task'
 import { fetchTasks } from './tasks'
 
-export type ApplicationDetailData = { detail: ApplicationDetailView; tasks: Task[] }
+export type ApplicationDetailData = { detail: ApplicationDetailView; tasks: Task[]; instances: InstanceView[] }
 
 export function useApplicationDetail(orgId: string | null, applicationId: string) {
   const [data, setData] = useState<ApplicationDetailData | null>(null)
@@ -15,8 +17,12 @@ export function useApplicationDetail(orgId: string | null, applicationId: string
   const refresh = useCallback(async () => {
     if (!orgId) return
     try {
-      const [detail, tasks] = await Promise.all([fetchApplication(orgId, applicationId), fetchTasks(orgId, { applicationId })])
-      setData({ detail: toApplicationDetail(detail), tasks: tasks.items.map(toTask) })
+      const [detail, tasks, instances] = await Promise.all([
+        fetchApplication(orgId, applicationId),
+        fetchTasks(orgId, { applicationId }),
+        fetchInstances(orgId, { applicationId, includeTornDown: true }),
+      ])
+      setData({ detail: toApplicationDetail(detail), tasks: tasks.items.map(toTask), instances: instances.items.map(toInstance) })
       setFailed(false)
     } catch {
       setFailed(true)

@@ -110,3 +110,34 @@ export const NewTaskLockedToTheApplication: Story = {
     await expect(within(drawer).getByRole('combobox', { name: /Application/ })).toBeDisabled()
   },
 }
+
+/** Contract 07 with slice 6: the Overview names the instances still running, never an expired or torn down one. */
+export const LiveInstancesOnTheOverview: Story = {
+  play: async ({ canvas }) => {
+    const live = await canvas.findByRole('region', { name: 'Live instances' })
+
+    await waitFor(() => expect(within(live).getAllByRole('link', { name: /^(task|preview|persistent|scratch|load test) / })).toHaveLength(3))
+    await expect(live).not.toHaveTextContent('task 2d9b')
+  },
+}
+
+/** The Instances tab lists the application's instances with no application picker, torn down ones hidden. */
+export const InstancesTab: Story = {
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(await canvas.findByRole('tab', { name: 'Instances' }))
+
+    await waitFor(() => expect(canvasElement.querySelectorAll('[data-slot="instance-list"] [data-slot="data-list-row"]')).toHaveLength(4))
+    await expect(canvas.queryByRole('combobox', { name: 'Application' })).toBeNull()
+  },
+}
+
+/** Spin up from an application page is locked to that application. */
+export const SpinUpLockedToTheApplication: Story = {
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(await canvas.findByRole('button', { name: 'Spin up' }))
+
+    const drawer = await within(canvasElement.ownerDocument.body).findByRole('dialog', { name: 'Spin up application instance' })
+    await expect(within(drawer).getByRole('combobox', { name: /Application/ })).toBeDisabled()
+    await expect(within(drawer).getByRole('combobox', { name: /Application/ })).toHaveTextContent('shop')
+  },
+}

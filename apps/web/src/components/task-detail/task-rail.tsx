@@ -1,7 +1,9 @@
 import { detailRailClass } from "./layout";
 import { CheckKind } from "@stackbox/contract";
-import type { ArtifactView, CheckView, TaskDetailView } from "@/api/mappers/task-detail";
-import { DetailList, DetailRow } from "@/components/branded";
+import { Link } from "react-router-dom";
+import { NOT_STARTED_INSTANCE, type ArtifactView, type CheckView, type TaskDetailView } from "@/api/mappers/task-detail";
+import { DetailList, DetailRow, StatusText } from "@/components/branded";
+import { instancePath } from "@/lib/routes";
 import { ArtifactStrip } from "./artifact-strip";
 
 function RailSection({ title, children }: { title: string; children: React.ReactNode }) {
@@ -26,7 +28,16 @@ export function TaskRail({
   return (
     <aside className={`${detailRailClass} flex flex-col gap-8`}>
       <RailSection title="Application Instance">
-        <p className="text-body text-fg-2">{detail.instanceLabel}</p>
+        {detail.instance ? (
+          <p className="flex min-w-0 items-center gap-2 text-body">
+            <Link to={instancePath(detail.instance.id)} className="truncate font-medium text-foreground underline-offset-2 hover:underline">
+              {detail.instance.identifier}
+            </Link>
+            <StatusText domain="instance" state={detail.instance.status} />
+          </p>
+        ) : (
+          <p className="text-body text-fg-2">{NOT_STARTED_INSTANCE}</p>
+        )}
       </RailSection>
 
       <RailSection title="Pull requests">

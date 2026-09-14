@@ -5,8 +5,11 @@ import {
   CheckOutcome,
   CoarseStatus,
   ConnectionStatus,
+  InstancePurpose,
+  InstanceStatus,
   MessageRole,
   PrState,
+  ReleaseStatus,
   ReportSource,
   RepoProvider,
   RunOutcome,
@@ -60,6 +63,21 @@ export const APPLICATIONS: ApplicationSummary[] = [
 
 const [BILLING, SHOP] = APPLICATIONS
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
+export const hoursFromNow = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString()
+
+/** Uuid-shaped so the identifier ("task 4f2a") reads like the api's. */
+export const INSTANCE_IDS = {
+  taskProvisioning: '4f2a0c1e-5b6d-4e7f-8a9b-0c1d2e3f4a50',
+  taskReady: '7c3e1b2a-4d5e-4f60-8a71-b2c3d4e5f601',
+  taskExpired: '2d9b4c6e-8f10-4a21-9b32-c4d5e6f70812',
+  preview: '8a1f3e5d-7b9c-4d0e-8f1a-2b3c4d5e6f70',
+  scratch: '9b1c0d2e-3f40-4a51-8b62-7c83d94ea5f6',
+  persistent: '5e7d9f1b-3c5a-4e7c-9d1f-3a5b7c9d1e3f',
+  degraded: '3a6c8e0f-2b4d-4f6a-8c0e-4b6d8f0a2c4e',
+  tornDown: '6f4b2d0e-9c7a-4e5f-8d3b-1a9c7e5f3d1b',
+} as const
+
+export const instanceUrlOf = (id: string) => `https://${id.slice(0, 8)}.instances.stackbox.test`
 
 export function makeTaskSummary(overrides: Partial<TaskSummary> = {}): TaskSummary {
   return {
@@ -90,6 +108,7 @@ export const TASK_SUMMARIES: TaskSummary[] = [
     phase: TaskPhase.NeedsInput,
     coarse_status: CoarseStatus.NeedsYou,
     blocking_question: 'Which Safari version shows the dead button?',
+    instance: { id: INSTANCE_IDS.taskReady, url: instanceUrlOf(INSTANCE_IDS.taskReady), status: InstanceStatus.Ready, expires_at: hoursFromNow(70) },
     created_at: hoursAgo(2),
   }),
   makeTaskSummary({
@@ -109,6 +128,7 @@ export const TASK_SUMMARIES: TaskSummary[] = [
     application: BILLING,
     report: { description: 'Discount code is ignored in the cart total', source: ReportSource.Jam },
     phase: TaskPhase.Deploying,
+    instance: { id: INSTANCE_IDS.taskProvisioning, url: null, status: InstanceStatus.Provisioning, expires_at: hoursFromNow(70) },
     run_number: 2,
     pull_request: { number: 58, repository_short_name: 'billing', state: PrState.Open, is_draft: true },
     created_at: hoursAgo(5),
@@ -119,6 +139,7 @@ export const TASK_SUMMARIES: TaskSummary[] = [
     phase: TaskPhase.HandOver,
     coarse_status: CoarseStatus.ReadyForReview,
     resolution: TaskResolution.FixVerified,
+    instance: { id: INSTANCE_IDS.taskExpired, url: instanceUrlOf(INSTANCE_IDS.taskExpired), status: InstanceStatus.Expired, expires_at: hoursAgo(2) },
     pull_request: { number: 142, repository_short_name: 'shop', state: PrState.Merged, is_draft: false },
     created_at: hoursAgo(48),
     completed_at: hoursAgo(40),
@@ -475,12 +496,127 @@ export const APPLICATION_DETAILS: ApplicationDetail[] = [
 
 export const PREVIEW_APPLICATION_SUMMARIES: ApplicationSummary[] = APPLICATION_DETAILS.map(({ id, name }) => ({ id, name }))
 
+export type InstanceDetail = Schemas['InstanceDetail']
+export type Release = Schemas['Release']
+
+export function makeRelease(overrides: Partial<Release> = {}): Release {
+  return { id: 'release-1', commit_sha: PREVIEW_HEAD_SHA, ref: 'main', status: ReleaseStatus.Live, run_number: null, created_at: hoursAgo(1), ...overrides }
+}
+
+export function makeInstanceDetail(overrides: Partial<InstanceDetail> = {}): InstanceDetail {
+  const releases = overrides.releases ?? [makeRelease()]
+  return {
+    id: '9b1c0d2e-3f40-4a51-8b62-7c83d94ea5f6',
+    application: { id: 'app-shop', name: 'shop' },
+    repository: refOf(SHOP_REPOSITORY),
+    purpose: InstancePurpose.Scratch,
+    status: InstanceStatus.Ready,
+    url: 'https://9b1c0d2e.instances.stackbox.test',
+    owner: { id: 'u1', name: 'Ada Lovelace' },
+    task: null,
+    latest_release: releases[0] ?? null,
+    expires_at: hoursFromNow(48),
+    created_at: hoursAgo(3),
+    ...overrides,
+    releases,
+  }
+}
+
+/** Prompt 08 state 1: seven instances in use plus one torn down, newest first. */
+export const INSTANCE_DETAILS: InstanceDetail[] = [
+  makeInstanceDetail({
+    id: INSTANCE_IDS.taskProvisioning,
+    application: BILLING,
+    repository: refOf(BILLING_REPOSITORY),
+    purpose: InstancePurpose.Task,
+    status: InstanceStatus.Provisioning,
+    url: null,
+    owner: null,
+    task: { id: 'task-4', description: 'Discount code is ignored in the cart total', coarse_status: CoarseStatus.Running },
+    releases: [makeRelease({ id: 'release-task-4-2', status: ReleaseStatus.Building, run_number: 2, created_at: hoursAgo(0.02) })],
+    expires_at: hoursFromNow(70),
+    created_at: hoursAgo(2),
+  }),
+  makeInstanceDetail({
+    id: INSTANCE_IDS.taskReady,
+    purpose: InstancePurpose.Task,
+    url: instanceUrlOf(INSTANCE_IDS.taskReady),
+    owner: null,
+    task: { id: 'task-1', description: 'Checkout button does nothing on Safari', coarse_status: CoarseStatus.NeedsYou },
+    releases: [makeRelease({ id: 'release-task-1-1', run_number: 1, created_at: hoursAgo(1.9) })],
+    expires_at: hoursFromNow(70),
+    created_at: hoursAgo(2.1),
+  }),
+  makeInstanceDetail({
+    id: INSTANCE_IDS.scratch,
+    application: BILLING,
+    repository: refOf(BILLING_REPOSITORY),
+    url: instanceUrlOf(INSTANCE_IDS.scratch),
+    releases: [makeRelease({ id: 'release-scratch-1', created_at: hoursAgo(2.9) })],
+    expires_at: hoursFromNow(5),
+    created_at: hoursAgo(3),
+  }),
+  makeInstanceDetail({
+    id: INSTANCE_IDS.preview,
+    purpose: InstancePurpose.Preview,
+    url: instanceUrlOf(INSTANCE_IDS.preview),
+    releases: [makeRelease({ id: 'release-preview-1', ref: 'feature/checkout-v2', created_at: hoursAgo(3.9) })],
+    expires_at: hoursFromNow(20),
+    created_at: hoursAgo(4),
+  }),
+  makeInstanceDetail({
+    id: INSTANCE_IDS.degraded,
+    application: BILLING,
+    repository: refOf(BILLING_REPOSITORY),
+    purpose: InstancePurpose.LoadTest,
+    status: InstanceStatus.Degraded,
+    url: instanceUrlOf(INSTANCE_IDS.degraded),
+    releases: [
+      makeRelease({ id: 'release-load-2', status: ReleaseStatus.Failed, created_at: hoursAgo(0.5) }),
+      makeRelease({ id: 'release-load-1', commit_sha: PREVIEW_STALE_SHA, created_at: hoursAgo(5.9) }),
+    ],
+    expires_at: hoursFromNow(30),
+    created_at: hoursAgo(6),
+  }),
+  makeInstanceDetail({
+    id: INSTANCE_IDS.tornDown,
+    status: InstanceStatus.TornDown,
+    url: instanceUrlOf(INSTANCE_IDS.tornDown),
+    releases: [makeRelease({ id: 'release-torn-down-1', created_at: hoursAgo(29.9) })],
+    expires_at: hoursAgo(20),
+    created_at: hoursAgo(30),
+  }),
+  makeInstanceDetail({
+    id: INSTANCE_IDS.taskExpired,
+    purpose: InstancePurpose.Task,
+    status: InstanceStatus.Expired,
+    url: instanceUrlOf(INSTANCE_IDS.taskExpired),
+    owner: null,
+    task: { id: 'task-5', description: 'Password reset link expires immediately', coarse_status: CoarseStatus.ReadyForReview },
+    releases: [makeRelease({ id: 'release-task-5-1', run_number: 1, created_at: hoursAgo(47.9) })],
+    expires_at: hoursAgo(2),
+    created_at: hoursAgo(48),
+  }),
+  makeInstanceDetail({
+    id: INSTANCE_IDS.persistent,
+    purpose: InstancePurpose.Persistent,
+    url: instanceUrlOf(INSTANCE_IDS.persistent),
+    releases: [
+      makeRelease({ id: 'release-persistent-2', created_at: hoursAgo(1) }),
+      makeRelease({ id: 'release-persistent-1', commit_sha: PREVIEW_STALE_SHA, created_at: hoursAgo(230) }),
+    ],
+    expires_at: null,
+    created_at: hoursAgo(240),
+  }),
+]
+
 export const PREVIEW_CATALOG_SEED: CatalogSeed = {
   connections: [GITHUB_CONNECTION, GITLAB_CONNECTION],
   repositories: REPOSITORY_ROWS,
   catalogue: PROVIDER_CATALOGUE,
   applications: APPLICATION_DETAILS,
   tasks: TASK_SUMMARIES,
+  instances: INSTANCE_DETAILS,
 }
 
-export const EMPTY_CATALOG_SEED: CatalogSeed = { connections: [], repositories: [], catalogue: {}, applications: [], tasks: [] }
+export const EMPTY_CATALOG_SEED: CatalogSeed = { connections: [], repositories: [], catalogue: {}, applications: [], tasks: [], instances: [] }
