@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { InstanceStatus, MessageRole, TaskEventKind, TaskPhase } from '@stackbox/contract'
+import { InstanceStatus, MessageRole, ReleaseStatus, TaskEventKind, TaskPhase } from '@stackbox/contract'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
@@ -7,12 +7,12 @@ import { DEFAULT_EXPIRY_HOURS } from '../instances/calc/expiry'
 import { leaseFor } from '../reconciler/calc/lease'
 import { PhaseConflict } from '../reconciler/task-state'
 import { reproKey } from '../tasks/calc/idempotency-key'
-import { aReport, aRun, aSandbox, aTask, anExecution } from '../tasks/test-support/builders'
+import { aReport, aRelease, aRun, aSandbox, aTask, anExecution } from '../tasks/test-support/builders'
 import type { Task } from '../tasks/types'
 import type { Database } from './client'
 import { DrizzleTaskState } from './drizzle-task-state'
-import { applicationInstance, report, task, taskMessage } from './schema'
-import { IDS, emptyTables, insertApplication, insertApplicationOn, insertGitConnection, insertOrganization, insertRepository } from './test-support/rows'
+import { applicationInstance, release, report, task, taskMessage } from './schema'
+import { IDS, emptyTables, insertApplication, insertApplicationOn, insertGitConnection, insertInstance, insertOrganization, insertRelease, insertRepository } from './test-support/rows'
 
 const NOW = new Date('2026-09-14T10:00:00Z')
 const later = (ms: number) => new Date(NOW.getTime() + ms)
@@ -142,6 +142,16 @@ describe('DrizzleTaskState', () => {
 
     const [instance] = await db.select().from(applicationInstance).where(eq(applicationInstance.id, IDS.instance))
     expect(instance.status).toBe(InstanceStatus.TornDown)
+  })
+
+  it('does not regress a release the sweep already advanced to live', async () => {
+    await insertInstance(db, { id: IDS.instance, applicationId: IDS.application, status: InstanceStatus.Ready })
+    await insertRelease(db, { id: IDS.release, instanceId: IDS.instance, status: ReleaseStatus.Live })
+
+    await state.saveRelease(aRelease({ id: IDS.release, instanceId: IDS.instance, status: ReleaseStatus.Building }))
+
+    const [stored] = await db.select().from(release).where(eq(release.id, IDS.release))
+    expect(stored.status).toBe(ReleaseStatus.Live)
   })
 
   it('returns the stored execution when its idempotency key already exists', async () => {

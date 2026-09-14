@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { InstancePurpose, InstanceStatus, type TaskPhase } from '@stackbox/contract'
+import { InstancePurpose, InstanceStatus, ReleaseStatus, type TaskPhase } from '@stackbox/contract'
 import { and, asc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import { DEFAULT_EXPIRY_HOURS } from '../instances/calc/expiry'
 import type { Lease } from '../reconciler/calc/lease'
@@ -131,7 +131,15 @@ export class DrizzleTaskState implements TaskState {
   }
 
   async saveRelease(next: Release): Promise<void> {
-    await this.db.insert(release).values(next).onConflictDoUpdate({ target: release.id, set: { status: next.status } })
+    // Forward-only: the sweep may have already advanced this release past what the reconciler observed.
+    await this.db
+      .insert(release)
+      .values(next)
+      .onConflictDoUpdate({
+        target: release.id,
+        set: { status: next.status },
+        where: inArray(release.status, [ReleaseStatus.Queued, ReleaseStatus.Building]),
+      })
   }
 
   async markInstanceTornDown(instanceId: string): Promise<void> {
