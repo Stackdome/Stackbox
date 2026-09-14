@@ -88,7 +88,7 @@ export const NotReproduced: Story = { args: { data: dataOf(fixture('task-6')) } 
 /** State 7: cancelled, labelled from the phase alone. */
 export const Cancelled: Story = { args: { data: dataOf(fixture('task-8')) } }
 
-/** A check screenshot opens the viewer. The 760 work width is asserted by the e2e spec in Task 11, where the browser viewport is wide enough for it; this Storybook browser project runs narrower than 792 so `DialogContent` caps at `calc(100% - 2rem)` here. */
+/** A check screenshot opens the viewer. The 760 work width needs a viewport wider than 792px; this Storybook browser project runs narrower, so `DialogContent` caps at `calc(100% - 2rem)` here. */
 export const OpensEvidence: Story = {
   args: ReadyFixVerified.args,
   play: async ({ canvasElement }) => {

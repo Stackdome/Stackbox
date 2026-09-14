@@ -7,7 +7,7 @@ import { ReconcilerService } from './reconciler.service'
 import { RECONCILER_SETTINGS } from './settings'
 import { TASK_STATE } from './task-state'
 
-// Sandbox, deploy and git stay scripted until their vendors are chosen; only the agent runtime has a real adapter.
+// Sandbox, deploy and git bind scripted fakes; only the agent runtime has a real adapter.
 @Module({
   providers: [
     ReconcilerService,
