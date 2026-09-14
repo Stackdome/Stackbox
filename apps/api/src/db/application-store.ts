@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { and, asc, eq } from 'drizzle-orm'
-import type { ApplicationRef } from '../organizations/types'
+import type { ApplicationRef } from '../repositories/types'
 import { DATABASE_CONNECTION, type Database } from './client'
 import { application } from './schema'
 

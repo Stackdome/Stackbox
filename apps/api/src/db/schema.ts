@@ -96,6 +96,7 @@ export const repository = pgTable(
   {
     id: id(),
     orgId: uuid('org_id').notNull().references(() => organization.id, { onDelete: 'cascade' }),
+    connectionId: uuid('connection_id').notNull().references(() => gitConnection.id, { onDelete: 'restrict' }),
     provider: repoProvider('provider').notNull(),
     externalId: text('external_id').notNull(),
     fullName: text('full_name').notNull(),
@@ -130,6 +131,7 @@ export const application = pgTable(
     stackfilePath: text('stackfile_path'),
     syncedAtSha: text('synced_at_sha'),
     validatedAt: optionalAt('validated_at'),
+    validationError: text('validation_error'),
     credentialsRef: jsonb('credentials_ref').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: createdAt(),
   },

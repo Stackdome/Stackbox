@@ -223,6 +223,9 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
       await tx
         .delete(artifact)
         .where(or(inArray(artifact.ownerId, orgIds), inArray(artifact.ownerId, reports), inArray(artifact.ownerId, checks), inArray(artifact.ownerId, messages)))
+      // repository.connection_id restricts, which Postgres checks even inside the organization's cascade.
+      await tx.delete(application).where(inArray(application.orgId, orgIds))
+      await tx.delete(repository).where(inArray(repository.orgId, orgIds))
       await tx.delete(organization).where(inArray(organization.id, orgIds))
     }
 
@@ -235,14 +238,17 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
         { orgId: org.id, email: FIXTURE.developerEmail, name: 'Dev Ito', passwordHash, orgRole: UserRole.OrgMember },
       ])
       .returning({ id: userAccount.id })
-    await tx.insert(gitConnection).values({ orgId: org.id, provider: RepoProvider.Github, installationRef: 'acme-installation', accountLogin: 'acme' })
+    const [connection] = await tx
+      .insert(gitConnection)
+      .values({ orgId: org.id, provider: RepoProvider.Github, installationRef: 'acme-installation', accountLogin: 'acme' })
+      .returning({ id: gitConnection.id })
 
     const repositoryIds = new Map<ApplicationName, string>()
     const applicationIds = new Map<ApplicationName, string>()
     for (const name of APPLICATIONS) {
       const [repo] = await tx
         .insert(repository)
-        .values({ orgId: org.id, provider: RepoProvider.Github, externalId: `acme-${name}`, fullName: `acme/${name}` })
+        .values({ orgId: org.id, connectionId: connection.id, provider: RepoProvider.Github, externalId: `acme-${name}`, fullName: `acme/${name}` })
         .returning({ id: repository.id })
       const [app] = await tx.insert(application).values({ orgId: org.id, name, slug: name, repositoryId: repo.id }).returning({ id: application.id })
       repositoryIds.set(name, repo.id)
