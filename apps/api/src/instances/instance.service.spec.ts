@@ -134,14 +134,24 @@ describe('InstanceService', () => {
     expect([first.status, second.status, deploy.isTornDown({ id: created.id })]).toEqual([InstanceStatus.TornDown, InstanceStatus.TornDown, true])
   })
 
-  it('extends the expiry from now rather than from the old expiry', async () => {
+  it('extends the expiry from now when that is later than the current expiry', async () => {
     const { clock, service } = anInstanceWorld(db)
     const created = await service.spinUp(IDS.org, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch })
+    clock.advance(80 * HOUR_MS)
+
+    const extended = await service.extendExpiry(IDS.org, created.id, { hours: InstanceExpiryHours.Day })
+
+    expect(extended.expires_at).toBe('2026-09-18T18:00:00.000Z')
+  })
+
+  it('extends a 7d instance by 24h without shortening its expiry', async () => {
+    const { clock, service } = anInstanceWorld(db)
+    const created = await service.spinUp(IDS.org, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch, expires_in_hours: InstanceExpiryHours.Week })
     clock.advance(10 * HOUR_MS)
 
     const extended = await service.extendExpiry(IDS.org, created.id, { hours: InstanceExpiryHours.Day })
 
-    expect(extended.expires_at).toBe('2026-09-15T20:00:00.000Z')
+    expect(extended.expires_at).toBe(created.expires_at)
   })
 
   it('refuses to extend a persistent instance', async () => {

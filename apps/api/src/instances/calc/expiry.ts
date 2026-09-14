@@ -12,3 +12,9 @@ export function expiresAtFor(purpose: InstancePurpose, hours: InstanceExpiryHour
   if (purpose === InstancePurpose.Persistent) return null
   return hoursAfter(now, hours ?? DEFAULT_EXPIRY_HOURS)
 }
+
+// Extend never shortens: the later of the current expiry and the requested one wins.
+export function extendedExpiryFor(currentExpiresAt: Date, now: Date, hours: number): Date {
+  const requested = hoursAfter(now, hours)
+  return requested.getTime() > currentExpiresAt.getTime() ? requested : currentExpiresAt
+}

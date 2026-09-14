@@ -7,7 +7,7 @@ import { ApplicationStore } from '../db/application-store'
 import { InstanceStore } from '../db/instance-store'
 import { CLOCK, type Clock, DEPLOY_TARGET, type DeployTarget, type ServiceSpec } from '../ports'
 import { ReleaseService } from '../releases/release.service'
-import { expiresAtFor, hoursAfter } from './calc/expiry'
+import { expiresAtFor, extendedExpiryFor } from './calc/expiry'
 import { isRunning } from './calc/instance-status'
 import { hasServicesToRun } from './calc/spin-up'
 import {
@@ -94,7 +94,8 @@ export class InstanceService {
     const record = await this.recordOrThrow(orgId, instanceId)
     if (record.purpose === InstancePurpose.Persistent) throw new ConflictException(INSTANCE_HAS_NO_EXPIRY)
     if (!isRunning(record.status)) throw new ConflictException(INSTANCE_NOT_RUNNING)
-    await this.instances.setExpiry(record.id, hoursAfter(this.clock.now(), input.hours))
+    // Only persistent (rejected above) has no expiry, so a running instance always carries one.
+    await this.instances.setExpiry(record.id, extendedExpiryFor(record.expiresAt as Date, this.clock.now(), input.hours))
     return this.detail(orgId, record.id)
   }
 
