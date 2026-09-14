@@ -109,13 +109,13 @@ describe('InstanceStore', () => {
     expect([found?.status, found?.url, found?.expiresAt]).toEqual([InstanceStatus.Ready, 'https://00000000.instances.test', TOMORROW])
   })
 
-  it('offers every instance not torn down to the sweep, across organizations', async () => {
+  it('offers every running instance to the sweep, excluding expired and torn down, across organizations', async () => {
     await insertApplication(db, { orgId: IDS.otherOrg, repositoryId: IDS.otherRepository, id: IDS.otherApplication, name: 'ledger' })
     await insertInstance(db, { id: IDS.instance, applicationId: IDS.application, status: InstanceStatus.Expired })
     await insertInstance(db, { id: IDS.secondInstance, applicationId: IDS.application, status: InstanceStatus.TornDown })
     await insertInstance(db, { id: IDS.otherInstance, applicationId: IDS.otherApplication, status: InstanceStatus.Provisioning })
 
-    expect((await instances.live()).map((record) => record.id).sort()).toEqual([IDS.instance, IDS.otherInstance].sort())
+    expect((await instances.live()).map((record) => record.id)).toEqual([IDS.otherInstance])
   })
 
   it('never moves a torn down instance back to ready', async () => {

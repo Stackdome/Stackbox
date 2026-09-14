@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common'
 import { InstanceStatus } from '@stackbox/contract'
-import { type SQL, and, desc, eq, inArray, ne } from 'drizzle-orm'
+import { type SQL, and, desc, eq, inArray, ne, notInArray } from 'drizzle-orm'
 import type { InstanceRecord, NewInstance } from '../instances/types'
 import { DATABASE_CONNECTION, type Database } from './client'
 import { selectReleases } from './release-store'
@@ -28,7 +28,7 @@ export class InstanceStore {
   }
 
   live(): Promise<InstanceRecord[]> {
-    return this.recordsWhere(ne(applicationInstance.status, InstanceStatus.TornDown))
+    return this.recordsWhere(notInArray(applicationInstance.status, [InstanceStatus.Expired, InstanceStatus.TornDown]))
   }
 
   async insert(row: NewInstance): Promise<void> {
