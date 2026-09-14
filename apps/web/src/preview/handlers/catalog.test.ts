@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { ConnectionStatus, RepoProvider } from '@stackbox/contract'
+import { ConnectionStatus, InstanceExpiryHours, InstancePurpose, InstanceStatus, RepoProvider, ReleaseStatus, type components } from '@stackbox/contract'
 import { setupServer } from 'msw/node'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ORG_ID } from '../../../.storybook/fixtures'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { INSTANCE_IDS, ORG_ID, PREVIEW_CATALOG_SEED } from '../../../.storybook/fixtures'
 import { buildCatalog, PreviewCatalog, type CatalogSeed } from './catalog'
 import { PreviewTaskBook } from './task-detail'
 import { taskHandlers } from './tasks'
@@ -132,5 +132,92 @@ describe('the preview catalog against a blocked sessionStorage', () => {
     } finally {
       Object.defineProperty(window, 'sessionStorage', { value: original, configurable: true })
     }
+  })
+})
+
+describe('the preview catalog walking instances and releases', () => {
+  const OWNER = { id: 'u1', name: 'Ada Lovelace' }
+
+  function detailOf(result: object | null): components['schemas']['InstanceDetail'] {
+    if (result === null || 'body' in result) throw new Error(`expected an instance, got ${JSON.stringify(result)}`)
+    return result as components['schemas']['InstanceDetail']
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('walks a spun up instance to ready once its first release goes live', () => {
+    vi.useFakeTimers()
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+    const created = detailOf(catalog.spinUp({ application_id: 'app-shop', purpose: InstancePurpose.Scratch, expires_in_hours: InstanceExpiryHours.Day }, OWNER))
+
+    vi.advanceTimersByTime(1_000)
+    const building = catalog.instance(created.id)?.releases[0].status
+    vi.advanceTimersByTime(2_000)
+    const walked = catalog.instance(created.id)
+
+    expect([created.status, building, walked?.releases[0].status, walked?.status]).toEqual([
+      InstanceStatus.Provisioning,
+      ReleaseStatus.Building,
+      ReleaseStatus.Live,
+      InstanceStatus.Ready,
+    ])
+  })
+
+  it('prepends a queued release on Deploy and refuses a second while it is in flight', () => {
+    vi.useFakeTimers()
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    const first = catalog.deploy(INSTANCE_IDS.persistent, {})
+    const second = catalog.deploy(INSTANCE_IDS.persistent, {})
+
+    expect([catalog.instance(INSTANCE_IDS.persistent)?.releases.map((release) => release.status), second]).toEqual([
+      [ReleaseStatus.Queued, ReleaseStatus.Live, ReleaseStatus.Live],
+      { status: 409, body: { code: 'release_in_flight', message: 'Wait for the release in flight to finish first' } },
+    ])
+    expect(first).not.toBeNull()
+    catalog.dispose()
+  })
+
+  it('refuses spinning up an application whose Stackfile failed validation', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    expect(catalog.spinUp({ application_id: 'app-ledger', purpose: InstancePurpose.Scratch }, OWNER)).toEqual({
+      status: 409,
+      body: { code: 'application_not_synced', message: "Sync the application's Stackfile before spinning up an instance" },
+    })
+  })
+
+  it('tears an instance down, refuses to extend it afterwards and never extends a persistent one', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    const tornDown = detailOf(catalog.teardown(INSTANCE_IDS.scratch))
+
+    expect([tornDown.status, catalog.extendExpiry(INSTANCE_IDS.scratch, InstanceExpiryHours.Day), catalog.extendExpiry(INSTANCE_IDS.persistent, InstanceExpiryHours.Day)]).toEqual([
+      InstanceStatus.TornDown,
+      { status: 409, body: { code: 'instance_not_running', message: 'This instance has expired or been torn down' } },
+      { status: 409, body: { code: 'instance_has_no_expiry', message: 'A persistent instance never expires' } },
+    ])
+  })
+
+  it('leaves torn down instances out of the list unless asked, newest first', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    const hidden = catalog.instances({ applicationId: null, includeTornDown: false })
+    const shown = catalog.instances({ applicationId: null, includeTornDown: true })
+
+    expect([hidden.length, shown.length, hidden[0].id]).toEqual([7, 8, INSTANCE_IDS.taskProvisioning])
+  })
+
+  it('stops every pending walk once disposed', () => {
+    vi.useFakeTimers()
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+    catalog.deploy(INSTANCE_IDS.persistent, {})
+
+    catalog.dispose()
+    vi.advanceTimersByTime(3_000)
+
+    expect(catalog.instance(INSTANCE_IDS.persistent)?.releases[0].status).toBe(ReleaseStatus.Queued)
   })
 })

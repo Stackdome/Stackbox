@@ -11,7 +11,7 @@ const EMPTY_SCENARIO = 'empty'
 
 // Survives a reload of the same tab; every new browser context starts from the seed.
 // Versioned so a fixture change starts fresh instead of parsing a stored shape it no longer matches.
-const PERSIST_KEY = `stackbox.preview.catalog.v1.${scenario ?? 'populated'}`
+const PERSIST_KEY = `stackbox.preview.catalog.v2.${scenario ?? 'populated'}`
 
 const seed = scenario === EMPTY_SCENARIO ? EMPTY_CATALOG_SEED : PREVIEW_CATALOG_SEED
 const taskBook = new PreviewTaskBook(scenario === EMPTY_SCENARIO ? [] : TASK_SUMMARIES, scenario === EMPTY_SCENARIO ? [] : TASK_DETAILS)
