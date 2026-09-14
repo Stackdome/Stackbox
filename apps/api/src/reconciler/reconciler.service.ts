@@ -55,6 +55,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   ) {}
 
   onApplicationBootstrap(): void {
+    if (!this.settings.tickEnabled) return
     this.timer = setInterval(() => {
       this.tick().catch((error: unknown) => this.logger.error(error))
     }, TICK_PERIOD_MS)
@@ -118,16 +119,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       case DecisionKind.DeployRelease:
         return this.deployRelease(snapshot, decision, now)
       case DecisionKind.OpenRun:
-        return this.state.saveRun({
-          id: randomUUID(),
-          taskId: snapshot.task.id,
-          number: decision.number,
-          candidateSha: null,
-          verifiedSha: null,
-          outcome: RunOutcome.Running,
-          startedAt: now,
-          endedAt: null,
-        })
+        return this.openRun(snapshot, decision, now)
       case DecisionKind.CloseRun:
         return this.closeRun(snapshot, decision, now)
       case DecisionKind.StartRun:
@@ -136,6 +128,8 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
         return this.retrySameKey(snapshot, decision)
       case DecisionKind.RecordExecution:
         return this.state.updateExecution(decision.executionId, decision.patch)
+      case DecisionKind.SendMessage:
+        return this.sendMessage(snapshot, decision, now)
       case DecisionKind.AppendCheck:
         return this.appendCheck(snapshot, decision, now)
       case DecisionKind.IgnoreCheck:
@@ -182,9 +176,30 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
     if (decision.runId === null) await this.state.saveTask({ ...snapshot.task, originReleaseId: release.id }, snapshot.task.phase)
   }
 
+  private async openRun(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.OpenRun>, now: Date): Promise<void> {
+    await this.state.saveRun({
+      id: randomUUID(),
+      taskId: snapshot.task.id,
+      number: decision.number,
+      candidateSha: null,
+      verifiedSha: null,
+      outcome: RunOutcome.Running,
+      startedAt: now,
+      endedAt: null,
+    })
+    await this.event(snapshot, TaskEventKind.RunStarted, { number: decision.number }, now)
+  }
+
   private async closeRun(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.CloseRun>, now: Date): Promise<void> {
     const run = present(snapshot.runs.find((candidate) => candidate.id === decision.runId), `run ${decision.runId}`)
     await this.state.saveRun({ ...run, outcome: decision.outcome, verifiedSha: decision.verifiedSha, endedAt: now })
+    await this.event(snapshot, TaskEventKind.RunEnded, { number: run.number, outcome: decision.outcome }, now)
+  }
+
+  private async sendMessage(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.SendMessage>, now: Date): Promise<void> {
+    // The key is recorded before the remote call: a crash between the two drops the reply rather than sending it twice.
+    await this.event(snapshot, TaskEventKind.MessageSent, { key: decision.key, messageId: decision.messageId }, now)
+    await this.runtime.sendMessage(decision.sessionId, decision.body)
   }
 
   private async startRun(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.StartRun>, now: Date): Promise<void> {
@@ -273,6 +288,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
         createdAt: now,
       })
     }
+    await this.event(snapshot, TaskEventKind.CheckRecorded, { checkId, checkKind: decision.checkKind, outcome: decision.outcome, runId: decision.runId }, now)
   }
 
   private async pushPatch(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.PushPatch>): Promise<void> {

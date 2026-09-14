@@ -9,3 +9,7 @@ export function runKey(taskId: string, number: number): string {
 export function verifyKey(taskId: string, number: number): string {
   return `${runKey(taskId, number)}:verify`
 }
+
+export function messageKey(taskId: string, messageId: string): string {
+  return `${taskId}:msg:${messageId}`
+}

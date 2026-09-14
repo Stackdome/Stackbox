@@ -1,40 +1,27 @@
-import { randomUUID } from 'node:crypto'
 import { Module } from '@nestjs/common'
+import { DrizzleTaskState } from '../db'
 import { AGENT_RUNTIME, CLOCK, type Clock, DEPLOY_TARGET, GIT_PROVIDER, SANDBOX_PROVIDER } from '../ports'
-import {
-  InMemoryAgentRuntime,
-  InMemoryClock,
-  InMemoryDeployTarget,
-  InMemoryGitProvider,
-  InMemorySandboxProvider,
-} from '../ports/fakes'
-import { InMemoryTaskState } from './in-memory-task-state'
+import { type InMemorySandboxProvider, ScriptedClock, ScriptedDeployTarget, ScriptedGitProvider, ScriptedSandboxProvider } from '../ports/fakes'
+import { agentRuntimeFor, settingsFrom } from './bindings'
 import { ReconcilerService } from './reconciler.service'
-import { RECONCILER_SETTINGS, type ReconcilerSettings } from './settings'
+import { RECONCILER_SETTINGS } from './settings'
 import { TASK_STATE } from './task-state'
 
-const settings: ReconcilerSettings = {
-  owner: `${process.pid}:${randomUUID()}`,
-  claimLimit: 10,
-  gitHost: 'github.com',
-  readToken: 'in-memory-read-token',
-}
-
-// Slice 4 replaces these bindings with the Drizzle task state and the configured adapters, and AppModule imports this module then.
+// Sandbox, deploy and git stay scripted until their vendors are chosen; only the agent runtime has a real adapter.
 @Module({
   providers: [
     ReconcilerService,
-    { provide: CLOCK, useFactory: () => new InMemoryClock(new Date()) },
-    { provide: SANDBOX_PROVIDER, useClass: InMemorySandboxProvider },
+    { provide: CLOCK, useClass: ScriptedClock },
+    { provide: SANDBOX_PROVIDER, useFactory: (clock: Clock) => new ScriptedSandboxProvider(clock), inject: [CLOCK] },
     {
       provide: AGENT_RUNTIME,
-      useFactory: (sandboxes: InMemorySandboxProvider, clock: Clock) => new InMemoryAgentRuntime(sandboxes, clock),
-      inject: [SANDBOX_PROVIDER, CLOCK],
+      useFactory: (clock: Clock, sandboxes: InMemorySandboxProvider) => agentRuntimeFor(process.env, clock, sandboxes),
+      inject: [CLOCK, SANDBOX_PROVIDER],
     },
-    { provide: DEPLOY_TARGET, useClass: InMemoryDeployTarget },
-    { provide: GIT_PROVIDER, useClass: InMemoryGitProvider },
-    { provide: TASK_STATE, useClass: InMemoryTaskState },
-    { provide: RECONCILER_SETTINGS, useValue: settings },
+    { provide: DEPLOY_TARGET, useFactory: (clock: Clock) => new ScriptedDeployTarget(clock), inject: [CLOCK] },
+    { provide: GIT_PROVIDER, useClass: ScriptedGitProvider },
+    { provide: TASK_STATE, useExisting: DrizzleTaskState },
+    { provide: RECONCILER_SETTINGS, useFactory: () => settingsFrom(process.env) },
   ],
   exports: [ReconcilerService],
 })

@@ -2,21 +2,26 @@ import {
   CheckKind,
   CheckOutcome,
   ExecutionStatus,
+  MessageRole,
   ReleaseStatus,
   RunOutcome,
+  TaskEventKind,
   TaskPhase,
   TaskResolution,
 } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import { AgentErrorCategory, type AgentEvent, AgentEventKind, EnvironmentStatus } from '../../ports'
 import { type AgentEventBody, turnCompleted, turnFailed } from '../../ports/fakes'
+import { runKey } from '../../tasks/calc/idempotency-key'
 import {
   aCheck,
+  aMessage,
   aRelease,
   aRun,
   aSandbox,
   aSnapshot,
   aTask,
+  aTaskEvent,
   anExecution,
   anOrganization,
 } from '../../tasks/test-support/builders'
@@ -362,5 +367,42 @@ describe('decide', () => {
       { kind: DecisionKind.TeardownInstance, instanceId: 'instance-1' },
       { kind: DecisionKind.Complete },
     ])
+  })
+})
+
+describe('deciding on a reply', () => {
+  const implementingWithSession = {
+    task: aTask({ phase: TaskPhase.Implementing, instanceId: 'instance-1' }),
+    releases: [origin],
+    runs: [aRun()],
+    executions: [anExecution({ idempotencyKey: runKey('T1', 1), runId: 'T1-run1', sessionRef: 'session-1' })],
+    messages: [
+      aMessage({ id: 'M1', blocking: true, answeredAt: NOW }),
+      aMessage({ id: 'M2', role: MessageRole.User, body: 'Safari 17.4', repliesToId: 'M1' }),
+    ],
+  }
+
+  it('sends the reply to the active session, keyed by the message id', () => {
+    const decisions = decide(aSnapshot(implementingWithSession), observing(), NOW)
+
+    expect(decisions.filter((decision) => decision.kind === DecisionKind.SendMessage)).toEqual([
+      { kind: DecisionKind.SendMessage, key: 'T1:msg:M2', messageId: 'M2', sessionId: 'session-1', body: 'Safari 17.4' },
+    ])
+  })
+
+  it('does not send a reply whose key is already recorded as sent', () => {
+    const sent = aTaskEvent({ kind: TaskEventKind.MessageSent, payload: { key: 'T1:msg:M2', messageId: 'M2' } })
+
+    const decisions = decide(aSnapshot({ ...implementingWithSession, events: [sent] }), observing(), NOW)
+
+    expect(kinds(decisions)).not.toContain(DecisionKind.SendMessage)
+  })
+
+  it('does not send a message that answers no question', () => {
+    const note = aMessage({ id: 'M3', role: MessageRole.User, body: 'Also on Chrome.' })
+
+    const decisions = decide(aSnapshot({ ...implementingWithSession, messages: [note] }), observing(), NOW)
+
+    expect(kinds(decisions)).not.toContain(DecisionKind.SendMessage)
   })
 })

@@ -3,7 +3,9 @@ import { aRunSpec } from '../../tasks/test-support/builders'
 import { AgentEventKind } from '../types'
 import { describeAgentRuntimeContract } from './agent-runtime.contract'
 import { InMemoryClock } from './in-memory-clock'
+import { InMemorySandboxProvider } from './in-memory-sandbox-provider'
 import { ScriptedAgentRuntime } from './scripted-agent-runtime'
+import { ScriptedClock } from './scripted-clock'
 import { ScriptedSandboxProvider } from './scripted-sandbox-provider'
 
 function aScriptedRuntime() {
@@ -42,6 +44,15 @@ describe('the scripted agent runtime', () => {
     await runtime.getSession(sessionId)
     await runtime.items(sessionId)
     expect(await runtime.items(sessionId)).toHaveLength(5)
+  })
+
+  it('writes the configured files into every environment it starts', async () => {
+    const sandboxes = new InMemorySandboxProvider()
+    const runtime = new ScriptedAgentRuntime(new ScriptedClock(), sandboxes, [], [{ path: '/workspace/outputs/fix.patch', data: Buffer.from('patch') }])
+
+    const started = await runtime.startRun(aRunSpec())
+
+    expect((await sandboxes.readFile({ id: started.environment?.id ?? '' }, '/workspace/outputs/fix.patch')).toString()).toBe('patch')
   })
 })
 

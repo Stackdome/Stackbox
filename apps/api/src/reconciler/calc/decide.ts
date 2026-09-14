@@ -2,15 +2,17 @@ import {
   CheckKind,
   CheckOutcome,
   ExecutionStatus,
+  MessageRole,
   ReleaseStatus,
   RunOutcome,
+  TaskEventKind,
   TaskPhase,
   TaskResolution,
 } from '@stackbox/contract'
 import { AgentErrorCategory, type AgentEvent, AgentEventKind, type CheckArtifact, EnvironmentStatus } from '../../ports'
 import { costOf, wouldExceedBudget } from '../../tasks/calc/budget'
 import { isTerminal } from '../../tasks/calc/phase-transitions'
-import { reproKey, runKey, verifyKey } from '../../tasks/calc/idempotency-key'
+import { messageKey, reproKey, runKey, verifyKey } from '../../tasks/calc/idempotency-key'
 import type { Execution, Release, Run } from '../../tasks/types'
 import type { ExecutionPatch, TaskSnapshot } from '../task-state'
 import { RunPurpose } from './run-spec'
@@ -33,6 +35,7 @@ export const DecisionKind = {
   StartRun: 'start_run',
   RetrySameKey: 'retry_same_key',
   RecordExecution: 'record_execution',
+  SendMessage: 'send_message',
   AppendCheck: 'append_check',
   IgnoreCheck: 'ignore_check',
   PushPatch: 'push_patch',
@@ -62,6 +65,7 @@ export type Decision =
     }
   | { kind: typeof DecisionKind.RetrySameKey; executionId: string; purpose: RunPurpose; instanceUrl: string | null; costCents: number }
   | { kind: typeof DecisionKind.RecordExecution; executionId: string; patch: ExecutionPatch }
+  | { kind: typeof DecisionKind.SendMessage; key: string; messageId: string; sessionId: string; body: string }
   | {
       kind: typeof DecisionKind.AppendCheck
       checkKind: CheckKind
@@ -175,7 +179,18 @@ export function decide(snapshot: TaskSnapshot, observations: Observations, now: 
   }
   const retrying = turnEnd?.kind === AgentEventKind.TurnFailed && turnEnd.category === AgentErrorCategory.Transient
   const record = execution && observations.events.length > 0 && !retrying ? [recordExecution(execution, observations.events, turnEnd, now)] : []
-  return [...checks, ...ignored, ...advance(context), ...record]
+  const sends = execution ? replies(snapshot, execution) : []
+  return [...checks, ...ignored, ...sends, ...advance(context), ...record]
+}
+
+// Only a message that answers a question goes to the agent; its key, recorded as message_sent, stops a second send.
+function replies(snapshot: TaskSnapshot, execution: Execution): Decision[] {
+  const sent = new Set(snapshot.events.filter((event) => event.kind === TaskEventKind.MessageSent).map((event) => event.payload.key))
+  return snapshot.messages.flatMap((message) => {
+    const key = messageKey(snapshot.task.id, message.id)
+    if (message.role !== MessageRole.User || message.repliesToId === null || sent.has(key) || execution.sessionRef === null) return []
+    return [{ kind: DecisionKind.SendMessage, key, messageId: message.id, sessionId: execution.sessionRef, body: message.body }]
+  })
 }
 
 function advance(c: Context): Decision[] {

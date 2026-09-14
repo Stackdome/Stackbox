@@ -77,9 +77,13 @@ export class InMemoryGitProvider implements GitProvider {
     return found
   }
 
-  private repository(ref: RepoRef): SeededRepository {
+  protected repository(ref: RepoRef): SeededRepository {
     const found = this.repositories.get(ref.id)
     if (!found) throw new Error(`unknown repository ${ref.id}`)
     return found
+  }
+
+  protected hasRepository(ref: RepoRef): boolean {
+    return this.repositories.has(ref.id)
   }
 }

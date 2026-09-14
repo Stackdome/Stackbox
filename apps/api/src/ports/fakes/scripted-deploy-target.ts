@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { ReleaseStatus } from '@stackbox/contract'
 import type { Clock, DeployTarget } from '../ports'
 import type { InstanceRef, ReleaseRef } from '../types'
@@ -31,5 +32,14 @@ export class ScriptedDeployTarget extends InMemoryDeployTarget {
     this.release(ref)
     const elapsed = this.clock.now().getTime() - (this.deployedAt.get(ref.id) ?? 0)
     return { status: this.steps.filter((step) => step.afterMs <= elapsed).at(-1)?.status ?? ReleaseStatus.Queued }
+  }
+
+  // The scripted target backs Postgres rows, whose instance and release ids are uuids.
+  protected override newInstanceId(): string {
+    return randomUUID()
+  }
+
+  protected override newReleaseId(): string {
+    return randomUUID()
   }
 }

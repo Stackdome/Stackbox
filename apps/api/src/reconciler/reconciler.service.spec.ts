@@ -1,4 +1,4 @@
-import { ArtifactKind, CheckKind, CheckOutcome, ExecutionStatus, ReleaseStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
+import { ArtifactKind, CheckKind, CheckOutcome, ExecutionStatus, MessageRole, ReleaseStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import type { StartRunSpec, StartedRun } from '../ports'
 import {
@@ -10,8 +10,10 @@ import {
   reportCheckCall,
   turnCompleted,
 } from '../ports/fakes'
+import { runKey } from '../tasks/calc/idempotency-key'
 import {
   aCheck,
+  aMessage,
   aRelease,
   aRepository,
   aRun,
@@ -20,6 +22,7 @@ import {
   aSnapshot,
   aTask,
   anExecution,
+  anOrganization,
 } from '../tasks/test-support/builders'
 import { type Task, TaskEventKind } from '../tasks/types'
 import { TICK_PERIOD_MS } from './calc/lease'
@@ -79,7 +82,7 @@ function aReconciler() {
   deploy.settleReleasesAs(ReleaseStatus.Live)
   const git = new InMemoryGitProvider()
   git.seedRepository({ summary: aRepository(), headSha: 'origin-sha' })
-  const settings = { owner: 'replica-a', claimLimit: 10, gitHost: 'github.com', readToken: 'read-token' }
+  const settings = { owner: 'replica-a', claimLimit: 10, gitHost: 'github.com', readToken: 'read-token', tickEnabled: false }
   const service = new ReconcilerService(state, runtime, sandboxes, deploy, git, clock, settings)
   return { clock, state, sandboxes, runtime, deploy, service }
 }
@@ -91,6 +94,35 @@ async function anInstanceWithLiveOrigin(deploy: InMemoryDeployTarget) {
 }
 
 describe('the reconciler', () => {
+  it('refuses to start a run when the task budget is already spent, and again when only the organization budget is spent', async () => {
+    const outcomes = []
+    for (const budgets of [
+      { taskCents: 100, organizationCents: 0 },
+      { taskCents: null, organizationCents: 100 },
+    ]) {
+      const { state, deploy, runtime, service } = aReconciler()
+      const instance = await anInstanceWithLiveOrigin(deploy)
+      state.seed(
+        aSnapshot({
+          organization: anOrganization({ budgetCents: budgets.organizationCents }),
+          task: aTask({ phase: TaskPhase.Preparing, instanceId: instance.id, budgetCents: budgets.taskCents }),
+          releases: [aRelease()],
+          executions: [anExecution({ sessionRef: null, status: ExecutionStatus.Failed, costCents: 100 })],
+        }),
+      )
+
+      await service.tick()
+
+      const { task } = await state.load('T1')
+      outcomes.push({ phase: task.phase, resolution: task.resolution, sessionsStarted: runtime.sessionIds().length })
+    }
+
+    expect(outcomes).toEqual([
+      { phase: TaskPhase.Failed, resolution: TaskResolution.Abandoned, sessionsStarted: 0 },
+      { phase: TaskPhase.Failed, resolution: TaskResolution.Abandoned, sessionsStarted: 0 },
+    ])
+  })
+
   it('walks a fake task from intake to hand_over without a database', async () => {
     const { clock, state, runtime, service } = aReconciler()
     state.seed(aSnapshot())
@@ -118,19 +150,55 @@ describe('the reconciler', () => {
     }
 
     const { task, checks, pullRequest } = await state.load('T1')
+    const boundaries = state
+      .eventsOf('T1')
+      .map((event) => event.kind)
+      .filter((kind) => kind === TaskEventKind.RunStarted || kind === TaskEventKind.RunEnded || kind === TaskEventKind.CheckRecorded)
     expect({
       phase: task.phase,
       resolution: task.resolution,
       checks: checks.map((check) => check.kind),
       draftPullRequest: pullRequest?.isDraft,
       sessionsLeft: runtime.sessionIds(),
+      boundaries,
     }).toEqual({
       phase: TaskPhase.HandOver,
       resolution: TaskResolution.FixVerified,
       checks: [CheckKind.InstanceReady, CheckKind.ReportReproduced, CheckKind.FixVerified],
       draftPullRequest: true,
       sessionsLeft: [],
+      boundaries: [
+        TaskEventKind.CheckRecorded,
+        TaskEventKind.CheckRecorded,
+        TaskEventKind.RunStarted,
+        TaskEventKind.CheckRecorded,
+        TaskEventKind.RunEnded,
+      ],
     })
+  })
+
+  it('sends the reporter reply to the agent session once, however many ticks follow', async () => {
+    const { runtime, state, service } = aReconciler()
+    const started = await runtime.startRun(aRunSpec())
+    state.seed(
+      aSnapshot({
+        task: aTask({ phase: TaskPhase.Implementing }),
+        runs: [aRun()],
+        executions: [anExecution({ idempotencyKey: runKey('T1', 1), runId: 'T1-run1', sessionRef: started.sessionId })],
+        messages: [
+          aMessage({ id: 'M1', blocking: true, answeredAt: new Date('2026-09-13T10:01:00Z') }),
+          aMessage({ id: 'M2', role: MessageRole.User, body: 'Safari 17.4', repliesToId: 'M1' }),
+        ],
+      }),
+    )
+
+    await service.tick()
+    await service.tick()
+
+    expect({
+      inbox: runtime.inboxOf(started.sessionId),
+      recorded: state.eventsOf('T1').filter((event) => event.kind === TaskEventKind.MessageSent).length,
+    }).toEqual({ inbox: ['Safari 17.4'], recorded: 1 })
   })
 
   it('reconciles an existing session instead of creating a second one for the same idempotency key', async () => {
@@ -215,11 +283,11 @@ describe('the reconciler', () => {
     )
     await service.tick()
     const { task } = await state.load('T1')
-    expect({
-      phase: task.phase,
-      resolution: task.resolution,
-      events: state.eventsOf('T1').map((event) => event.kind),
-    }).toEqual({
+    const events = state
+      .eventsOf('T1')
+      .map((event) => event.kind)
+      .filter((kind) => kind === TaskEventKind.PhaseChanged || kind === TaskEventKind.BudgetExceeded)
+    expect({ phase: task.phase, resolution: task.resolution, events }).toEqual({
       phase: TaskPhase.Failed,
       resolution: TaskResolution.Abandoned,
       events: [TaskEventKind.PhaseChanged, TaskEventKind.BudgetExceeded],
