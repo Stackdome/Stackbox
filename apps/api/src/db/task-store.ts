@@ -6,7 +6,7 @@ import { isTerminal } from '../tasks/calc/phase-transitions'
 import type { Artifact, CheckRow, NewTask, RunRow, TaskDetailRow, TaskEvent, TaskMessage } from '../tasks/types'
 import { TaskEventKind, type TaskListRow } from '../tasks/types'
 import { DATABASE_CONNECTION, type Database } from './client'
-import { application, artifact, execution, pullRequest, report, repository, run, task, taskCheck, taskEvent, taskMessage } from './schema'
+import { application, applicationInstance, artifact, execution, pullRequest, report, repository, run, task, taskCheck, taskEvent, taskMessage } from './schema'
 
 type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 
@@ -241,10 +241,12 @@ export class TaskStore {
         task,
         application: { id: application.id, name: application.name },
         report: { description: report.description, source: report.source },
+        instance: { id: applicationInstance.id, url: applicationInstance.url, status: applicationInstance.status, expiresAt: applicationInstance.expiresAt },
       })
       .from(task)
       .innerJoin(application, eq(task.applicationId, application.id))
       .leftJoin(report, eq(task.reportId, report.id))
+      .leftJoin(applicationInstance, eq(task.instanceId, applicationInstance.id))
       .where(where)
     if (base.length === 0) {
       return []
@@ -284,6 +286,7 @@ export class TaskStore {
         pullRequest: pull
           ? { number: pull.number, isDraft: pull.isDraft, state: pull.state, repositoryFullName: pull.repositoryFullName }
           : null,
+        instance: row.instance,
       }
     })
   }

@@ -194,631 +194,6 @@ const OrgInviteInfo = z
   })
   .partial()
   .passthrough();
-const Label = z.object({ key: z.string(), value: z.string() });
-const Annotation = z
-  .object({ key: z.string(), value: z.string() })
-  .passthrough();
-const PushTarget = z.object({
-  repository: z.string(),
-  registry_credentials_id: z.string().optional(),
-});
-const GitSource = z.object({
-  repo_url: z.string(),
-  branch: z.string().optional(),
-  tag: z.string().optional(),
-  commit: z.string().optional(),
-  dockerfile_path: z.string().optional().default("Dockerfile"),
-  build_context: z.string().optional().default("."),
-  integration_id: z.string().optional(),
-  push: PushTarget.optional(),
-});
-const ImageSource = z.object({
-  ref: z.string(),
-  registry_credentials_id: z.string().optional(),
-});
-const VolumeBuildSource = z
-  .object({
-    volume_id: z.string(),
-    volume_name: z.string(),
-    current_volume_hash: z.string(),
-    dockerfile_path: z.string().default("Dockerfile"),
-    build_context: z.string().default("."),
-  })
-  .partial();
-const SourceSpec = z
-  .object({ git: GitSource, image: ImageSource, volume: VolumeBuildSource })
-  .partial();
-const InitSpec = z
-  .object({ command: z.array(z.string()), args: z.array(z.string()) })
-  .partial();
-const EnvVar = z.object({
-  name: z.string(),
-  value: z.string().optional(),
-  self_output: z.string().optional(),
-});
-const ExecutionConfig = z
-  .object({
-    command: z.array(z.string()),
-    args: z.array(z.string()),
-    environment_variables: z.array(EnvVar),
-  })
-  .partial()
-  .passthrough();
-const VolumeMountSourceType = z.enum([
-  "EmptyVolume",
-  "RemoteDirSyncedVolume",
-  "BuildArtifactSyncedVolume",
-  "GitRepoSyncedVolume",
-]);
-const VolumeMount = z
-  .object({
-    instance_resource_id: z.string().optional(),
-    source_volume_type: VolumeMountSourceType.optional(),
-    source_volume_name: z.string(),
-    source_sub_path: z.string().optional(),
-    target_path: z.string(),
-  })
-  .passthrough();
-const LifecycleConfig = z
-  .object({ restart_request_time: z.string().datetime({ offset: true }) })
-  .partial()
-  .passthrough();
-const Port = z
-  .object({
-    name: z.string(),
-    number: z.number().int(),
-    protocol: z.string().optional(),
-    exposed_to_public: z.boolean(),
-    subdomain_prefix: z.string().optional(),
-  })
-  .passthrough();
-const OutputDescriptor = z
-  .object({
-    name: z.string(),
-    type: z.enum(["string", "integer", "boolean"]),
-    sensitive: z.boolean(),
-  })
-  .passthrough();
-const ApplicationInstanceResource = z
-  .object({
-    id: z.string().optional(),
-    instance_id: z.string().optional(),
-    name: z.string(),
-    labels: z.array(Label).optional(),
-    annotations: z.array(Annotation).optional(),
-    revision: z.string().optional(),
-    source: SourceSpec.optional(),
-    init_spec: InitSpec.optional(),
-    execution_config: ExecutionConfig.optional(),
-    volume_mounts: z.array(VolumeMount).optional(),
-    depends_on: z.array(z.string()).optional(),
-    lifecycle_config: LifecycleConfig.optional(),
-    ports: z.array(Port).optional(),
-    outputs: z.array(OutputDescriptor).optional(),
-    workload_type: z
-      .enum(["Service", "StatefulService", "Worker", "Job", "CronJob"])
-      .optional()
-      .default("Service"),
-    schedule: z.string().optional(),
-    replicas: z.number().int().gte(0).optional(),
-  })
-  .passthrough();
-const TopologyNodeRef = z
-  .object({
-    type: z.enum([
-      "stack_resource",
-      "addon/postgres",
-      "secret",
-      "volume",
-      "object_store",
-    ]),
-    id: z.string().optional(),
-    name: z.string().optional(),
-  })
-  .passthrough();
-const ConnectionTarget = z
-  .object({
-    type: z.enum(["env", "file"]),
-    name: z.string().optional(),
-    path: z.string().optional(),
-  })
-  .passthrough();
-const OutputValueRef = z.object({ output: z.string() }).passthrough();
-const ValueRef = z
-  .object({
-    output: z.string(),
-    template: z.string(),
-    values: z.record(OutputValueRef),
-  })
-  .partial()
-  .passthrough();
-const ConnectionMapping = z
-  .object({ target: ConnectionTarget, value: ValueRef })
-  .passthrough();
-const PostgresEnvConfig = z
-  .object({
-    database: z.string(),
-    credential_scope: z.enum(["owner", "superuser"]),
-    superuser: z.boolean(),
-  })
-  .partial();
-const VolumeMountConfig = z.object({
-  mount_path: z.string(),
-  sub_path: z.string().optional(),
-  read_only: z.boolean().optional(),
-});
-const BuildArtifactSourceConfig = z.object({
-  source_path: z.string(),
-  destination_path: z.string().optional(),
-});
-const ApplicationInstanceConnectionConfig = z.union([
-  PostgresEnvConfig,
-  VolumeMountConfig,
-  BuildArtifactSourceConfig,
-]);
-const ApplicationInstanceConnection = z
-  .object({
-    id: z.string().optional(),
-    kind: z.enum(["env", "volume_mount", "build_artifact_source"]),
-    from: TopologyNodeRef,
-    to: TopologyNodeRef,
-    mappings: z.array(ConnectionMapping).optional(),
-    config: ApplicationInstanceConnectionConfig.optional(),
-  })
-  .passthrough();
-const ApplicationInstanceSpec = z
-  .object({
-    instance_resources: z.array(ApplicationInstanceResource),
-    connections: z.array(ApplicationInstanceConnection),
-  })
-  .partial()
-  .passthrough();
-const ApplicationInstanceSettings = z
-  .object({
-    release_retention_limit: z.number().int().default(10),
-    min_successful_releases: z.number().int().default(5),
-  })
-  .partial()
-  .passthrough();
-const InstanceLifecycle = z.enum(["active", "deleting"]);
-const ReleaseState = z.enum([
-  "Pending",
-  "InProgress",
-  "Released",
-  "Failed",
-  "Superseded",
-  "Cancelled",
-]);
-const ReleaseHealth = z.enum([
-  "ok",
-  "progressing",
-  "degraded",
-  "unavailable",
-  "failed",
-]);
-const ReleaseSummary = z
-  .object({
-    id: z.string(),
-    sequence: z.number().int(),
-    state: ReleaseState,
-    health: ReleaseHealth,
-    message: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    completed_at: z.string().datetime({ offset: true }),
-  })
-  .partial()
-  .passthrough();
-const ApplicationInstance = z
-  .object({
-    id: z.string().optional(),
-    organisation_id: z.string().optional(),
-    user_id: z.string().optional(),
-    name: z.string(),
-    namespace: z.string().optional(),
-    labels: z.array(Label).optional(),
-    annotations: z.array(Annotation).optional(),
-    revision: z.string().optional(),
-    spec: ApplicationInstanceSpec,
-    settings: ApplicationInstanceSettings.optional(),
-    lifecycle: InstanceLifecycle.optional(),
-    converged_release: ReleaseSummary.optional(),
-    latest_release: ReleaseSummary.optional(),
-    created_at: z.string().datetime({ offset: true }).optional(),
-    updated_at: z.string().datetime({ offset: true }).optional(),
-  })
-  .passthrough();
-const ApplicationInstanceList = z
-  .object({ items: z.array(ApplicationInstance), total: z.number().int() })
-  .partial()
-  .passthrough();
-const ResourceMetrics = z
-  .object({
-    assigned_nodes: z.array(z.string()),
-    cpu_usage: z.string(),
-    memory_usage: z.string(),
-    node_capacities: z.array(
-      z
-        .object({
-          node_name: z.string(),
-          cpu_capacity: z.string(),
-          memory_capacity: z.string(),
-          storage_capacity: z.string(),
-        })
-        .partial()
-        .passthrough()
-    ),
-    timestamp: z.string().datetime({ offset: true }),
-  })
-  .partial()
-  .passthrough();
-const ApplicationInstanceResourceList = z
-  .object({
-    items: z.array(ApplicationInstanceResource),
-    total: z.number().int(),
-  })
-  .partial()
-  .passthrough();
-const GitRepoRevision = z
-  .object({ branch: z.string(), tag: z.string(), commit: z.string() })
-  .partial()
-  .passthrough();
-const BuildSourceRevision = z
-  .object({
-    volume_source_revision: z
-      .object({ current_volume_hash: z.string() })
-      .passthrough(),
-    git_repo_revision: GitRepoRevision,
-  })
-  .partial()
-  .passthrough();
-const BuildSourceContext = z
-  .object({
-    volume: z
-      .object({ id: z.string(), name: z.string().optional() })
-      .passthrough(),
-    git_repo: z.object({ repo_url: z.string() }).passthrough(),
-  })
-  .partial()
-  .passthrough();
-const Condition = z
-  .object({
-    type: z.string(),
-    status: z.string(),
-    observed_generation: z.number().int(),
-    last_transition_time: z.string().datetime({ offset: true }),
-    reason: z.string(),
-    message: z.string(),
-  })
-  .partial();
-const BuildFailureDetail = z
-  .object({
-    failure_type: z.enum([
-      "crash_loop",
-      "out_of_memory",
-      "image_pull_failed",
-      "create_container_error",
-      "exit_error",
-      "port_not_listening",
-    ]),
-    reason: z.string(),
-    message: z.string(),
-    restart_count: z.number().int(),
-    exit_code: z.number().int(),
-  })
-  .partial()
-  .passthrough();
-const ImageBuildStatus = z
-  .object({
-    state: z.string(),
-    conditions: z.array(Condition),
-    image_url: z.string(),
-    build_source_revision: z.string(),
-    last_build_failure_detail: BuildFailureDetail,
-  })
-  .partial()
-  .passthrough();
-const ImageBuild = z
-  .object({
-    id: z.string().optional(),
-    namespace: z.string().optional(),
-    instance_id: z.string().optional(),
-    instance_resource_id: z.string(),
-    instance_resource_name: z.string(),
-    source_revision: BuildSourceRevision,
-    build_context: BuildSourceContext,
-    image_repo: z.string(),
-    status: ImageBuildStatus.optional(),
-    created_at: z.string().datetime({ offset: true }).optional(),
-    updated_at: z.string().datetime({ offset: true }).optional(),
-  })
-  .passthrough();
-const ImageBuildList = z
-  .object({ items: z.array(ImageBuild), total: z.number().int() })
-  .partial()
-  .passthrough();
-const TopologyNode = z
-  .object({
-    ref: TopologyNodeRef,
-    label: z.string(),
-    outputs: z.array(OutputDescriptor).optional(),
-    state: z.string().optional(),
-  })
-  .passthrough();
-const TopologyEdge = z
-  .object({
-    id: z.string().optional(),
-    kind: z.enum([
-      "env",
-      "volume_mount",
-      "build_artifact_source",
-      "depends_on",
-    ]),
-    source: TopologyNodeRef,
-    target: TopologyNodeRef,
-    mappings: z.array(ConnectionMapping).optional(),
-    config: ApplicationInstanceConnectionConfig.optional(),
-    source_of_truth: z.enum(["connection", "derived"]),
-  })
-  .passthrough();
-const ApplicationInstanceTopology = z
-  .object({ nodes: z.array(TopologyNode), edges: z.array(TopologyEdge) })
-  .passthrough();
-const ApplicationInstanceConnectionList = z
-  .object({
-    items: z.array(ApplicationInstanceConnection),
-    total: z.number().int(),
-  })
-  .partial()
-  .passthrough();
-const CreateReleaseRequest = z
-  .object({ from_release_id: z.string() })
-  .partial()
-  .passthrough();
-const ReleaseCauseKind = z.enum([
-  "manual",
-  "rollback",
-  "webhook_push",
-  "preview_sync",
-]);
-const ReleaseCause = z
-  .object({ kind: ReleaseCauseKind, detail: z.string() })
-  .partial()
-  .passthrough();
-const ResourcePins = z
-  .object({
-    git_sha: z.string(),
-    volume_hash: z.string(),
-    image_digest: z.string(),
-  })
-  .partial()
-  .passthrough();
-const ReleasePins = z
-  .object({ resources: z.record(ResourcePins) })
-  .partial()
-  .passthrough();
-const ResourceOutcome = z
-  .object({
-    phase: z.string(),
-    ready_replicas: z.number().int(),
-    replicas: z.number().int(),
-    message: z.string(),
-  })
-  .partial()
-  .passthrough();
-const ReleaseOutcome = z
-  .object({ resources: z.record(ResourceOutcome), duration: z.string() })
-  .partial()
-  .passthrough();
-const ReleaseValidationError = z
-  .object({
-    resource_name: z.string(),
-    field: z.string(),
-    code: z.enum([
-      "resource_name_required",
-      "resource_name_invalid",
-      "resource_name_duplicate",
-      "source_required",
-      "source_conflict",
-      "workload_type_invalid",
-      "schedule_required",
-      "schedule_not_allowed",
-      "schedule_invalid",
-      "replicas_invalid",
-      "ports_not_allowed",
-      "public_port_not_http",
-      "port_protocol_invalid",
-      "port_name_invalid",
-      "port_number_invalid",
-      "port_name_duplicate",
-      "port_number_duplicate",
-      "subdomain_duplicate",
-      "domain_not_configured",
-      "env_name_required",
-      "env_name_duplicate",
-      "env_value_missing",
-      "env_value_conflict",
-      "env_self_output_unknown",
-      "volume_mount_invalid",
-      "volume_not_found",
-      "volume_hash_missing",
-      "secret_not_found",
-      "git_integration_not_found",
-      "registry_credential_not_found",
-      "self_dependency",
-      "duplicate_dependency",
-      "unknown_dependency",
-      "dependency_cycle",
-      "git_repo_url_required",
-      "git_branch_tag_conflict",
-      "git_commit_invalid",
-      "git_commit_requires_ref",
-      "image_ref_required",
-      "image_ref_invalid",
-      "push_target_required",
-      "push_target_conflict",
-      "push_ref_invalid",
-      "git_repo_unreachable",
-      "git_auth_failed",
-      "git_branch_not_found",
-      "git_tag_not_found",
-      "git_rate_limited",
-      "image_not_found",
-      "registry_credentials_required",
-      "registry_auth_failed",
-      "push_access_denied",
-      "stack_name_invalid",
-      "stack_settings_invalid",
-      "connection_invalid",
-    ]),
-    message: z.string(),
-  })
-  .partial()
-  .passthrough();
-const Ingress = z
-  .object({ url: z.string(), target_port: z.number().int() })
-  .partial()
-  .passthrough();
-const ContainerFailureDetail = z
-  .object({
-    failure_type: z.enum([
-      "crash_loop",
-      "out_of_memory",
-      "image_pull_failed",
-      "create_container_error",
-      "exit_error",
-      "port_not_listening",
-    ]),
-    reason: z.string(),
-    message: z.string(),
-    restart_count: z.number().int(),
-    exit_code: z.number().int(),
-  })
-  .partial()
-  .passthrough();
-const ApplicationInstanceResourceFailure = z
-  .object({
-    type: z.enum(["runtime_crash", "build_failure", "readiness_failure"]),
-    container: ContainerFailureDetail,
-    init_container: ContainerFailureDetail,
-    build: BuildFailureDetail,
-  })
-  .partial()
-  .passthrough();
-const ApplicationInstanceResourceStatus = z
-  .object({
-    public_ingress: z.array(Ingress),
-    internal_service_name: z.string(),
-    last_restart_request_processed_at: z.string().datetime({ offset: true }),
-    state: z.string(),
-    message: z.string(),
-    observed_revision: z.string(),
-    conditions: z.array(Condition),
-    last_failure: ApplicationInstanceResourceFailure,
-    replicas: z.number().int(),
-    available_replicas: z.number().int(),
-    updated_replicas: z.number().int(),
-    last_run_time: z.string().datetime({ offset: true }),
-    last_run_succeeded: z.boolean(),
-  })
-  .partial()
-  .passthrough();
-const ReleaseLiveStatus = z
-  .object({
-    health: ReleaseHealth,
-    resources: z.record(ApplicationInstanceResourceStatus),
-    conditions: z.array(Condition),
-    target_revision: z.string(),
-    observed_revision: z.string(),
-  })
-  .partial()
-  .passthrough();
-const Release = z
-  .object({
-    id: z.string(),
-    instance_id: z.string(),
-    sequence: z.number().int(),
-    state: ReleaseState,
-    message: z.string(),
-    cause: ReleaseCause,
-    snapshot_revision: z.string(),
-    manifest_revision: z.string(),
-    renderer_version: z.string(),
-    pins: ReleasePins,
-    outcome: ReleaseOutcome,
-    created_by: z.string(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-    rendered_at: z.string().datetime({ offset: true }),
-    completed_at: z.string().datetime({ offset: true }),
-    validation_errors: z.array(ReleaseValidationError),
-    live_status: ReleaseLiveStatus,
-  })
-  .partial()
-  .passthrough();
-const ReleaseList = z
-  .object({
-    items: z.array(Release),
-    total: z.number().int(),
-    page: z.number().int(),
-    page_size: z.number().int(),
-    total_pages: z.number().int(),
-  })
-  .partial()
-  .passthrough();
-const ReleaseSnapshot = z
-  .object({
-    instance: z
-      .object({
-        id: z.string(),
-        organisation_id: z.string(),
-        cluster_id: z.string(),
-        user_id: z.string(),
-        name: z.string(),
-        namespace_id: z.string(),
-        namespace: z.string(),
-        labels: z.record(z.string()),
-        annotations: z.record(z.string()),
-      })
-      .partial()
-      .passthrough(),
-    resources: z.array(ApplicationInstanceResource),
-    connections: z.array(ApplicationInstanceConnection),
-    captured_at: z.string().datetime({ offset: true }),
-  })
-  .partial()
-  .passthrough();
-const ReleaseDetail = Release.and(
-  z.object({ snapshot: ReleaseSnapshot }).partial().passthrough()
-);
-const ReleaseEventLink = z
-  .object({ kind: z.string(), label: z.string(), target: z.record(z.string()) })
-  .partial()
-  .passthrough();
-const ReleaseEvent = z
-  .object({
-    id: z.string(),
-    release_id: z.string(),
-    instance_id: z.string(),
-    sequence: z.number().int(),
-    occurred_at: z.string().datetime({ offset: true }),
-    source: z.enum(["hub", "cluster"]),
-    scope: z.enum(["release", "resource"]),
-    resource_name: z.string(),
-    type: z.string(),
-    level: z.enum(["info", "success", "warning", "error"]),
-    message: z.string(),
-    links: z.array(ReleaseEventLink),
-    metadata: z.record(z.string()),
-  })
-  .partial()
-  .passthrough();
-const ReleaseEventList = z
-  .object({
-    items: z.array(ReleaseEvent),
-    next_after_sequence: z.number().int(),
-  })
-  .partial()
-  .passthrough();
 const ApplicationSummary = z
   .object({ id: z.string(), name: z.string() })
   .passthrough();
@@ -1209,7 +584,81 @@ const InstancePurpose = z.enum([
   "scratch",
   "persistent",
 ]);
+const InstanceOwner = z
+  .object({ id: z.string(), name: z.string() })
+  .passthrough();
+const InstanceTask = z
+  .object({
+    id: z.string(),
+    description: z.string(),
+    coarse_status: CoarseStatus,
+  })
+  .passthrough();
 const ReleaseStatus = z.enum(["queued", "building", "live", "failed"]);
+const Release = z
+  .object({
+    id: z.string(),
+    commit_sha: z.string(),
+    ref: z.string().nullable(),
+    status: ReleaseStatus,
+    run_number: z.number().int().nullable(),
+    created_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const InstanceListItem = z
+  .object({
+    id: z.string(),
+    application: ApplicationSummary,
+    purpose: InstancePurpose,
+    status: InstanceStatus,
+    url: z.string().nullable(),
+    owner: InstanceOwner.nullable(),
+    task: InstanceTask.nullable(),
+    latest_release: Release.nullable(),
+    expires_at: z.string().datetime({ offset: true }).nullable(),
+    created_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const InstanceList = z
+  .object({ items: z.array(InstanceListItem), total: z.number().int() })
+  .passthrough();
+const InstanceExpiryHours = z.union([
+  z.literal(24),
+  z.literal(72),
+  z.literal(168),
+]);
+const InstanceSpinUp = z
+  .object({
+    application_id: z.string().uuid(),
+    purpose: InstancePurpose,
+    ref: z.string().min(1).max(200).optional(),
+    expires_in_hours: InstanceExpiryHours.nullish(),
+  })
+  .passthrough();
+const InstanceDetail = z
+  .object({
+    id: z.string(),
+    application: ApplicationSummary,
+    repository: RepositoryRef,
+    purpose: InstancePurpose,
+    status: InstanceStatus,
+    url: z.string().nullable(),
+    owner: InstanceOwner.nullable(),
+    task: InstanceTask.nullable(),
+    latest_release: Release.nullable(),
+    expires_at: z.string().datetime({ offset: true }).nullable(),
+    created_at: z.string().datetime({ offset: true }),
+    releases: z.array(Release),
+  })
+  .passthrough();
+const ReleaseList = z.object({ items: z.array(Release) }).passthrough();
+const ReleaseCreate = z
+  .object({ ref: z.string().min(1).max(200) })
+  .partial()
+  .passthrough();
+const InstanceExpiryExtend = z
+  .object({ hours: InstanceExpiryHours })
+  .passthrough();
 const SandboxStatus = z.enum(["starting", "running", "stopped", "failed"]);
 const ExecutionStatus = z.enum([
   "starting",
@@ -1255,74 +704,6 @@ export const schemas = {
   OrgInvite,
   OrgInviteList,
   OrgInviteInfo,
-  Label,
-  Annotation,
-  PushTarget,
-  GitSource,
-  ImageSource,
-  VolumeBuildSource,
-  SourceSpec,
-  InitSpec,
-  EnvVar,
-  ExecutionConfig,
-  VolumeMountSourceType,
-  VolumeMount,
-  LifecycleConfig,
-  Port,
-  OutputDescriptor,
-  ApplicationInstanceResource,
-  TopologyNodeRef,
-  ConnectionTarget,
-  OutputValueRef,
-  ValueRef,
-  ConnectionMapping,
-  PostgresEnvConfig,
-  VolumeMountConfig,
-  BuildArtifactSourceConfig,
-  ApplicationInstanceConnectionConfig,
-  ApplicationInstanceConnection,
-  ApplicationInstanceSpec,
-  ApplicationInstanceSettings,
-  InstanceLifecycle,
-  ReleaseState,
-  ReleaseHealth,
-  ReleaseSummary,
-  ApplicationInstance,
-  ApplicationInstanceList,
-  ResourceMetrics,
-  ApplicationInstanceResourceList,
-  GitRepoRevision,
-  BuildSourceRevision,
-  BuildSourceContext,
-  Condition,
-  BuildFailureDetail,
-  ImageBuildStatus,
-  ImageBuild,
-  ImageBuildList,
-  TopologyNode,
-  TopologyEdge,
-  ApplicationInstanceTopology,
-  ApplicationInstanceConnectionList,
-  CreateReleaseRequest,
-  ReleaseCauseKind,
-  ReleaseCause,
-  ResourcePins,
-  ReleasePins,
-  ResourceOutcome,
-  ReleaseOutcome,
-  ReleaseValidationError,
-  Ingress,
-  ContainerFailureDetail,
-  ApplicationInstanceResourceFailure,
-  ApplicationInstanceResourceStatus,
-  ReleaseLiveStatus,
-  Release,
-  ReleaseList,
-  ReleaseSnapshot,
-  ReleaseDetail,
-  ReleaseEventLink,
-  ReleaseEvent,
-  ReleaseEventList,
   ApplicationSummary,
   ReportSource,
   TaskReport,
@@ -1383,7 +764,18 @@ export const schemas = {
   ApplicationUpdate,
   ServiceList,
   InstancePurpose,
+  InstanceOwner,
+  InstanceTask,
   ReleaseStatus,
+  Release,
+  InstanceListItem,
+  InstanceList,
+  InstanceExpiryHours,
+  InstanceSpinUp,
+  InstanceDetail,
+  ReleaseList,
+  ReleaseCreate,
+  InstanceExpiryExtend,
   SandboxStatus,
   ExecutionStatus,
   ArtifactOwner,
@@ -1995,7 +1387,7 @@ const endpoints = makeApi([
       },
       {
         status: 409,
-        description: `A task of the application has not finished`,
+        description: `A task of the application has not finished, or one of its instances is not torn down`,
         schema: Error,
       },
     ],
@@ -2337,8 +1729,7 @@ const endpoints = makeApi([
   {
     method: "get",
     path: "/api/v1/organizations/:org_id/instances",
-    alias: "getApiv1organizationsOrg_idinstances",
-    description: `Returns instances the user has access to in the org. OrgAdmins see all instances in the org.`,
+    alias: "listInstances",
     requestFormat: "json",
     parameters: [
       {
@@ -2347,26 +1738,26 @@ const endpoints = makeApi([
         schema: z.string(),
       },
       {
-        name: "limit",
+        name: "application_id",
         type: "Query",
-        schema: z.number().int().optional().default(20),
+        schema: z.string().optional(),
       },
       {
-        name: "offset",
+        name: "include_torn_down",
         type: "Query",
-        schema: z.number().int().optional().default(0),
+        schema: z.boolean().optional().default(false),
       },
     ],
-    response: ApplicationInstanceList,
+    response: InstanceList,
     errors: [
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
+        description: `Auth token is invalid`,
+        schema: Error,
       },
       {
-        status: 500,
-        description: `Internal server error`,
+        status: 403,
+        description: `Unauthorized to perform operation`,
         schema: Error,
       },
     ],
@@ -2374,17 +1765,13 @@ const endpoints = makeApi([
   {
     method: "post",
     path: "/api/v1/organizations/:org_id/instances",
-    alias: "postApiv1organizationsOrg_idinstances",
-    description: `Creates a thin instance shell (name, labels, annotations, settings). Any inline
-&#x60;stack_resources&#x60;, &#x60;volumes&#x60;, or &#x60;connections&#x60; in the body are ignored. Add
-children via &#x60;PUT /instances/{id}/apply&#x60; or the individual sub-resource endpoints.
-`,
+    alias: "spinUpInstance",
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: ApplicationInstance,
+        schema: InstanceSpinUp,
       },
       {
         name: "org_id",
@@ -2392,34 +1779,39 @@ children via &#x60;PUT /instances/{id}/apply&#x60; or the individual sub-resourc
         schema: z.string(),
       },
     ],
-    response: ApplicationInstance,
+    response: InstanceDetail,
     errors: [
       {
         status: 400,
-        description: `Invalid request data`,
+        description: `The body is invalid, or the purpose is task`,
         schema: Error,
       },
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `The application is not one of the organization&#x27;s, or the ref does not resolve`,
+        schema: Error,
       },
       {
         status: 409,
-        description: `ApplicationInstance already exists`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `The application&#x27;s Stackfile has never synced or failed validation, so there is nothing to run`,
         schema: Error,
       },
     ],
   },
   {
     method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id",
-    alias: "getApiv1organizationsOrg_idinstancesId",
+    path: "/api/v1/organizations/:org_id/instances/:instance_id",
+    alias: "getInstance",
     requestFormat: "json",
     parameters: [
       {
@@ -2428,326 +1820,40 @@ children via &#x60;PUT /instances/{id}/apply&#x60; or the individual sub-resourc
         schema: z.string(),
       },
       {
-        name: "id",
+        name: "instance_id",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: ApplicationInstance,
+    response: InstanceDetail,
     errors: [
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "put",
-    path: "/api/v1/organizations/:org_id/instances/:id",
-    alias: "putApiv1organizationsOrg_idinstancesId",
-    description: `Updates only shell fields (name, labels, annotations, settings). &#x60;namespace&#x60; is
-immutable. Child collections (&#x60;stack_resources&#x60;, &#x60;volumes&#x60;, &#x60;connections&#x60;) in the
-body are ignored. Use &#x60;PUT /instances/{id}/apply&#x60; for a full reconcile.
-`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApplicationInstance,
-      },
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstance,
-    errors: [
-      {
-        status: 400,
-        description: `Invalid request data`,
+        description: `Auth token is invalid`,
         schema: Error,
       },
       {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        status: 403,
+        description: `Unauthorized to perform operation`,
         schema: Error,
-      },
-    ],
-  },
-  {
-    method: "delete",
-    path: "/api/v1/organizations/:org_id/instances/:id",
-    alias: "deleteApiv1organizationsOrg_idinstancesId",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstance,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "put",
-    path: "/api/v1/organizations/:org_id/instances/:id/apply",
-    alias: "applyApplicationInstance",
-    description: `Declarative whole-document apply. Reconciles the instance against the supplied
-document: resources and connections not present in the body are deleted, while
-volumes are add-only and are never deleted. This is the only endpoint that
-accepts a full instance document.
-`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApplicationInstance,
-      },
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstance,
-    errors: [
-      {
-        status: 400,
-        description: `Invalid request data. &#x60;details&#x60; carries a &#x60;ValidationErrorDetail&#x60; payload when the failure is an aggregated field validation error.`,
-        schema: Error,
-      },
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/builds",
-    alias: "getApiv1organizationsOrg_idinstancesIdbuilds",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ImageBuildList,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/builds/:build_id",
-    alias: "getApiv1organizationsOrg_idinstancesIdbuildsBuild_id",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "build_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ImageBuild,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
       },
       {
         status: 404,
-        description: `Build not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/builds/:build_id/logs",
-    alias: "getApiv1organizationsOrg_idinstancesIdbuildsBuild_idlogs",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "build_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "follow",
-        type: "Query",
-        schema: z.boolean().optional().default(false),
-      },
-      {
-        name: "tail",
-        type: "Query",
-        schema: z.number().int().optional().default(200),
-      },
-      {
-        name: "since",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `Build not found`,
-        schema: z.void(),
-      },
-      {
-        status: 409,
-        description: `Build job not created yet, or build pod not started. Retry later`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/connections",
-    alias: "getApiv1organizationsOrg_idinstancesIdconnections",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceConnectionList,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `ApplicationInstance not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `Instance not found`,
         schema: Error,
       },
     ],
   },
   {
     method: "post",
-    path: "/api/v1/organizations/:org_id/instances/:id/connections",
-    alias: "postApiv1organizationsOrg_idinstancesIdconnections",
+    path: "/api/v1/organizations/:org_id/instances/:instance_id/expiry",
+    alias: "extendInstanceExpiry",
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: ApplicationInstanceConnection,
+        schema: InstanceExpiryExtend,
       },
       {
         name: "org_id",
@@ -2755,136 +1861,44 @@ accepts a full instance document.
         schema: z.string(),
       },
       {
-        name: "id",
+        name: "instance_id",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: ApplicationInstanceConnection,
+    response: InstanceDetail,
     errors: [
       {
         status: 400,
-        description: `Invalid request data`,
+        description: `The body is invalid`,
         schema: Error,
       },
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
       },
       {
         status: 404,
-        description: `ApplicationInstance not found`,
-        schema: z.void(),
+        description: `Instance not found`,
+        schema: Error,
       },
       {
         status: 409,
-        description: `ApplicationInstance connection already exists`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "put",
-    path: "/api/v1/organizations/:org_id/instances/:id/connections/:connection_id",
-    alias: "putApiv1organizationsOrg_idinstancesIdconnectionsConnection_id",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApplicationInstanceConnection,
-      },
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "connection_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceConnection,
-    errors: [
-      {
-        status: 400,
-        description: `Invalid request data`,
-        schema: Error,
-      },
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `ApplicationInstance or connection not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "delete",
-    path: "/api/v1/organizations/:org_id/instances/:id/connections/:connection_id",
-    alias: "deleteApiv1organizationsOrg_idinstancesIdconnectionsConnection_id",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "connection_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `ApplicationInstance or connection not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `The instance is persistent, or has expired or been torn down`,
         schema: Error,
       },
     ],
   },
   {
     method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/logs",
-    alias: "getApiv1organizationsOrg_idinstancesIdlogs",
+    path: "/api/v1/organizations/:org_id/instances/:instance_id/releases",
+    alias: "listInstanceReleases",
     requestFormat: "json",
     parameters: [
       {
@@ -2893,81 +1907,33 @@ accepts a full instance document.
         schema: z.string(),
       },
       {
-        name: "id",
+        name: "instance_id",
         type: "Path",
         schema: z.string(),
       },
-      {
-        name: "follow",
-        type: "Query",
-        schema: z.boolean().optional().default(false),
-      },
-      {
-        name: "tail",
-        type: "Query",
-        schema: z.number().int().optional().default(100),
-      },
-      {
-        name: "since",
-        type: "Query",
-        schema: z.string().optional(),
-      },
     ],
-    response: z.void(),
+    response: ReleaseList,
     errors: [
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `Auth token is invalid`,
         schema: Error,
       },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/metrics",
-    alias: "getApiv1organizationsOrg_idinstancesIdmetrics",
-    description: `Returns metrics for a instance. If &#x60;stream&#x3D;true&#x60; is passed, the server responds using Server-Sent Events (SSE).
-`,
-    requestFormat: "json",
-    parameters: [
       {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
       },
       {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "stream",
-        type: "Query",
-        schema: z.boolean().optional().default(false),
-      },
-    ],
-    response: ResourceMetrics,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        status: 404,
+        description: `Instance not found`,
         schema: Error,
       },
     ],
   },
   {
     method: "post",
-    path: "/api/v1/organizations/:org_id/instances/:id/releases",
+    path: "/api/v1/organizations/:org_id/instances/:instance_id/releases",
     alias: "createRelease",
     requestFormat: "json",
     parameters: [
@@ -2975,7 +1941,7 @@ accepts a full instance document.
         name: "body",
         type: "Body",
         schema: z
-          .object({ from_release_id: z.string() })
+          .object({ ref: z.string().min(1).max(200) })
           .partial()
           .passthrough(),
       },
@@ -2985,429 +1951,44 @@ accepts a full instance document.
         schema: z.string(),
       },
       {
-        name: "id",
+        name: "instance_id",
         type: "Path",
         schema: z.string(),
       },
     ],
     response: Release,
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/releases",
-    alias: "listReleases",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "state",
-        type: "Query",
-        schema: z
-          .enum([
-            "Pending",
-            "InProgress",
-            "Released",
-            "Failed",
-            "Superseded",
-            "Cancelled",
-          ])
-          .optional(),
-      },
-      {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional().default(1),
-      },
-      {
-        name: "page_size",
-        type: "Query",
-        schema: z.number().int().optional().default(20),
-      },
-    ],
-    response: ReleaseList,
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/releases/:release_id",
-    alias: "getRelease",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "release_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ReleaseDetail,
-  },
-  {
-    method: "post",
-    path: "/api/v1/organizations/:org_id/instances/:id/releases/:release_id/cancel",
-    alias: "cancelRelease",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "release_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/releases/:release_id/events",
-    alias: "listReleaseEvents",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "release_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "after_sequence",
-        type: "Query",
-        schema: z.number().int().optional().default(0),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().lte(500).optional().default(100),
-      },
-    ],
-    response: ReleaseEventList,
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/releases/:release_id/events/stream",
-    alias: "streamReleaseEvents",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "release_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "after_sequence",
-        type: "Query",
-        schema: z.number().int().optional().default(0),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources",
-    alias: "getApiv1organizationsOrg_idinstancesIdresources",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceResourceList,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "post",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources",
-    alias: "createApplicationInstanceResource",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApplicationInstanceResource,
-      },
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceResource,
     errors: [
       {
         status: 400,
-        description: `Invalid request data. &#x60;details&#x60; carries a &#x60;ValidationErrorDetail&#x60; payload when the failure is an aggregated field validation error.`,
+        description: `The body is invalid`,
         schema: Error,
       },
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `ApplicationInstance not found`,
-        schema: z.void(),
-      },
-      {
-        status: 409,
-        description: `ApplicationInstance resource already exists`,
+        description: `Auth token is invalid`,
         schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources/:resource_name",
-    alias: "getApiv1organizationsOrg_idinstancesIdresourcesResource_name",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "resource_name",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceResource,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "put",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources/:resource_name",
-    alias: "updateApplicationInstanceResource",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApplicationInstanceResource,
-      },
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "resource_name",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceResource,
-    errors: [
-      {
-        status: 400,
-        description: `Invalid request data. &#x60;details&#x60; carries a &#x60;ValidationErrorDetail&#x60; payload when the failure is an aggregated field validation error.`,
-        schema: Error,
-      },
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `ApplicationInstance or resource not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "delete",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources/:resource_name",
-    alias: "deleteApplicationInstanceResource",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "resource_name",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `ApplicationInstance or resource not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "post",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources/:resource_name/actions/restart",
-    alias:
-      "postApiv1organizationsOrg_idinstancesIdresourcesResource_nameactionsrestart",
-    description: `Triggers a rolling restart of the instance resource by setting a new restart request timestamp.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "resource_name",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceResource,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
       },
       {
         status: 403,
-        description: `Forbidden`,
-        schema: z.void(),
+        description: `Unauthorized to perform operation`,
+        schema: Error,
       },
       {
         status: 404,
-        description: `ApplicationInstance resource not found`,
-        schema: z.void(),
+        description: `Instance not found, or the ref does not resolve`,
+        schema: Error,
       },
       {
-        status: 500,
-        description: `Internal server error`,
+        status: 409,
+        description: `A release is still queued or building, or the instance has expired or been torn down`,
         schema: Error,
       },
     ],
   },
   {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources/:resource_name/builds",
-    alias: "getApiv1organizationsOrg_idinstancesIdresourcesResource_namebuilds",
+    method: "post",
+    path: "/api/v1/organizations/:org_id/instances/:instance_id/teardown",
+    alias: "teardownInstance",
     requestFormat: "json",
     parameters: [
       {
@@ -3416,201 +1997,26 @@ accepts a full instance document.
         schema: z.string(),
       },
       {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "resource_name",
+        name: "instance_id",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: ImageBuildList,
+    response: InstanceDetail,
     errors: [
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `Auth token is invalid`,
         schema: Error,
       },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources/:resource_name/logs",
-    alias: "getApiv1organizationsOrg_idinstancesIdresourcesResource_namelogs",
-    requestFormat: "json",
-    parameters: [
       {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "resource_name",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "follow",
-        type: "Query",
-        schema: z.boolean().optional().default(false),
-      },
-      {
-        name: "tail",
-        type: "Query",
-        schema: z.number().int().optional().default(100),
-      },
-      {
-        name: "since",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        status: 403,
+        description: `Unauthorized to perform operation`,
         schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/resources/:resource_name/metrics",
-    alias:
-      "getApiv1organizationsOrg_idinstancesIdresourcesResource_namemetrics",
-    description: `Returns metrics for a instance resource. If &#x60;stream&#x3D;true&#x60; is passed, the server responds using Server-Sent Events (SSE).
-`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "resource_name",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "stream",
-        type: "Query",
-        schema: z.boolean().optional().default(false),
-      },
-    ],
-    response: ResourceMetrics,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/instances/:id/topology",
-    alias: "getApiv1organizationsOrg_idinstancesIdtopology",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstanceTopology,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
       },
       {
         status: 404,
-        description: `ApplicationInstance not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "put",
-    path: "/api/v1/organizations/:org_id/instances/apply",
-    alias: "applyApplicationInstanceByName",
-    description: `Name-addressed declarative whole-document apply. ApplicationInstance identity is the
-&#x60;name&#x60; in the request body (unique per org). If a instance with that name
-exists it is reconciled exactly like the id-addressed apply
-(resources and connections not present in the body are deleted, volumes
-are add-only); otherwise the instance and its children are created
-atomically after full validation. Idempotent: clients need not know
-whether the instance already exists.
-`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: ApplicationInstance,
-      },
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: ApplicationInstance,
-    errors: [
-      {
-        status: 400,
-        description: `Invalid request data. &#x60;details&#x60; carries a &#x60;ValidationErrorDetail&#x60; payload when the failure is an aggregated field validation error.`,
-        schema: Error,
-      },
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `Instance not found`,
         schema: Error,
       },
     ],

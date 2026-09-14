@@ -10,6 +10,7 @@ import {
   TaskResolution,
   type components,
 } from '@stackbox/contract'
+import { type TaskInstanceView, toTaskInstance } from './instance'
 import { COARSE_STATUS_LABEL, RESOLUTION_LABEL, SOURCE_LABEL, type Task, toTask } from './task'
 
 type Schemas = components['schemas']
@@ -51,7 +52,7 @@ export type TaskDetailView = Task & {
   costLabel: string
   pullRequests: PullRequestView[]
   resolution: { label: string; sentence: string } | null
-  instanceLabel: string
+  instance: TaskInstanceView | null
   pendingCheck: string | null
 }
 
@@ -277,7 +278,7 @@ export function toTaskDetail(detail: Schemas['TaskDetail'], events: Schemas['Tas
       href: `https://github.com/${pull.repository_full_name}/pull/${pull.number}`,
     })),
     resolution: resolutionOf(detail),
-    instanceLabel: detail.instance?.url ?? NOT_STARTED_INSTANCE,
+    instance: detail.instance && toTaskInstance(detail.instance),
     pendingCheck: pending ? CHECK_LABEL[pending] : null,
   }
 }

@@ -46,6 +46,8 @@ export interface TaskState {
   // A new run whose number the task already has is not inserted.
   saveRun(run: Run): Promise<void>
   saveRelease(release: Release): Promise<void>
+  // No-op when the row is already torn down.
+  markInstanceTornDown(instanceId: string): Promise<void>
   saveSandbox(sandbox: Sandbox): Promise<void>
   // Returns the stored row instead when the idempotency key already exists.
   insertExecution(execution: Execution): Promise<Execution>

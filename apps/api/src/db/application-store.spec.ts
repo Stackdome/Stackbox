@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto'
-import { ArtifactKind, ArtifactOwner, TaskPhase, TaskResolution } from '@stackbox/contract'
+import { ArtifactKind, ArtifactOwner, InstanceStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
 import { eq, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
+import { RemoveOutcome } from '../applications/types'
 import { aCheck, aMessage, aReport, aTask } from '../tasks/test-support/builders'
 import { ApplicationStore } from './application-store'
 import type { Database } from './client'
-import { application, artifact, pullRequest, report, service, task, taskCheck, taskMessage } from './schema'
-import { IDS, emptyTables, insertApplication, insertOrganization, insertRepository } from './test-support/rows'
+import { application, applicationInstance, artifact, pullRequest, report, service, task, taskCheck, taskMessage } from './schema'
+import { IDS, emptyTables, insertApplication, insertInstance, insertOrganization, insertRepository } from './test-support/rows'
 
 const SYNCED_AT = new Date('2026-09-14T10:00:00Z')
 
@@ -131,7 +132,7 @@ describe('ApplicationStore', () => {
     const shop = await aShopApplication()
     await aTaskOf(shop, TaskPhase.NeedsInput)
 
-    expect([await store.removeIfIdle(shop), (await store.findRecord(IDS.org, shop))?.id]).toEqual([false, shop])
+    expect([await store.removeIfIdle(shop), (await store.findRecord(IDS.org, shop))?.id]).toEqual([RemoveOutcome.ActiveTasks, shop])
   })
 
   it('never lets a task insert succeed once its application has been removed as idle', async () => {
@@ -143,7 +144,7 @@ describe('ApplicationStore', () => {
       db.insert(task).values(aTask({ id: taskId, applicationId: shop, reportId: null })),
     ])
 
-    if (removed.status === 'fulfilled' && removed.value === true) {
+    if (removed.status === 'fulfilled' && removed.value === RemoveOutcome.Removed) {
       expect(inserted.status).toBe('rejected')
     }
   })
@@ -171,6 +172,26 @@ describe('ApplicationStore', () => {
       db.select().from(artifact),
       db.select().from(service),
     ])
-    expect([removed, ...left.map((rows) => rows.length)]).toEqual([true, 0, 0, 0, 0])
+    expect([removed, ...left.map((rows) => rows.length)]).toEqual([RemoveOutcome.Removed, 0, 0, 0, 0])
+  })
+
+  it('removes an application whose only instance has expired, taking the instance row with it', async () => {
+    const shop = await aShopApplication()
+    await insertInstance(db, { id: IDS.instance, applicationId: shop, status: InstanceStatus.Expired })
+
+    const removed = await store.removeIfIdle(shop)
+
+    expect([removed, await db.select().from(applicationInstance).where(eq(applicationInstance.id, IDS.instance))]).toEqual([RemoveOutcome.Removed, []])
+  })
+
+  it('refuses to remove an application with an instance still up, then removes it once that instance is torn down', async () => {
+    const shop = await aShopApplication()
+    await insertInstance(db, { id: IDS.instance, applicationId: shop, status: InstanceStatus.Ready })
+
+    const refused = await store.removeIfIdle(shop)
+    await db.update(applicationInstance).set({ status: InstanceStatus.TornDown }).where(eq(applicationInstance.id, IDS.instance))
+    const removed = await store.removeIfIdle(shop)
+
+    expect([refused, removed]).toEqual([RemoveOutcome.LiveInstances, RemoveOutcome.Removed])
   })
 })

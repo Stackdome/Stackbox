@@ -4,14 +4,16 @@ import { ArtifactStore } from './artifact-store'
 import { DATABASE_CONNECTION, createDb } from './client'
 import { DrizzleTaskState } from './drizzle-task-state'
 import { GitConnectionStore } from './git-connection-store'
+import { InstanceStore } from './instance-store'
 import { PolicyStore } from './policy-store'
+import { ReleaseStore } from './release-store'
 import { RepositoryStore } from './repository-store'
 import { TaskStore } from './task-store'
 import { UserStore } from './user-store'
 
 export { DATABASE_CONNECTION }
 
-const STORES = [UserStore, PolicyStore, ApplicationStore, TaskStore, ArtifactStore, DrizzleTaskState, GitConnectionStore, RepositoryStore]
+const STORES = [UserStore, PolicyStore, ApplicationStore, TaskStore, ArtifactStore, DrizzleTaskState, GitConnectionStore, RepositoryStore, InstanceStore, ReleaseStore]
 
 @Global()
 @Module({

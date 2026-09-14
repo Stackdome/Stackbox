@@ -163,7 +163,7 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
       case DecisionKind.DestroySandbox:
         return this.destroySandbox(snapshot, decision.sandboxId, now)
       case DecisionKind.TeardownInstance:
-        return this.deploy.teardown({ id: decision.instanceId })
+        return this.teardownInstance(decision.instanceId)
       case DecisionKind.Complete:
         return this.state.saveTask({ ...snapshot.task, completedAt: now }, expectedPhase)
     }
@@ -173,6 +173,11 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
     const instance = await this.deploy.createInstance({ applicationId: snapshot.task.applicationId, services: [], variables: {} })
     await this.state.saveTask({ ...snapshot.task, instanceId: instance.id }, expectedPhase)
     await this.event(snapshot, TaskEventKind.InstanceRequested, { instanceId: instance.id }, now)
+  }
+
+  private async teardownInstance(instanceId: string): Promise<void> {
+    await this.deploy.teardown({ id: instanceId })
+    await this.state.markInstanceTornDown(instanceId)
   }
 
   private async deployRelease(snapshot: TaskSnapshot, expectedPhase: TaskPhase, decision: DecisionOf<typeof DecisionKind.DeployRelease>, now: Date): Promise<void> {

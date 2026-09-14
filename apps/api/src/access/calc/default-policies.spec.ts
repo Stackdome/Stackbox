@@ -51,4 +51,31 @@ describe('the default policies', () => {
   it('let a Developer re-sync the application it is bound to but not delete it', () => {
     expect([can(developer, `/applications/${APP}`, Action.Write), can(developer, `/applications/${APP}`, Action.Delete)]).toEqual([true, false])
   })
+
+  it('let an OrgMember list and read instances and their releases but never spin up, tear down or deploy', () => {
+    expect([
+      can(member, '/instances', Action.List),
+      can(member, '/instances/I1', Action.Read),
+      can(member, '/instances/I1/releases', Action.Read),
+      can(member, `/applications/${APP}/instances`, Action.Create),
+      can(member, '/instances/I1', Action.Write),
+      can(member, '/instances/I1/releases', Action.Create),
+    ]).toEqual([true, true, true, false, false, false])
+  })
+
+  it('let an OrgAdmin spin up, tear down, extend and deploy', () => {
+    expect([
+      can(admin, `/applications/${APP}/instances`, Action.Create),
+      can(admin, '/instances/I1', Action.Write),
+      can(admin, '/instances/I1/releases', Action.Create),
+    ]).toEqual([true, true, true])
+  })
+
+  it('let a Developer spin up an instance of the application it is bound to but not tear one down', () => {
+    expect([can(developer, `/applications/${APP}/instances`, Action.Create), can(developer, '/instances/I1', Action.Write)]).toEqual([true, false])
+  })
+
+  it('deny a Viewer spinning up an instance even of the application it is bound to', () => {
+    expect(can(viewer, `/applications/${APP}/instances`, Action.Create)).toBe(false)
+  })
 })

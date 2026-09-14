@@ -65,7 +65,7 @@ export class AccessGuard implements CanActivate {
   private async applicationFromBody(orgId: string, body: unknown): Promise<string> {
     const parsed = applicationBody.safeParse(body)
     if (!parsed.success || !(await this.applications.existsInOrg(orgId, parsed.data.application_id))) {
-      throw new NotFoundException({ message: 'application not found' })
+      throw new NotFoundException({ code: 'unknown_application', message: 'application not found' })
     }
     return parsed.data.application_id
   }

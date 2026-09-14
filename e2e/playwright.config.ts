@@ -24,7 +24,7 @@ export default defineConfig({
     {
       name: 'api',
       testMatch: 'api/**/*.spec.ts',
-      testIgnore: 'api/tasks.spec.ts',
+      testIgnore: ['api/tasks.spec.ts', 'api/instances.spec.ts'],
       use: { baseURL: 'http://localhost:3000' },
     },
     {
@@ -32,6 +32,13 @@ export default defineConfig({
       name: 'api-tasks',
       testMatch: 'api/tasks.spec.ts',
       dependencies: ['api'],
+      use: { baseURL: 'http://localhost:3000' },
+    },
+    {
+      // Creates and deletes an application, which the application counts in applications.spec.ts must not see.
+      name: 'api-instances',
+      testMatch: 'api/instances.spec.ts',
+      dependencies: ['api-tasks'],
       use: { baseURL: 'http://localhost:3000' },
     },
   ],

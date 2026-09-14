@@ -1399,1465 +1399,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{org_id}/instances": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List all instances
-         * @description Returns instances the user has access to in the org. OrgAdmins see all instances in the org.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    limit?: number;
-                    offset?: number;
-                };
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceList"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Create a new instance
-         * @description Creates a thin instance shell (name, labels, annotations, settings). Any inline
-         *     `stack_resources`, `volumes`, or `connections` in the body are ignored. Add
-         *     children via `PUT /instances/{id}/apply` or the individual sub-resource endpoints.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstance"];
-                };
-            };
-            responses: {
-                /** @description ApplicationInstance created successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstance"];
-                    };
-                };
-                /** @description Invalid request data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance already exists */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a specific instance */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstance"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        /**
-         * Update a instance
-         * @description Updates only shell fields (name, labels, annotations, settings). `namespace` is
-         *     immutable. Child collections (`stack_resources`, `volumes`, `connections`) in the
-         *     body are ignored. Use `PUT /instances/{id}/apply` for a full reconcile.
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstance"];
-                };
-            };
-            responses: {
-                /** @description ApplicationInstance updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstance"];
-                    };
-                };
-                /** @description Invalid request data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Delete a instance */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description ApplicationInstance deletion initiated successfully */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstance"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/apply": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Apply a full instance document by name (declarative upsert)
-         * @description Name-addressed declarative whole-document apply. ApplicationInstance identity is the
-         *     `name` in the request body (unique per org). If a instance with that name
-         *     exists it is reconciled exactly like the id-addressed apply
-         *     (resources and connections not present in the body are deleted, volumes
-         *     are add-only); otherwise the instance and its children are created
-         *     atomically after full validation. Idempotent: clients need not know
-         *     whether the instance already exists.
-         */
-        put: operations["applyApplicationInstanceByName"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/apply": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /**
-         * Apply a full instance document (declarative reconcile)
-         * @description Declarative whole-document apply. Reconciles the instance against the supplied
-         *     document: resources and connections not present in the body are deleted, while
-         *     volumes are add-only and are never deleted. This is the only endpoint that
-         *     accepts a full instance document.
-         */
-        put: operations["applyApplicationInstance"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get logs for a instance */
-        get: {
-            parameters: {
-                query?: {
-                    follow?: boolean;
-                    tail?: number;
-                    since?: string;
-                };
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Stream of log lines via Server-Sent Events (SSE) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": string;
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/metrics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get metrics for a instance
-         * @description Returns metrics for a instance. If `stream=true` is passed, the server responds using Server-Sent Events (SSE).
-         */
-        get: {
-            parameters: {
-                query?: {
-                    stream?: boolean;
-                };
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /**
-                 * @description - Returns a `ResourceMetrics` object when `stream=false`.
-                 *     - Returns a stream of metrics via Server-Sent Events (SSE) when `stream=true`.
-                 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": string;
-                        "application/json": components["schemas"]["ResourceMetrics"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/resources": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List all instance resources under a instance */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceResourceList"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create a instance resource */
-        post: operations["createApplicationInstanceResource"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a specific instance resource by name */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The name of the instance resource */
-                    resource_name: components["parameters"]["resource_name"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceResource"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        /** Update a instance resource */
-        put: operations["updateApplicationInstanceResource"];
-        post?: never;
-        /** Delete a instance resource */
-        delete: operations["deleteApplicationInstanceResource"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get logs for a instance resource */
-        get: {
-            parameters: {
-                query?: {
-                    follow?: boolean;
-                    tail?: number;
-                    since?: string;
-                };
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The name of the instance resource */
-                    resource_name: components["parameters"]["resource_name"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Stream of log lines via Server-Sent Events (SSE) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": string;
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/metrics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get metrics for a instance resource
-         * @description Returns metrics for a instance resource. If `stream=true` is passed, the server responds using Server-Sent Events (SSE).
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Whether to stream metrics via Server-Sent Events (SSE) */
-                    stream?: boolean;
-                };
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The name of the instance resource */
-                    resource_name: components["parameters"]["resource_name"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /**
-                 * @description - Returns a `ResourceMetrics` object when `stream=false`.
-                 *     - Returns a stream of metrics via Server-Sent Events (SSE) when `stream=true`.
-                 */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ResourceMetrics"];
-                        "text/event-stream": string;
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/builds": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List all builds for a instance resource */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The name of the instance resource */
-                    resource_name: components["parameters"]["resource_name"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ImageBuildList"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/resources/{resource_name}/actions/restart": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Restart a instance resource
-         * @description Triggers a rolling restart of the instance resource by setting a new restart request timestamp.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The name of the instance resource */
-                    resource_name: components["parameters"]["resource_name"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Restart initiated */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceResource"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Forbidden */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance resource not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/builds": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List all builds under a instance */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ImageBuildList"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/builds/{build_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a specific build under a instance */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The ID of the build */
-                    build_id: components["parameters"]["build_id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ImageBuild"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Build not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/builds/{build_id}/logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get logs for an image build */
-        get: {
-            parameters: {
-                query?: {
-                    follow?: boolean;
-                    tail?: number;
-                    since?: string;
-                };
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The ID of the build */
-                    build_id: components["parameters"]["build_id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Stream of build log lines via Server-Sent Events (SSE). Log lines arrive as unnamed "data:" events; terminal stream errors as "event: error"; normal completion is signalled by a final "event: end" frame. */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/event-stream": string;
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Build not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Build job not created yet, or build pod not started. Retry later */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/topology": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get instance topology */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceTopology"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/connections": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List instance connections */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Successful operation */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceConnectionList"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /** Create instance connection */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstanceConnection"];
-                };
-            };
-            responses: {
-                /** @description ApplicationInstance connection created successfully */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceConnection"];
-                    };
-                };
-                /** @description Invalid request data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance connection already exists */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/connections/{connection_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Update instance connection */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The ID of the instance connection */
-                    connection_id: components["parameters"]["connection_id"];
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstanceConnection"];
-                };
-            };
-            responses: {
-                /** @description ApplicationInstance connection updated successfully */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ApplicationInstanceConnection"];
-                    };
-                };
-                /** @description Invalid request data */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance or connection not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        /** Delete instance connection */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    /** @description The ID of the organization */
-                    org_id: components["parameters"]["org_id"];
-                    /** @description The id of record */
-                    id: components["parameters"]["id"];
-                    /** @description The ID of the instance connection */
-                    connection_id: components["parameters"]["connection_id"];
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description ApplicationInstance connection deleted successfully */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Unauthorized */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description ApplicationInstance or connection not found */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Internal server error */
-                500: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Error"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/releases": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List releases for a instance */
-        get: operations["listReleases"];
-        put?: never;
-        /** Create a new release (deploy) */
-        post: operations["createRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a release by ID */
-        get: operations["getRelease"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cancel a pending or rendering release */
-        post: operations["cancelRelease"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}/events": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List release events ordered by sequence */
-        get: operations["listReleaseEvents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{org_id}/instances/{id}/releases/{release_id}/events/stream": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Stream release events via Server-Sent Events */
-        get: operations["streamReleaseEvents"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/organizations/{org_id}/tasks": {
         parameters: {
             query?: never;
@@ -3205,6 +1746,93 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{org_id}/instances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the organization's Application Instances, newest first */
+        get: operations["listInstances"];
+        put?: never;
+        /** Spin up an Application Instance of a synced application and open its first release */
+        post: operations["spinUpInstance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/instances/{instance_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get one instance with its releases, newest first */
+        get: operations["getInstance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/instances/{instance_id}/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the releases of one instance, newest first */
+        get: operations["listInstanceReleases"];
+        put?: never;
+        /** Deploy a new release of the instance at the head of a ref */
+        post: operations["createRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/instances/{instance_id}/teardown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tear an instance down; tearing down a torn down instance answers it unchanged */
+        post: operations["teardownInstance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{org_id}/instances/{instance_id}/expiry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set the instance to expire a preset number of hours from now */
+        post: operations["extendInstanceExpiry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3319,302 +1947,6 @@ export interface components {
         PromoteAdminRequest: {
             /** @description The ID of the user to promote to admin */
             user_id: string;
-        };
-        GitRepoRevision: {
-            branch?: string;
-            tag?: string;
-            commit?: string;
-        };
-        /** @description Declared output metadata for a topology node. Values are not returned here. */
-        OutputDescriptor: {
-            /** @description Stable output accessor name, for example `host` or `public_url`. */
-            name: string;
-            /**
-             * @description Scalar value type exposed by this output.
-             * @enum {string}
-             */
-            type: OutputDescriptorType;
-            /** @description True when the output value is sensitive and should never be returned in normal metadata APIs. */
-            sensitive: boolean;
-        };
-        /** @description A node in the instance topology graph. */
-        TopologyNode: {
-            ref: components["schemas"]["TopologyNodeRef"];
-            label: string;
-            outputs?: components["schemas"]["OutputDescriptor"][];
-            /** @description Optional runtime state for nodes that have status, such as instance resources or addons. */
-            state?: string;
-        };
-        /** @description An edge in the instance topology graph. */
-        TopologyEdge: {
-            id?: string;
-            /**
-             * @description Edge kind. Explicit connections reuse connection kinds; derived edges use depends_on.
-             * @enum {string}
-             */
-            kind: TopologyEdgeKind;
-            source: components["schemas"]["TopologyNodeRef"];
-            target: components["schemas"]["TopologyNodeRef"];
-            mappings?: components["schemas"]["ConnectionMapping"][];
-            config?: components["schemas"]["ApplicationInstanceConnectionConfig"];
-            /**
-             * @description Whether the edge came from an explicit connection or a derived relationship such as depends_on.
-             * @enum {string}
-             */
-            source_of_truth: TopologyEdgeSource_of_truth;
-        };
-        /** @description Identifies a topology node within the instance graph. */
-        TopologyNodeRef: {
-            /**
-             * @description The node category.
-             * @enum {string}
-             */
-            type: TopologyNodeRefType;
-            /** @description Stable ID for persisted resources such as addons or secrets. */
-            id?: string;
-            /** @description Name-scoped reference for instance-local resources. */
-            name?: string;
-        };
-        /** @description Maps one produced value into one target location on the consumer. */
-        ConnectionMapping: {
-            target: components["schemas"]["ConnectionTarget"];
-            value: components["schemas"]["ValueRef"];
-        };
-        /** @description The destination field that receives a mapped value. */
-        ConnectionTarget: {
-            /**
-             * @description env writes an environment variable and file writes a mounted file path.
-             * @enum {string}
-             */
-            type: ConnectionTargetType;
-            /** @description Environment variable name when type is env. */
-            name?: string;
-            /** @description Absolute file path when type is file. */
-            path?: string;
-        };
-        /** @description Config for env connections from a PostgreSQL addon (kind=env, from.type=addon/postgres). credential_scope and superuser are mutually exclusive. */
-        PostgresEnvConfig: {
-            /** @description Target database name within the addon. */
-            database?: string;
-            /**
-             * @description Which credential set to inject. Mutually exclusive with superuser.
-             * @enum {string}
-             */
-            credential_scope?: PostgresEnvConfigCredential_scope;
-            /** @description Use superuser credentials. Mutually exclusive with credential_scope. */
-            superuser?: boolean;
-        };
-        /** @description Config for volume mount connections (kind=volume_mount). */
-        VolumeMountConfig: {
-            /** @description Absolute path where the volume is mounted in the container. */
-            mount_path: string;
-            /** @description Sub-path within the volume to mount. */
-            sub_path?: string;
-            /** @description Mount the volume read-only. */
-            read_only?: boolean;
-        };
-        /** @description Config for build artifact source connections (kind=build_artifact_source). */
-        BuildArtifactSourceConfig: {
-            /** @description Path within the build output to copy from. */
-            source_path: string;
-            /** @description Path within the volume to copy to. */
-            destination_path?: string;
-        };
-        /** @description Describes how to read a value from the connection's `from` node. This is only used inside `ApplicationInstanceConnection.mappings[]`. */
-        ValueRef: {
-            /** @description Output accessor on the connection's `from` node, such as `url` or `public_url`. */
-            output?: string;
-            /** @description Template used when one target value must be composed from multiple outputs. */
-            template?: string;
-            /** @description Named template inputs, each resolving one output from the connection's `from` node. */
-            values?: {
-                [key: string]: components["schemas"]["OutputValueRef"];
-            };
-        };
-        /** @description References one output on the connection's `from` node. */
-        OutputValueRef: {
-            /** @description Output accessor on the connection's `from` node. */
-            output: string;
-        };
-        ImageBuild: {
-            id?: string;
-            namespace?: string;
-            instance_id?: string;
-            instance_resource_id: string;
-            instance_resource_name: string;
-            source_revision: components["schemas"]["BuildSourceRevision"];
-            build_context: components["schemas"]["BuildSourceContext"];
-            image_repo: string;
-            status?: components["schemas"]["ImageBuildStatus"];
-            /** Format: date-time */
-            created_at?: string;
-            /** Format: date-time */
-            updated_at?: string;
-        };
-        ResourceMetrics: {
-            assigned_nodes?: string[];
-            /** @description CPU usage in millicores */
-            cpu_usage?: string;
-            /** @description Memory usage in bytes */
-            memory_usage?: string;
-            node_capacities?: {
-                node_name?: string;
-                /** @description CPU capacity in millicores */
-                cpu_capacity?: string;
-                /** @description Memory capacity in bytes */
-                memory_capacity?: string;
-                /** @description Storage capacity in bytes */
-                storage_capacity?: string;
-            }[];
-            /** Format: date-time */
-            timestamp?: string;
-        };
-        ImageBuildList: {
-            items?: components["schemas"]["ImageBuild"][];
-            total?: number;
-        };
-        ImageBuildStatus: {
-            state?: string;
-            conditions?: components["schemas"]["Condition"][];
-            image_url?: string;
-            build_source_revision?: string;
-            last_build_failure_detail?: components["schemas"]["BuildFailureDetail"];
-        };
-        ContainerFailureDetail: {
-            /** @enum {string} */
-            failure_type?: ContainerFailureDetailFailure_type;
-            reason?: string;
-            message?: string;
-            /** Format: int32 */
-            restart_count?: number;
-            /** Format: int32 */
-            exit_code?: number;
-        };
-        BuildFailureDetail: {
-            /** @enum {string} */
-            failure_type?: BuildFailureDetailFailure_type;
-            reason?: string;
-            message?: string;
-            /** Format: int32 */
-            restart_count?: number;
-            /** Format: int32 */
-            exit_code?: number;
-        };
-        Ingress: {
-            url?: string;
-            target_port?: number;
-        };
-        VolumeMount: {
-            readonly instance_resource_id?: string;
-            source_volume_type?: components["schemas"]["VolumeMountSourceType"];
-            source_volume_name: string;
-            source_sub_path?: string;
-            target_path: string;
-        };
-        /** @enum {string} */
-        VolumeMountSourceType: VolumeMountSourceType;
-        Port: {
-            name: string;
-            number: number;
-            protocol?: string;
-            exposed_to_public: boolean;
-            subdomain_prefix?: string;
-        };
-        LifecycleConfig: {
-            /** Format: date-time */
-            restart_request_time?: string;
-        };
-        /** @description Where a instance resource's runtime image comes from. Exactly one of git, image, or volume must be set (enforced server-side). */
-        SourceSpec: {
-            git?: components["schemas"]["GitSource"];
-            image?: components["schemas"]["ImageSource"];
-            volume?: components["schemas"]["VolumeBuildSource"];
-        };
-        GitSource: {
-            repo_url: string;
-            /** @description Defaults to the repository's default branch, resolved and stored at create time */
-            branch?: string;
-            /** @description Mutually exclusive with branch */
-            tag?: string;
-            /** @description Commit SHA pin; requires branch or tag */
-            commit?: string;
-            /** @default Dockerfile */
-            dockerfile_path: string;
-            /** @default . */
-            build_context: string;
-            /** @description Org-level git integration override for clone auth */
-            integration_id?: string;
-            push?: components["schemas"]["PushTarget"];
-        };
-        PushTarget: {
-            /** @description Push repository as host/path, without a tag */
-            repository: string;
-            /** @description Org-level registry credential override for push auth */
-            registry_credentials_id?: string;
-        };
-        ImageSource: {
-            ref: string;
-            /** @description Org-level registry credential override for pull auth */
-            registry_credentials_id?: string;
-        };
-        VolumeBuildSource: {
-            volume_id?: string;
-            /** @description Name of a volume defined on the instance; either volume_id or volume_name is required */
-            volume_name?: string;
-            /** @description Content hash of the volume used as the build source revision */
-            current_volume_hash?: string;
-            /** @default Dockerfile */
-            dockerfile_path: string;
-            /** @default . */
-            build_context: string;
-        };
-        BuildSourceContext: {
-            volume?: {
-                id: string;
-                name?: string;
-            };
-            git_repo?: {
-                repo_url: string;
-            };
-        };
-        BuildSourceRevision: {
-            volume_source_revision?: {
-                current_volume_hash: string;
-            };
-            git_repo_revision?: components["schemas"]["GitRepoRevision"];
-        };
-        InitSpec: {
-            command?: string[];
-            args?: string[];
-        };
-        ExecutionConfig: {
-            command?: string[];
-            args?: string[];
-            environment_variables?: components["schemas"]["EnvVar"][];
-        };
-        EnvVar: {
-            name: string;
-            /** @description Literal environment variable value. */
-            value?: string;
-            /** @description Read this environment variable from one of the resource's own declared outputs, for example public_url. */
-            self_output?: string;
-        };
-        Condition: {
-            type?: string;
-            status?: string;
-            observed_generation?: number;
-            /** Format: date-time */
-            last_transition_time?: string;
-            reason?: string;
-            message?: string;
-        };
-        Label: {
-            key: string;
-            value: string;
-        };
-        Annotation: {
-            key: string;
-            value: string;
         };
         Error: components["schemas"]["ObjectReference"] & {
             code?: string;
@@ -3735,290 +2067,6 @@ export interface components {
             inviter_name?: string;
             /** Format: date-time */
             expires_at?: string;
-        };
-        /**
-         * @description Computed runtime health rollup of a live/active release.
-         * @enum {string}
-         */
-        ReleaseHealth: ReleaseHealth;
-        /** @description Lightweight release reference embedded in the instance for list views. */
-        ReleaseSummary: {
-            id?: string;
-            /** Format: int32 */
-            sequence?: number;
-            state?: components["schemas"]["ReleaseState"];
-            health?: components["schemas"]["ReleaseHealth"];
-            message?: string;
-            /** Format: date-time */
-            created_at?: string;
-            /** Format: date-time */
-            completed_at?: string;
-        };
-        /** @description Current runtime status overlaid onto a release at read time. Present only when the release is live (currently converged) or active (Pending/InProgress). Never stored; recomputed per request. */
-        ReleaseLiveStatus: {
-            health?: components["schemas"]["ReleaseHealth"];
-            resources?: {
-                [key: string]: components["schemas"]["ApplicationInstanceResourceStatus"];
-            };
-            conditions?: components["schemas"]["Condition"][];
-            target_revision?: string;
-            observed_revision?: string;
-        };
-        /** @enum {string} */
-        ReleaseCauseKind: ReleaseCauseKind;
-        CreateReleaseRequest: {
-            /** @description If set, creates a rollback release copying this release's manifest */
-            from_release_id?: string;
-        };
-        ReleaseEventLink: {
-            kind?: string;
-            label?: string;
-            target?: {
-                [key: string]: string;
-            };
-        };
-        ReleaseEvent: {
-            id?: string;
-            release_id?: string;
-            instance_id?: string;
-            sequence?: number;
-            /** Format: date-time */
-            occurred_at?: string;
-            /** @enum {string} */
-            source?: ReleaseEventSource;
-            /** @enum {string} */
-            scope?: ReleaseEventScope;
-            resource_name?: string;
-            type?: string;
-            /** @enum {string} */
-            level?: ReleaseEventLevel;
-            message?: string;
-            links?: components["schemas"]["ReleaseEventLink"][];
-            metadata?: {
-                [key: string]: string;
-            };
-        };
-        ReleaseEventList: {
-            items?: components["schemas"]["ReleaseEvent"][];
-            next_after_sequence?: number;
-        };
-        ReleaseCause: {
-            kind?: components["schemas"]["ReleaseCauseKind"];
-            detail?: string;
-        };
-        ReleaseValidationError: {
-            resource_name?: string;
-            field?: string;
-            /** @enum {string} */
-            code?: ReleaseValidationErrorCode;
-            message?: string;
-        };
-        ReleasePins: {
-            resources?: {
-                [key: string]: components["schemas"]["ResourcePins"];
-            };
-        };
-        ResourcePins: {
-            git_sha?: string;
-            volume_hash?: string;
-            image_digest?: string;
-        };
-        ReleaseOutcome: {
-            resources?: {
-                [key: string]: components["schemas"]["ResourceOutcome"];
-            };
-            duration?: string;
-        };
-        ResourceOutcome: {
-            phase?: string;
-            ready_replicas?: number;
-            replicas?: number;
-            message?: string;
-        };
-        ApplicationInstance: {
-            readonly id?: string;
-            readonly organisation_id?: string;
-            readonly user_id?: string;
-            name: string;
-            readonly namespace?: string;
-            labels?: components["schemas"]["Label"][];
-            annotations?: components["schemas"]["Annotation"][];
-            readonly revision?: string;
-            spec: components["schemas"]["ApplicationInstanceSpec"];
-            settings?: components["schemas"]["ApplicationInstanceSettings"];
-            lifecycle?: components["schemas"]["InstanceLifecycle"];
-            converged_release?: components["schemas"]["ReleaseSummary"];
-            latest_release?: components["schemas"]["ReleaseSummary"];
-            /** Format: date-time */
-            readonly created_at?: string;
-            /** Format: date-time */
-            readonly updated_at?: string;
-        };
-        ApplicationInstanceSettings: {
-            /**
-             * @description Maximum total releases to retain per instance
-             * @default 10
-             */
-            release_retention_limit: number;
-            /**
-             * @description Minimum number of successful releases to always keep
-             * @default 5
-             */
-            min_successful_releases: number;
-        };
-        ApplicationInstanceList: {
-            items?: components["schemas"]["ApplicationInstance"][];
-            total?: number;
-        };
-        ApplicationInstanceConnectionList: {
-            items?: components["schemas"]["ApplicationInstanceConnection"][];
-            total?: number;
-        };
-        ApplicationInstanceSpec: {
-            instance_resources?: components["schemas"]["ApplicationInstanceResource"][];
-            connections?: components["schemas"]["ApplicationInstanceConnection"][];
-        };
-        ApplicationInstanceResource: {
-            readonly id?: string;
-            readonly instance_id?: string;
-            name: string;
-            labels?: components["schemas"]["Label"][];
-            annotations?: components["schemas"]["Annotation"][];
-            readonly revision?: string;
-            source?: components["schemas"]["SourceSpec"];
-            init_spec?: components["schemas"]["InitSpec"];
-            execution_config?: components["schemas"]["ExecutionConfig"];
-            volume_mounts?: components["schemas"]["VolumeMount"][];
-            depends_on?: string[];
-            lifecycle_config?: components["schemas"]["LifecycleConfig"];
-            ports?: components["schemas"]["Port"][];
-            readonly outputs?: components["schemas"]["OutputDescriptor"][];
-            /**
-             * @default Service
-             * @enum {string}
-             */
-            workload_type: ApplicationInstanceResourceWorkload_type;
-            schedule?: string;
-            /** Format: int32 */
-            replicas?: number;
-        };
-        ApplicationInstanceResourceList: {
-            items?: components["schemas"]["ApplicationInstanceResource"][];
-            total?: number;
-        };
-        ApplicationInstanceTopology: {
-            nodes: components["schemas"]["TopologyNode"][];
-            edges: components["schemas"]["TopologyEdge"][];
-        };
-        /** @description A user-authored topology edge between two nodes in a instance. */
-        ApplicationInstanceConnection: {
-            /** @description Stable connection identifier. Generated when omitted. */
-            id?: string;
-            /**
-             * @description The relationship type. `env` injects values into environment variables, `volume_mount` mounts a volume into a resource, and `build_artifact_source` seeds a volume from build output.
-             * @enum {string}
-             */
-            kind: ApplicationInstanceConnectionKind;
-            from: components["schemas"]["TopologyNodeRef"];
-            to: components["schemas"]["TopologyNodeRef"];
-            /** @description Target/value mappings for kinds that move values, such as `env`. */
-            mappings?: components["schemas"]["ConnectionMapping"][];
-            config?: components["schemas"]["ApplicationInstanceConnectionConfig"];
-        };
-        /** @description Kind-specific connection configuration. The shape depends on the connection kind and source type: use PostgresEnvConfig when kind is env and from.type is addon/postgres, VolumeMountConfig when kind is volume_mount, and BuildArtifactSourceConfig when kind is build_artifact_source. Omit config entirely for env connections from stack_resource or secret sources. */
-        ApplicationInstanceConnectionConfig: components["schemas"]["PostgresEnvConfig"] | components["schemas"]["VolumeMountConfig"] | components["schemas"]["BuildArtifactSourceConfig"];
-        ApplicationInstanceResourceStatus: {
-            public_ingress?: components["schemas"]["Ingress"][];
-            internal_service_name?: string;
-            /** Format: date-time */
-            last_restart_request_processed_at?: string;
-            state?: string;
-            message?: string;
-            observed_revision?: string;
-            conditions?: components["schemas"]["Condition"][];
-            last_failure?: components["schemas"]["ApplicationInstanceResourceFailure"];
-            /** Format: int32 */
-            readonly replicas?: number;
-            /** Format: int32 */
-            readonly available_replicas?: number;
-            /** Format: int32 */
-            readonly updated_replicas?: number;
-            /** Format: date-time */
-            readonly last_run_time?: string;
-            readonly last_run_succeeded?: boolean;
-        };
-        ApplicationInstanceResourceFailure: {
-            /** @enum {string} */
-            type?: ApplicationInstanceResourceFailureType;
-            container?: components["schemas"]["ContainerFailureDetail"];
-            init_container?: components["schemas"]["ContainerFailureDetail"];
-            build?: components["schemas"]["BuildFailureDetail"];
-        };
-        /** @enum {string} */
-        ReleaseState: ReleaseState;
-        /**
-         * @description Coarse instance entity lifecycle. Deploy/runtime status lives on releases.
-         * @enum {string}
-         */
-        InstanceLifecycle: InstanceLifecycle;
-        Release: {
-            id?: string;
-            instance_id?: string;
-            sequence?: number;
-            state?: components["schemas"]["ReleaseState"];
-            message?: string;
-            cause?: components["schemas"]["ReleaseCause"];
-            snapshot_revision?: string;
-            manifest_revision?: string;
-            renderer_version?: string;
-            pins?: components["schemas"]["ReleasePins"];
-            outcome?: components["schemas"]["ReleaseOutcome"];
-            created_by?: string;
-            /** Format: date-time */
-            created_at?: string;
-            /** Format: date-time */
-            updated_at?: string;
-            /** Format: date-time */
-            rendered_at?: string;
-            /** Format: date-time */
-            completed_at?: string;
-            readonly validation_errors?: components["schemas"]["ReleaseValidationError"][];
-            live_status?: components["schemas"]["ReleaseLiveStatus"];
-        };
-        ReleaseDetail: components["schemas"]["Release"] & {
-            snapshot?: components["schemas"]["ReleaseSnapshot"];
-        };
-        ReleaseSnapshot: {
-            instance?: {
-                id?: string;
-                organisation_id?: string;
-                cluster_id?: string;
-                user_id?: string;
-                name?: string;
-                namespace_id?: string;
-                namespace?: string;
-                labels?: {
-                    [key: string]: string;
-                };
-                annotations?: {
-                    [key: string]: string;
-                };
-            };
-            resources?: components["schemas"]["ApplicationInstanceResource"][];
-            connections?: components["schemas"]["ApplicationInstanceConnection"][];
-            /** Format: date-time */
-            captured_at?: string;
-        };
-        ReleaseList: {
-            items?: components["schemas"]["Release"][];
-            /** @description Total number of records */
-            total?: number;
-            /** @description Current page number */
-            page?: number;
-            /** @description Number of items per page */
-            page_size?: number;
-            /** @description Total number of pages */
-            total_pages?: number;
         };
         /** @enum {string} */
         RepoProvider: RepoProvider;
@@ -4216,6 +2264,86 @@ export interface components {
             items: components["schemas"]["ApplicationListItem"][];
             total: number;
         };
+        /**
+         * @description Expiry presets in hours. A persistent instance takes none.
+         * @enum {integer}
+         */
+        InstanceExpiryHours: InstanceExpiryHours;
+        /** @description The person who spun the instance up. */
+        InstanceOwner: {
+            id: string;
+            name: string;
+        };
+        /** @description The task that owns a task instance. */
+        InstanceTask: {
+            id: string;
+            description: string;
+            coarse_status: components["schemas"]["CoarseStatus"];
+        };
+        /** @description One version deployed into an instance. Releases are append-only; the instance URL does not change between them. */
+        Release: {
+            id: string;
+            commit_sha: string;
+            ref: string | null;
+            status: components["schemas"]["ReleaseStatus"];
+            /** @description The number of the task run that opened the release. */
+            run_number: number | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ReleaseList: {
+            items: components["schemas"]["Release"][];
+        };
+        ReleaseCreate: {
+            /** @description Defaults to the latest release's ref, then the repository's default branch. */
+            ref?: string;
+        };
+        InstanceListItem: {
+            id: string;
+            application: components["schemas"]["ApplicationSummary"];
+            purpose: components["schemas"]["InstancePurpose"];
+            status: components["schemas"]["InstanceStatus"];
+            url: string | null;
+            owner: components["schemas"]["InstanceOwner"] | null;
+            task: components["schemas"]["InstanceTask"] | null;
+            latest_release: components["schemas"]["Release"] | null;
+            /** Format: date-time */
+            expires_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+        };
+        InstanceDetail: {
+            id: string;
+            application: components["schemas"]["ApplicationSummary"];
+            repository: components["schemas"]["RepositoryRef"];
+            purpose: components["schemas"]["InstancePurpose"];
+            status: components["schemas"]["InstanceStatus"];
+            url: string | null;
+            owner: components["schemas"]["InstanceOwner"] | null;
+            task: components["schemas"]["InstanceTask"] | null;
+            latest_release: components["schemas"]["Release"] | null;
+            /** Format: date-time */
+            expires_at: string | null;
+            /** Format: date-time */
+            created_at: string;
+            releases: components["schemas"]["Release"][];
+        };
+        InstanceList: {
+            items: components["schemas"]["InstanceListItem"][];
+            total: number;
+        };
+        InstanceSpinUp: {
+            /** Format: uuid */
+            application_id: string;
+            purpose: components["schemas"]["InstancePurpose"];
+            /** @description Defaults to the repository's default branch. */
+            ref?: string;
+            /** @description Defaults to 72. A persistent instance never expires whatever this says. */
+            expires_in_hours?: components["schemas"]["InstanceExpiryHours"] | null;
+        };
+        InstanceExpiryExtend: {
+            hours: components["schemas"]["InstanceExpiryHours"];
+        };
         TaskListQuery: {
             status?: components["schemas"]["CoarseStatus"];
             application_id?: string;
@@ -4412,470 +2540,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    applyApplicationInstanceByName: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApplicationInstance"];
-            };
-        };
-        responses: {
-            /** @description ApplicationInstance updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstance"];
-                };
-            };
-            /** @description ApplicationInstance created successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstance"];
-                };
-            };
-            /** @description Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    applyApplicationInstance: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApplicationInstance"];
-            };
-        };
-        responses: {
-            /** @description ApplicationInstance updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstance"];
-                };
-            };
-            /** @description Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    createApplicationInstanceResource: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApplicationInstanceResource"];
-            };
-        };
-        responses: {
-            /** @description ApplicationInstance resource created successfully */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstanceResource"];
-                };
-            };
-            /** @description Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ApplicationInstance not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ApplicationInstance resource already exists */
-            409: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    updateApplicationInstanceResource: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-                /** @description The name of the instance resource */
-                resource_name: components["parameters"]["resource_name"];
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ApplicationInstanceResource"];
-            };
-        };
-        responses: {
-            /** @description ApplicationInstance resource updated successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApplicationInstanceResource"];
-                };
-            };
-            /** @description Invalid request data. `details` carries a `ValidationErrorDetail` payload when the failure is an aggregated field validation error. */
-            400: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ApplicationInstance or resource not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    deleteApplicationInstanceResource: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-                /** @description The name of the instance resource */
-                resource_name: components["parameters"]["resource_name"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description ApplicationInstance resource deleted successfully */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Unauthorized */
-            401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description ApplicationInstance or resource not found */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Internal server error */
-            500: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Error"];
-                };
-            };
-        };
-    };
-    listReleases: {
-        parameters: {
-            query?: {
-                /** @description Filter by release state */
-                state?: components["schemas"]["ReleaseState"];
-                /** @description Page number */
-                page?: number;
-                /** @description Number of items per page */
-                page_size?: number;
-            };
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description List of releases */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseList"];
-                };
-            };
-        };
-    };
-    createRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-            };
-            cookie?: never;
-        };
-        requestBody?: {
-            content: {
-                "application/json": components["schemas"]["CreateReleaseRequest"];
-            };
-        };
-        responses: {
-            /** @description Release created */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["Release"];
-                };
-            };
-        };
-    };
-    getRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-                release_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Release details */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseDetail"];
-                };
-            };
-        };
-    };
-    cancelRelease: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-                release_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Release cancelled */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    listReleaseEvents: {
-        parameters: {
-            query?: {
-                after_sequence?: number;
-                limit?: number;
-            };
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-                release_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Release events ordered by sequence */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ReleaseEventList"];
-                };
-            };
-        };
-    };
-    streamReleaseEvents: {
-        parameters: {
-            query?: {
-                after_sequence?: number;
-            };
-            header?: never;
-            path: {
-                /** @description The ID of the organization */
-                org_id: components["parameters"]["org_id"];
-                /** @description The id of record */
-                id: components["parameters"]["id"];
-                release_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Stream of release events via Server-Sent Events (SSE). Each SSE frame's id is the event sequence; data is a ReleaseEvent JSON object. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "text/event-stream": string;
-                };
-            };
-        };
-    };
     listTasks: {
         parameters: {
             query?: {
@@ -6219,18 +3883,12 @@ export interface operations {
                     "application/json": components["schemas"]["Error"];
                 };
             };
-            /** @description A task of the application has not finished */
+            /** @description A task of the application has not finished, or one of its instances is not torn down */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    /**
-                     * @example {
-                     *       "code": "application_has_active_tasks",
-                     *       "message": "Cancel or finish the application's running tasks first"
-                     *     }
-                     */
                     "application/json": components["schemas"]["Error"];
                 };
             };
@@ -6402,62 +4060,445 @@ export interface operations {
             };
         };
     };
+    listInstances: {
+        parameters: {
+            query?: {
+                /** @description Only the instances of this application; an id outside the organization answers an empty list */
+                application_id?: string;
+                /** @description Torn down instances are left out unless this is true */
+                include_torn_down?: boolean;
+            };
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Instances fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    spinUpInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstanceSpinUp"];
+            };
+        };
+        responses: {
+            /** @description Instance created in provisioning with a queued first release */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description The body is invalid, or the purpose is task */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "code": "purpose_reserved",
+                     *       "message": "Tasks create their own instances"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The application is not one of the organization's, or the ref does not resolve */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The application's Stackfile has never synced or failed validation, so there is nothing to run */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "code": "application_not_synced",
+                     *       "message": "Sync the application's Stackfile before spinning up an instance"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    getInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                instance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Instance fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Instance not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    listInstanceReleases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                instance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Releases fetched successfully */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReleaseList"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Instance not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    createRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                instance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReleaseCreate"];
+            };
+        };
+        responses: {
+            /** @description Release queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Release"];
+                };
+            };
+            /** @description The body is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Instance not found, or the ref does not resolve */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    /**
+                     * @example {
+                     *       "code": "unknown_ref",
+                     *       "message": "The repository has no branch or tag with this name"
+                     *     }
+                     */
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description A release is still queued or building, or the instance has expired or been torn down */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    teardownInstance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                instance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Instance torn down */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Instance not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    extendInstanceExpiry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description The ID of the organization */
+                org_id: components["parameters"]["org_id"];
+                instance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstanceExpiryExtend"];
+            };
+        };
+        responses: {
+            /** @description Expiry moved */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceDetail"];
+                };
+            };
+            /** @description The body is invalid */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Auth token is invalid */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Unauthorized to perform operation */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description Instance not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description The instance is persistent, or has expired or been torn down */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
 }
 export enum UserRole {
     OrgAdmin = "OrgAdmin",
     OrgMember = "OrgMember"
-}
-export enum OutputDescriptorType {
-    string = "string",
-    integer = "integer",
-    boolean = "boolean"
-}
-export enum TopologyEdgeKind {
-    env = "env",
-    volume_mount = "volume_mount",
-    build_artifact_source = "build_artifact_source",
-    depends_on = "depends_on"
-}
-export enum TopologyEdgeSource_of_truth {
-    connection = "connection",
-    derived = "derived"
-}
-export enum TopologyNodeRefType {
-    stack_resource = "stack_resource",
-    addon_postgres = "addon/postgres",
-    secret = "secret",
-    volume = "volume",
-    object_store = "object_store"
-}
-export enum ConnectionTargetType {
-    env = "env",
-    file = "file"
-}
-export enum PostgresEnvConfigCredential_scope {
-    owner = "owner",
-    superuser = "superuser"
-}
-export enum ContainerFailureDetailFailure_type {
-    crash_loop = "crash_loop",
-    out_of_memory = "out_of_memory",
-    image_pull_failed = "image_pull_failed",
-    create_container_error = "create_container_error",
-    exit_error = "exit_error",
-    port_not_listening = "port_not_listening"
-}
-export enum BuildFailureDetailFailure_type {
-    crash_loop = "crash_loop",
-    out_of_memory = "out_of_memory",
-    image_pull_failed = "image_pull_failed",
-    create_container_error = "create_container_error",
-    exit_error = "exit_error",
-    port_not_listening = "port_not_listening"
-}
-export enum VolumeMountSourceType {
-    EmptyVolume = "EmptyVolume",
-    RemoteDirSyncedVolume = "RemoteDirSyncedVolume",
-    BuildArtifactSyncedVolume = "BuildArtifactSyncedVolume",
-    GitRepoSyncedVolume = "GitRepoSyncedVolume"
 }
 export enum InviteStatus {
     INVITE_PENDING = "pending",
@@ -6472,119 +4513,6 @@ export enum OrgInviteRole {
 export enum OrgInviteCreateRequestRole {
     Developer = "Developer",
     Viewer = "Viewer"
-}
-export enum ReleaseHealth {
-    RELEASE_HEALTH_OK = "ok",
-    RELEASE_HEALTH_PROGRESSING = "progressing",
-    RELEASE_HEALTH_DEGRADED = "degraded",
-    RELEASE_HEALTH_UNAVAILABLE = "unavailable",
-    RELEASE_HEALTH_FAILED = "failed"
-}
-export enum ReleaseCauseKind {
-    RELEASE_CAUSE_MANUAL = "manual",
-    RELEASE_CAUSE_ROLLBACK = "rollback",
-    RELEASE_CAUSE_WEBHOOK_PUSH = "webhook_push",
-    RELEASE_CAUSE_PREVIEW_SYNC = "preview_sync"
-}
-export enum ReleaseEventSource {
-    hub = "hub",
-    cluster = "cluster"
-}
-export enum ReleaseEventScope {
-    release = "release",
-    resource = "resource"
-}
-export enum ReleaseEventLevel {
-    info = "info",
-    success = "success",
-    warning = "warning",
-    error = "error"
-}
-export enum ReleaseValidationErrorCode {
-    resource_name_required = "resource_name_required",
-    resource_name_invalid = "resource_name_invalid",
-    resource_name_duplicate = "resource_name_duplicate",
-    source_required = "source_required",
-    source_conflict = "source_conflict",
-    workload_type_invalid = "workload_type_invalid",
-    schedule_required = "schedule_required",
-    schedule_not_allowed = "schedule_not_allowed",
-    schedule_invalid = "schedule_invalid",
-    replicas_invalid = "replicas_invalid",
-    ports_not_allowed = "ports_not_allowed",
-    public_port_not_http = "public_port_not_http",
-    port_protocol_invalid = "port_protocol_invalid",
-    port_name_invalid = "port_name_invalid",
-    port_number_invalid = "port_number_invalid",
-    port_name_duplicate = "port_name_duplicate",
-    port_number_duplicate = "port_number_duplicate",
-    subdomain_duplicate = "subdomain_duplicate",
-    domain_not_configured = "domain_not_configured",
-    env_name_required = "env_name_required",
-    env_name_duplicate = "env_name_duplicate",
-    env_value_missing = "env_value_missing",
-    env_value_conflict = "env_value_conflict",
-    env_self_output_unknown = "env_self_output_unknown",
-    volume_mount_invalid = "volume_mount_invalid",
-    volume_not_found = "volume_not_found",
-    volume_hash_missing = "volume_hash_missing",
-    secret_not_found = "secret_not_found",
-    git_integration_not_found = "git_integration_not_found",
-    registry_credential_not_found = "registry_credential_not_found",
-    self_dependency = "self_dependency",
-    duplicate_dependency = "duplicate_dependency",
-    unknown_dependency = "unknown_dependency",
-    dependency_cycle = "dependency_cycle",
-    git_repo_url_required = "git_repo_url_required",
-    git_branch_tag_conflict = "git_branch_tag_conflict",
-    git_commit_invalid = "git_commit_invalid",
-    git_commit_requires_ref = "git_commit_requires_ref",
-    image_ref_required = "image_ref_required",
-    image_ref_invalid = "image_ref_invalid",
-    push_target_required = "push_target_required",
-    push_target_conflict = "push_target_conflict",
-    push_ref_invalid = "push_ref_invalid",
-    git_repo_unreachable = "git_repo_unreachable",
-    git_auth_failed = "git_auth_failed",
-    git_branch_not_found = "git_branch_not_found",
-    git_tag_not_found = "git_tag_not_found",
-    git_rate_limited = "git_rate_limited",
-    image_not_found = "image_not_found",
-    registry_credentials_required = "registry_credentials_required",
-    registry_auth_failed = "registry_auth_failed",
-    push_access_denied = "push_access_denied",
-    stack_name_invalid = "stack_name_invalid",
-    stack_settings_invalid = "stack_settings_invalid",
-    connection_invalid = "connection_invalid"
-}
-export enum ApplicationInstanceResourceWorkload_type {
-    Service = "Service",
-    StatefulService = "StatefulService",
-    Worker = "Worker",
-    Job = "Job",
-    CronJob = "CronJob"
-}
-export enum ApplicationInstanceConnectionKind {
-    env = "env",
-    volume_mount = "volume_mount",
-    build_artifact_source = "build_artifact_source"
-}
-export enum ApplicationInstanceResourceFailureType {
-    runtime_crash = "runtime_crash",
-    build_failure = "build_failure",
-    readiness_failure = "readiness_failure"
-}
-export enum ReleaseState {
-    RELEASE_STATE_PENDING = "Pending",
-    RELEASE_STATE_IN_PROGRESS = "InProgress",
-    RELEASE_STATE_RELEASED = "Released",
-    RELEASE_STATE_FAILED = "Failed",
-    RELEASE_STATE_SUPERSEDED = "Superseded",
-    RELEASE_STATE_CANCELLED = "Cancelled"
-}
-export enum InstanceLifecycle {
-    STACK_LIFECYCLE_ACTIVE = "active",
-    STACK_LIFECYCLE_DELETING = "deleting"
 }
 export enum RepoProvider {
     Github = "github",
@@ -6726,4 +4654,9 @@ export enum StackfileSync {
 export enum ServiceKind {
     Source = "source",
     Image = "image"
+}
+export enum InstanceExpiryHours {
+    Day = 24,
+    ThreeDays = 72,
+    Week = 168
 }

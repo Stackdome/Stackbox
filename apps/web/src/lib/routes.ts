@@ -6,6 +6,7 @@ export const ROUTES = {
   newApplication: '/applications/new',
   application: '/applications/:applicationId',
   instances: '/instances',
+  instance: '/instances/:instanceId',
   repositories: '/repositories',
   settings: '/settings',
 } as const
@@ -18,4 +19,8 @@ export function taskPath(taskId: string): string {
 
 export function applicationPath(applicationId: string): string {
   return ROUTES.application.replace(':applicationId', applicationId)
+}
+
+export function instancePath(instanceId: string): string {
+  return ROUTES.instance.replace(':instanceId', instanceId)
 }

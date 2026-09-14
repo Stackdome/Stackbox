@@ -1,13 +1,16 @@
 import { StackfileSync } from "@stackbox/contract";
 import type { ApplicationDetailView } from "@/api/mappers/application";
+import type { InstanceView } from "@/api/mappers/instance";
 import type { Task } from "@/api/mappers/task";
 import { TaskRow } from "@/components/tasks/task-row";
+import { LiveInstances } from "./live-instances";
 import { ServiceStrip } from "./service-strip";
 import { StackfileCard } from "./stackfile-card";
 
 export function OverviewTab({
   detail,
   tasks,
+  instances,
   syncing,
   onSync,
   onOpenTask,
@@ -15,6 +18,7 @@ export function OverviewTab({
 }: {
   detail: ApplicationDetailView;
   tasks: Task[];
+  instances: InstanceView[];
   syncing: boolean;
   onSync: () => Promise<void>;
   onOpenTask: (task: Task) => void;
@@ -35,6 +39,7 @@ export function OverviewTab({
             tasks.map((task) => <TaskRow key={task.id} task={task} onOpen={onOpenTask} onCancel={onCancelTask} />)
           )}
         </section>
+        <LiveInstances instances={instances} />
         <StackfileCard detail={detail} syncing={syncing} onSync={onSync} />
       </div>
     </div>

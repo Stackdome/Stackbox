@@ -52,6 +52,11 @@ describe('AccessGuard', () => {
     ])
 
     expect(outcomes.map((outcome) => outcome.status === 'rejected' && outcome.reason instanceof NotFoundException)).toEqual([true, true, true])
+    expect(outcomes.map((outcome) => outcome.status === 'rejected' && outcome.reason instanceof NotFoundException && outcome.reason.getResponse())).toEqual([
+      { code: 'unknown_application', message: 'application not found' },
+      { code: 'unknown_application', message: 'application not found' },
+      { code: 'unknown_application', message: 'application not found' },
+    ])
   })
 
   it('lets the admin create a task on an application of the organization', async () => {

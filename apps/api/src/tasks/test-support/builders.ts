@@ -255,6 +255,7 @@ export function aTaskListRow(overrides: { task?: Partial<Task> } & Partial<Omit<
     runNumber: 1,
     blockingQuestion: null,
     pullRequest: null,
+    instance: null,
     ...rest,
   }
 }

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { ConnectionStatus, RepoProvider } from '@stackbox/contract'
+import { CoarseStatus, ConnectionStatus, InstanceExpiryHours, InstancePurpose, InstanceStatus, RepoProvider, ReleaseStatus, type components } from '@stackbox/contract'
 import { setupServer } from 'msw/node'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { ORG_ID } from '../../../.storybook/fixtures'
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { INSTANCE_IDS, makeApplicationDetail, makeInstanceDetail, ORG_ID, PREVIEW_CATALOG_SEED, TASK_SUMMARIES } from '../../../.storybook/fixtures'
 import { buildCatalog, PreviewCatalog, type CatalogSeed } from './catalog'
 import { PreviewTaskBook } from './task-detail'
 import { taskHandlers } from './tasks'
@@ -52,6 +52,46 @@ describe('the preview catalog and task handlers sharing one task book', () => {
     const disconnect = await fetch(`/api/v1/organizations/${ORG_ID}/applications/${created.id}`, { method: 'DELETE' })
 
     expect(disconnect.status).toBe(409)
+  })
+})
+
+describe('the preview catalog disconnecting an application with instances', () => {
+  const APPLICATION_ID = 'app-widgets'
+
+  const seedWith = (status: InstanceStatus): CatalogSeed => ({
+    connections: [],
+    repositories: [],
+    catalogue: {},
+    applications: [makeApplicationDetail({ id: APPLICATION_ID, name: 'widgets', slug: 'widgets' })],
+    tasks: [],
+    instances: [makeInstanceDetail({ id: 'instance-widgets-1', application: { id: APPLICATION_ID, name: 'widgets' }, status })],
+  })
+
+  it('refuses a running instance with the live-instances code', async () => {
+    const { catalog, handlers } = buildCatalog(seedWith(InstanceStatus.Ready), { delayMs: 0 })
+    const server = setupServer(...handlers)
+    server.listen({ onUnhandledRequest: 'error' })
+
+    const disconnect = await fetch(`/api/v1/organizations/${ORG_ID}/applications/${APPLICATION_ID}`, { method: 'DELETE' })
+    const body = await disconnect.json()
+    server.close()
+
+    expect([disconnect.status, body, catalog.hasLiveInstances(APPLICATION_ID)]).toEqual([
+      409,
+      { code: 'application_has_live_instances', message: "Tear down this application's instances first" },
+      true,
+    ])
+  })
+
+  it('succeeds when the only instance is expired and leaves no orphan instance', async () => {
+    const { catalog, handlers } = buildCatalog(seedWith(InstanceStatus.Expired), { delayMs: 0 })
+    const server = setupServer(...handlers)
+    server.listen({ onUnhandledRequest: 'error' })
+
+    const disconnect = await fetch(`/api/v1/organizations/${ORG_ID}/applications/${APPLICATION_ID}`, { method: 'DELETE' })
+    server.close()
+
+    expect([disconnect.status, catalog.instances({ applicationId: null, includeTornDown: true })]).toEqual([204, []])
   })
 })
 
@@ -132,5 +172,133 @@ describe('the preview catalog against a blocked sessionStorage', () => {
     } finally {
       Object.defineProperty(window, 'sessionStorage', { value: original, configurable: true })
     }
+  })
+})
+
+describe('the preview catalog walking instances and releases', () => {
+  const OWNER = { id: 'u1', name: 'Ada Lovelace' }
+
+  function detailOf(result: object | null): components['schemas']['InstanceDetail'] {
+    if (result === null || 'body' in result) throw new Error(`expected an instance, got ${JSON.stringify(result)}`)
+    return result as components['schemas']['InstanceDetail']
+  }
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('walks a spun up instance to ready once its first release goes live', () => {
+    vi.useFakeTimers()
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+    const created = detailOf(catalog.spinUp({ application_id: 'app-shop', purpose: InstancePurpose.Scratch, expires_in_hours: InstanceExpiryHours.Day }, OWNER))
+
+    vi.advanceTimersByTime(1_000)
+    const building = catalog.instance(created.id)?.releases[0].status
+    vi.advanceTimersByTime(2_000)
+    const walked = catalog.instance(created.id)
+
+    expect([created.status, building, walked?.releases[0].status, walked?.status]).toEqual([
+      InstanceStatus.Provisioning,
+      ReleaseStatus.Building,
+      ReleaseStatus.Live,
+      InstanceStatus.Ready,
+    ])
+  })
+
+  it('prepends a queued release on Deploy and refuses a second while it is in flight', () => {
+    vi.useFakeTimers()
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    const first = catalog.deploy(INSTANCE_IDS.persistent, {})
+    const second = catalog.deploy(INSTANCE_IDS.persistent, {})
+
+    expect([catalog.instance(INSTANCE_IDS.persistent)?.releases.map((release) => release.status), second]).toEqual([
+      [ReleaseStatus.Queued, ReleaseStatus.Live, ReleaseStatus.Live],
+      { status: 409, body: { code: 'release_in_flight', message: 'Wait for the release in flight to finish first' } },
+    ])
+    expect(first).not.toBeNull()
+    catalog.dispose()
+  })
+
+  it('refuses spinning up an application whose Stackfile failed validation', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    expect(catalog.spinUp({ application_id: 'app-ledger', purpose: InstancePurpose.Scratch }, OWNER)).toEqual({
+      status: 409,
+      body: { code: 'application_not_synced', message: "Sync the application's Stackfile before spinning up an instance" },
+    })
+  })
+
+  it('tears an instance down, refuses to extend it afterwards and never extends a persistent one', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    const tornDown = detailOf(catalog.teardown(INSTANCE_IDS.scratch))
+
+    expect([tornDown.status, catalog.extendExpiry(INSTANCE_IDS.scratch, InstanceExpiryHours.Day), catalog.extendExpiry(INSTANCE_IDS.persistent, InstanceExpiryHours.Day)]).toEqual([
+      InstanceStatus.TornDown,
+      { status: 409, body: { code: 'instance_not_running', message: 'This instance has expired or been torn down' } },
+      { status: 409, body: { code: 'instance_has_no_expiry', message: 'A persistent instance never expires' } },
+    ])
+  })
+
+  it('never shortens the expiry: extending an instance with 30h left by 24h leaves the later date in place', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+    const before = catalog.instance(INSTANCE_IDS.degraded)?.expires_at
+
+    const extended = detailOf(catalog.extendExpiry(INSTANCE_IDS.degraded, InstanceExpiryHours.Day))
+
+    expect(extended.expires_at).toBe(before)
+  })
+
+  it('leaves torn down instances out of the list unless asked, newest first', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    const hidden = catalog.instances({ applicationId: null, includeTornDown: false })
+    const shown = catalog.instances({ applicationId: null, includeTornDown: true })
+
+    expect([hidden.length, shown.length, hidden[0].id]).toEqual([7, 8, INSTANCE_IDS.taskProvisioning])
+  })
+
+  it('stops every pending walk once disposed', () => {
+    vi.useFakeTimers()
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+    catalog.deploy(INSTANCE_IDS.persistent, {})
+
+    catalog.dispose()
+    vi.advanceTimersByTime(3_000)
+
+    expect(catalog.instance(INSTANCE_IDS.persistent)?.releases[0].status).toBe(ReleaseStatus.Queued)
+  })
+
+  it("reads an instance's task live from the task book, not the seeded snapshot", () => {
+    const taskBook = new PreviewTaskBook(TASK_SUMMARIES, [])
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0, taskBook })
+    const fixture = taskBook.find('task-4')
+    if (!fixture) throw new Error('expected task-4 to be seeded')
+    taskBook.replace({ ...fixture, detail: { ...fixture.detail, coarse_status: CoarseStatus.ReadyForReview } })
+
+    expect(catalog.instance(INSTANCE_IDS.taskProvisioning)?.task).toEqual({
+      id: 'task-4',
+      description: 'Discount code is ignored in the cart total',
+      coarse_status: CoarseStatus.ReadyForReview,
+    })
+  })
+
+  it('refuses spinning up an instance on a ref the repository does not have', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    expect(catalog.spinUp({ application_id: 'app-shop', purpose: InstancePurpose.Scratch, ref: 'feature/unknown' }, OWNER)).toEqual({
+      status: 404,
+      body: { code: 'unknown_ref', message: 'The repository has no branch or tag with this name' },
+    })
+  })
+
+  it('refuses deploying a release on a ref the repository does not have', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    expect(catalog.deploy(INSTANCE_IDS.persistent, { ref: 'feature/unknown' })).toEqual({
+      status: 404,
+      body: { code: 'unknown_ref', message: 'The repository has no branch or tag with this name' },
+    })
   })
 })

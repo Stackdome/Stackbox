@@ -51,7 +51,7 @@ export const EveryStackState: Story = {
 export const MachineCasingIsHumanised: Story = {
   render: () => (
     <div className="flex flex-col gap-1">
-      <StatusText domain="release" state="InProgress" />
+      <StatusText domain="generic" state="InProgress" />
       <StatusText domain="generic" state="image_pull_failed" />
       <StatusText domain="generic" state="crashloopbackoff" />
     </div>

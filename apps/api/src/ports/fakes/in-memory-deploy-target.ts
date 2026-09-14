@@ -2,12 +2,12 @@ import { ReleaseStatus } from '@stackbox/contract'
 import type { DeployTarget } from '../ports'
 import type { InstanceRef, ReleaseRef } from '../types'
 
-type FakeInstance = { applicationId: string; tornDown: boolean }
-type FakeRelease = { instanceId: string; commitSha: string; status: ReleaseStatus }
+export type FakeInstance = { applicationId: string; tornDown: boolean }
+export type FakeRelease = { instanceId: string; commitSha: string; status: ReleaseStatus }
 
 export class InMemoryDeployTarget implements DeployTarget {
-  private readonly instances = new Map<string, FakeInstance>()
-  private readonly releases = new Map<string, FakeRelease>()
+  protected readonly instances = new Map<string, FakeInstance>()
+  protected readonly releases = new Map<string, FakeRelease>()
   private settledStatus: ReleaseStatus = ReleaseStatus.Queued
 
   settleReleasesAs(status: ReleaseStatus): void {
@@ -33,7 +33,7 @@ export class InMemoryDeployTarget implements DeployTarget {
   }
 
   async deployRelease(ref: InstanceRef, spec: Parameters<DeployTarget['deployRelease']>[1]): Promise<ReleaseRef> {
-    this.instance(ref)
+    if (this.instance(ref).tornDown) throw new Error(`instance ${ref.id} is torn down`)
     const id = this.newReleaseId(this.releases.size + 1)
     this.releases.set(id, { instanceId: ref.id, commitSha: spec.commitSha, status: this.settledStatus })
     return { id }
@@ -48,7 +48,9 @@ export class InMemoryDeployTarget implements DeployTarget {
   }
 
   async releaseStatus(ref: ReleaseRef): Promise<{ status: ReleaseStatus }> {
-    return { status: this.release(ref).status }
+    const found = this.release(ref)
+    if (this.instance({ id: found.instanceId }).tornDown) return { status: ReleaseStatus.Failed }
+    return { status: found.status }
   }
 
   async instanceUrl(ref: InstanceRef): Promise<string> {

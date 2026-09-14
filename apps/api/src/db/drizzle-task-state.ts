@@ -1,6 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { InstancePurpose, type TaskPhase } from '@stackbox/contract'
-import { and, asc, eq, inArray, isNull, lte, or } from 'drizzle-orm'
+import { InstancePurpose, InstanceStatus, ReleaseStatus, type TaskPhase } from '@stackbox/contract'
+import { and, asc, eq, inArray, isNull, lte, or, sql } from 'drizzle-orm'
+import { DEFAULT_EXPIRY_HOURS } from '../instances/calc/expiry'
 import type { Lease } from '../reconciler/calc/lease'
 import { type ExecutionPatch, PhaseConflict, type TaskSnapshot, type TaskState } from '../reconciler/task-state'
 import type { Artifact, Execution, PullRequest, Release, Run, Sandbox, Task, TaskCheck, TaskEvent } from '../tasks/types'
@@ -91,7 +92,14 @@ export class DrizzleTaskState implements TaskState {
         // onConflictDoNothing: a row the instances module already owns must not be overwritten here.
         await tx
           .insert(applicationInstance)
-          .values({ id: next.instanceId, applicationId: next.applicationId, purpose: InstancePurpose.Task, taskId: next.id })
+          .values({
+            id: next.instanceId,
+            applicationId: next.applicationId,
+            purpose: InstancePurpose.Task,
+            taskId: next.id,
+            // now() is the transaction's start, the same instant created_at defaults to.
+            expiresAt: sql`now() + ${`${DEFAULT_EXPIRY_HOURS} hours`}::interval`,
+          })
           .onConflictDoNothing({ target: applicationInstance.id })
       }
       const saved = await tx
@@ -123,7 +131,19 @@ export class DrizzleTaskState implements TaskState {
   }
 
   async saveRelease(next: Release): Promise<void> {
-    await this.db.insert(release).values(next).onConflictDoUpdate({ target: release.id, set: { status: next.status } })
+    // Forward-only: the sweep may have already advanced this release past what the reconciler observed.
+    await this.db
+      .insert(release)
+      .values(next)
+      .onConflictDoUpdate({
+        target: release.id,
+        set: { status: next.status },
+        where: inArray(release.status, [ReleaseStatus.Queued, ReleaseStatus.Building]),
+      })
+  }
+
+  async markInstanceTornDown(instanceId: string): Promise<void> {
+    await this.db.update(applicationInstance).set({ status: InstanceStatus.TornDown }).where(eq(applicationInstance.id, instanceId))
   }
 
   async saveSandbox(next: Sandbox): Promise<void> {
