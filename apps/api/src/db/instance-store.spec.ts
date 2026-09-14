@@ -118,6 +118,14 @@ describe('InstanceStore', () => {
     expect((await instances.live()).map((record) => record.id).sort()).toEqual([IDS.instance, IDS.otherInstance].sort())
   })
 
+  it('never moves a torn down instance back to ready', async () => {
+    await insertInstance(db, { id: IDS.instance, applicationId: IDS.application, status: InstanceStatus.TornDown })
+
+    await instances.setStatus(IDS.instance, InstanceStatus.Ready, InstanceStatus.Provisioning)
+
+    expect((await instances.find(IDS.org, IDS.instance))?.status).toBe(InstanceStatus.TornDown)
+  })
+
   it('inserts an instance with the vendor id, its creator and its expiry', async () => {
     await instances.insert({ id: IDS.instance, applicationId: IDS.application, purpose: InstancePurpose.Preview, createdBy: IDS.user, url: 'https://a.instances.test', expiresAt: TOMORROW })
 

@@ -35,8 +35,11 @@ export class InstanceStore {
     await this.db.insert(applicationInstance).values(row)
   }
 
-  async setStatus(instanceId: string, status: InstanceStatus): Promise<void> {
-    await this.db.update(applicationInstance).set({ status }).where(eq(applicationInstance.id, instanceId))
+  async setStatus(instanceId: string, status: InstanceStatus, from?: InstanceStatus): Promise<void> {
+    await this.db
+      .update(applicationInstance)
+      .set({ status })
+      .where(and(eq(applicationInstance.id, instanceId), ne(applicationInstance.status, InstanceStatus.TornDown), from === undefined ? undefined : eq(applicationInstance.status, from)))
   }
 
   async setUrl(instanceId: string, url: string): Promise<void> {

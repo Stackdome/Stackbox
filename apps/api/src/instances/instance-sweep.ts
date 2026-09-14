@@ -36,7 +36,7 @@ export class InstanceSweep implements OnApplicationBootstrap, OnModuleDestroy {
     clearInterval(this.timer)
   }
 
-  // ponytail: no lease, so two replicas poll the same rows; every write here is idempotent and forward-only. Add a lease when a second replica exists.
+  // ponytail: no lease, so two replicas poll the same rows; InstanceStore.setStatus guards each write with the status it was read at, so a stale read never overwrites torn_down. Add a lease when a second replica exists.
   async tick(): Promise<void> {
     if (this.running) return
     this.running = true
@@ -61,7 +61,7 @@ export class InstanceSweep implements OnApplicationBootstrap, OnModuleDestroy {
     const next = nextStatus({ status: instance.status, expiresAt: instance.expiresAt, latestRelease: instance.releases[0] ?? null, now })
     if (next !== instance.status) {
       if (next === InstanceStatus.Expired) await this.deploy.teardown({ id: instance.id })
-      await this.instances.setStatus(instance.id, next)
+      await this.instances.setStatus(instance.id, next, instance.status)
     }
     if (instance.url === null) {
       await this.instances.setUrl(instance.id, await this.deploy.instanceUrl({ id: instance.id }))
