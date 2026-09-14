@@ -14,10 +14,10 @@ describe('the new task drawer reducer', () => {
     expect(failed.upload).toEqual({ status: 'failed', message: 'The screenshot did not upload. Try again.' })
   })
 
-  it('resets to the initial state once a submit succeeds', () => {
+  it('resets to the initial state but keeps the locked application once a submit succeeds', () => {
     const filled = drawerReducer(initialDrawerState('app-shop'), { type: 'field changed', patch: { description: 'The cart badge shows zero.' } })
     const submitting = drawerReducer(filled, { type: 'submit started' })
-    expect(drawerReducer(submitting, { type: 'submit succeeded' })).toEqual(initialDrawerState())
+    expect(drawerReducer(submitting, { type: 'submit succeeded' })).toEqual(initialDrawerState('app-shop'))
   })
 
   it('marks the description field error once submit is attempted with it empty', () => {

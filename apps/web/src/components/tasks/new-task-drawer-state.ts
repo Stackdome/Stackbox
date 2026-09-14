@@ -17,6 +17,7 @@ export type DrawerState = {
   draft: NewTaskDraft
   upload: UploadState
   submit: SubmitState
+  lockedApplicationId?: string
 }
 
 export type DrawerAction =
@@ -35,6 +36,7 @@ export function initialDrawerState(lockedApplicationId?: string, initialDraft?: 
     draft: { ...emptyDraft(lockedApplicationId), ...initialDraft },
     upload: { status: 'idle' },
     submit: { status: 'idle' },
+    lockedApplicationId,
   }
 }
 
@@ -55,7 +57,7 @@ export function drawerReducer(state: DrawerState, action: DrawerAction): DrawerS
     case 'submit started':
       return { ...state, submit: { status: 'submitting' } }
     case 'submit succeeded':
-      return initialDrawerState()
+      return initialDrawerState(state.lockedApplicationId)
     case 'submit failed':
       return { ...state, submit: { status: 'failed', message: action.message } }
   }
