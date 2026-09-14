@@ -3,6 +3,7 @@ import { ArtifactKind, TaskKind, schemas, type components } from '@stackbox/cont
 import { z } from 'zod'
 import type { AuthUser } from '../access'
 import { ArtifactStore, ScreenshotNotFound, TaskStore, UserStore } from '../db'
+import { imageTypeOf } from './calc/image-type'
 import { type TaskListFilter, countNeedsYou, matchesFilter, orderForList } from './calc/task-list'
 import { timelineOf } from './calc/timeline'
 import { DEFAULT_RUN_LIMIT, UNSUPPORTED_TASK_KIND } from './errors'
@@ -111,13 +112,14 @@ export class TaskService {
   }
 
   async uploadScreenshot(orgId: string, file: UploadedImage | undefined): Promise<ArtifactView> {
-    if (!file || !file.mimetype.startsWith('image/')) {
-      throw new BadRequestException({ message: 'attach one image file' })
+    const mime = file && imageTypeOf(file.buffer)
+    if (!file || !mime) {
+      throw new BadRequestException({ code: 'unsupported_image', message: 'Screenshots must be a PNG, JPEG, GIF or WebP image' })
     }
     const stored = await this.artifactStore.createUnattached(orgId, {
       kind: ArtifactKind.Screenshot,
-      url: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`,
-      meta: { name: file.originalname, size: file.size, mime: file.mimetype },
+      url: `data:${mime};base64,${file.buffer.toString('base64')}`,
+      meta: { name: file.originalname, size: file.size, mime },
     })
     return presentArtifact(stored)
   }

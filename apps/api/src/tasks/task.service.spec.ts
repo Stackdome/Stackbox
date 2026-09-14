@@ -88,18 +88,21 @@ describe('TaskService', () => {
     })
   })
 
-  it('attaches an uploaded screenshot to the report of the new task', async () => {
+  it('attaches an uploaded screenshot to the report of the new task, typed from its bytes not the client mime', async () => {
     const { admin, shopId } = await theAdminAndShop()
-    const image = await service.uploadScreenshot(orgId, { buffer: Buffer.from('png'), mimetype: 'image/png', size: 3, originalname: 'cart.png' })
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47])
+    const image = await service.uploadScreenshot(orgId, { buffer: png, mimetype: 'application/octet-stream', size: png.length, originalname: 'cart.png' })
 
     const created = await service.create(orgId, admin, { application_id: shopId, description: 'The cart badge shows zero.', screenshot_artifact_id: image.id })
 
-    expect(created.report?.screenshots.map((shot) => [shot.id, shot.kind, shot.url])).toEqual([[image.id, ArtifactKind.Screenshot, 'data:image/png;base64,cG5n']])
+    expect(created.report?.screenshots.map((shot) => [shot.id, shot.kind, shot.url])).toEqual([
+      [image.id, ArtifactKind.Screenshot, `data:image/png;base64,${png.toString('base64')}`],
+    ])
   })
 
-  it('refuses an upload that is not an image', async () => {
+  it('refuses an upload whose bytes are not a real image, whatever mime type the client claims', async () => {
     await expect(
-      service.uploadScreenshot(orgId, { buffer: Buffer.from('%PDF'), mimetype: 'application/pdf', size: 4, originalname: 'report.pdf' }),
+      service.uploadScreenshot(orgId, { buffer: Buffer.from('%PDF'), mimetype: 'image/png', size: 4, originalname: 'report.pdf' }),
     ).rejects.toBeInstanceOf(BadRequestException)
   })
 
