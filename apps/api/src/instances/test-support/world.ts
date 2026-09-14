@@ -1,6 +1,8 @@
-import { InstanceStatus, type InstancePurpose } from '@stackbox/contract'
+import { InstanceStatus, UserRole, type InstancePurpose } from '@stackbox/contract'
 import { eq } from 'drizzle-orm'
+import type { AuthUser } from '../../access'
 import { SHOP_LISTED, aShopListing } from '../../applications/test-support/builders'
+import { ApplicationStore } from '../../db/application-store'
 import type { Database } from '../../db/client'
 import { InstanceStore } from '../../db/instance-store'
 import { ReleaseStore } from '../../db/release-store'
@@ -10,8 +12,11 @@ import type { DeployTarget } from '../../ports'
 import { DEFAULT_RELEASE_SCRIPT, InMemoryClock, type ReleaseStep, ScriptedDeployTarget } from '../../ports/fakes'
 import { ReleaseService } from '../../releases/release.service'
 import { LISTED_HEAD_SHA } from '../../repositories/test-support/builders'
+import { InstanceService } from '../instance.service'
 
 export const WORLD_NOW = new Date('2026-09-14T10:00:00Z')
+
+export const ADA: AuthUser = { id: IDS.user, orgId: IDS.org, email: 'ada@example.com', orgRole: UserRole.OrgAdmin }
 
 export async function aSyncedShop(db: Database): Promise<void> {
   await insertOrganization(db, IDS.org)
@@ -37,6 +42,8 @@ export function anInstanceWorld(db: Database, steps: readonly ReleaseStep[] = DE
   const clock = new InMemoryClock(WORLD_NOW)
   const deploy = new ScriptedDeployTarget(clock, steps)
   const git = aShopListing(LISTED_HEAD_SHA)
-  const releases = new ReleaseService(new InstanceStore(db), new ReleaseStore(db), deploy, git)
-  return { clock, deploy, git, releases }
+  const instances = new InstanceStore(db)
+  const releases = new ReleaseService(instances, new ReleaseStore(db), deploy, git)
+  const service = new InstanceService(instances, new ApplicationStore(db), releases, deploy, clock)
+  return { clock, deploy, git, instances, releases, service }
 }
