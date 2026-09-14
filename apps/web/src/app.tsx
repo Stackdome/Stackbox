@@ -3,6 +3,7 @@ import { AppLayout } from '@/components/app-layout'
 import { ApplicationDetailPage } from './pages/applications/application-detail-page'
 import { ApplicationsPage } from './pages/applications/applications-page'
 import { NewApplicationPage } from './pages/applications/new-application-page'
+import { InstancesPage } from './pages/instances/instances-page'
 import { PlaceholderPage } from './pages/placeholder/placeholder-page'
 import { RepositoriesPage } from './pages/repositories/repositories-page'
 import { TaskDetailPage } from './pages/tasks/task-detail-page'
@@ -28,7 +29,7 @@ export function App() {
                 <Route path={ROUTES.applications} element={<ApplicationsPage />} />
                 <Route path={ROUTES.newApplication} element={<NewApplicationPage />} />
                 <Route path={ROUTES.application} element={<ApplicationDetailPage />} />
-                <Route path={ROUTES.instances} element={<PlaceholderPage />} />
+                <Route path={ROUTES.instances} element={<InstancesPage />} />
                 <Route path={ROUTES.repositories} element={<RepositoriesPage />} />
                 <Route path={ROUTES.settings} element={<PlaceholderPage />} />
               </Route>
