@@ -1,10 +1,24 @@
 import { Inject, Injectable } from '@nestjs/common'
-import type { ReleaseStatus } from '@stackbox/contract'
-import { type SQL, desc, eq, inArray } from 'drizzle-orm'
+import { InstanceStatus, type ReleaseStatus } from '@stackbox/contract'
+import { type SQL, and, desc, eq, inArray, notInArray } from 'drizzle-orm'
 import type { NewRelease, ReleaseRecord } from '../instances/types'
 import { IN_FLIGHT } from '../releases/calc/release-progress'
 import { DATABASE_CONNECTION, type Database } from './client'
-import { release, run } from './schema'
+import { applicationInstance, release, run } from './schema'
+
+const SETTLED_INSTANCE_STATUSES = [InstanceStatus.Expired, InstanceStatus.TornDown]
+
+function toReleaseRecord({ release: row, runNumber }: { release: typeof release.$inferSelect; runNumber: number | null }): ReleaseRecord {
+  return {
+    id: row.id,
+    instanceId: row.instanceId,
+    commitSha: row.commitSha,
+    ref: row.ref,
+    status: row.status,
+    runNumber,
+    createdAt: row.createdAt,
+  }
+}
 
 export async function selectReleases(db: Database, where: SQL | undefined): Promise<ReleaseRecord[]> {
   const rows = await db
@@ -13,15 +27,7 @@ export async function selectReleases(db: Database, where: SQL | undefined): Prom
     .leftJoin(run, eq(release.runId, run.id))
     .where(where)
     .orderBy(desc(release.createdAt), desc(release.id))
-  return rows.map(({ release: row, runNumber }) => ({
-    id: row.id,
-    instanceId: row.instanceId,
-    commitSha: row.commitSha,
-    ref: row.ref,
-    status: row.status,
-    runNumber,
-    createdAt: row.createdAt,
-  }))
+  return rows.map(toReleaseRecord)
 }
 
 @Injectable()
@@ -41,8 +47,15 @@ export class ReleaseStore {
     }
   }
 
-  inFlight(): Promise<ReleaseRecord[]> {
-    return selectReleases(this.db, inArray(release.status, IN_FLIGHT))
+  async inFlight(): Promise<ReleaseRecord[]> {
+    const rows = await this.db
+      .select({ release, runNumber: run.number })
+      .from(release)
+      .leftJoin(run, eq(release.runId, run.id))
+      .innerJoin(applicationInstance, eq(release.instanceId, applicationInstance.id))
+      .where(and(inArray(release.status, IN_FLIGHT), notInArray(applicationInstance.status, SETTLED_INSTANCE_STATUSES)))
+      .orderBy(desc(release.createdAt), desc(release.id))
+    return rows.map(toReleaseRecord)
   }
 
   async setStatus(releaseId: string, status: ReleaseStatus): Promise<void> {

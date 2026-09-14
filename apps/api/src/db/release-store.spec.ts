@@ -67,6 +67,14 @@ describe('ReleaseStore', () => {
     expect((await releases.inFlight()).map((entry) => entry.id)).toEqual([IDS.secondRelease, IDS.release])
   })
 
+  it('excludes a queued release whose instance has been torn down or expired', async () => {
+    await insertInstance(db, { id: IDS.secondInstance, applicationId: IDS.application, status: InstanceStatus.TornDown })
+    await insertRelease(db, { id: IDS.release, instanceId: IDS.instance, status: ReleaseStatus.Queued })
+    await insertRelease(db, { id: IDS.secondRelease, instanceId: IDS.secondInstance, status: ReleaseStatus.Queued })
+
+    expect((await releases.inFlight()).map((entry) => entry.id)).toEqual([IDS.release])
+  })
+
   it('moves a release to a new status', async () => {
     await insertRelease(db, { id: IDS.release, instanceId: IDS.instance, status: ReleaseStatus.Building })
 

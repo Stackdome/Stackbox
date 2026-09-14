@@ -31,6 +31,24 @@ describe('the in-memory deploy target', () => {
     expect(deploy.isTornDown(instance)).toBe(true)
   })
 
+  it('refuses to deploy a release onto a torn down instance', async () => {
+    const deploy = new InMemoryDeployTarget()
+    const instance = await deploy.createInstance({ applicationId: 'A1', services: [], variables: {} })
+    await deploy.teardown(instance)
+
+    const refused = await deploy.deployRelease(instance, { commitSha: 'origin-sha', variables: {} }).catch((error: unknown) => error)
+
+    expect(refused instanceof Error).toBe(true)
+  })
+
+  it('reports a release on a torn down instance as failed', async () => {
+    const deploy = new InMemoryDeployTarget()
+    const { instance, release } = await anInstanceWithARelease(deploy)
+    await deploy.teardown(instance)
+
+    expect(await deploy.releaseStatus(release)).toEqual({ status: ReleaseStatus.Failed })
+  })
+
   it('refuses an instance and a release it has never seen', async () => {
     const deploy = new InMemoryDeployTarget()
 

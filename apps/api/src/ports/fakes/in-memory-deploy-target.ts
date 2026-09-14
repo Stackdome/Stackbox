@@ -33,7 +33,7 @@ export class InMemoryDeployTarget implements DeployTarget {
   }
 
   async deployRelease(ref: InstanceRef, spec: Parameters<DeployTarget['deployRelease']>[1]): Promise<ReleaseRef> {
-    this.instance(ref)
+    if (this.instance(ref).tornDown) throw new Error(`instance ${ref.id} is torn down`)
     const id = this.newReleaseId(this.releases.size + 1)
     this.releases.set(id, { instanceId: ref.id, commitSha: spec.commitSha, status: this.settledStatus })
     return { id }
@@ -48,7 +48,9 @@ export class InMemoryDeployTarget implements DeployTarget {
   }
 
   async releaseStatus(ref: ReleaseRef): Promise<{ status: ReleaseStatus }> {
-    return { status: this.release(ref).status }
+    const found = this.release(ref)
+    if (this.instance({ id: found.instanceId }).tornDown) return { status: ReleaseStatus.Failed }
+    return { status: found.status }
   }
 
   async instanceUrl(ref: InstanceRef): Promise<string> {
