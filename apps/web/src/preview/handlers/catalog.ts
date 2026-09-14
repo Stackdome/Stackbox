@@ -2,6 +2,7 @@ import { CoarseStatus, ConnectionStatus, ServiceKind, StackfileSync, type compon
 import type { HttpHandler } from 'msw'
 import { applicationHandlers } from './applications'
 import { repositoryHandlers } from './repositories'
+import { PreviewTaskBook } from './task-detail'
 
 type Schemas = components['schemas']
 
@@ -15,7 +16,8 @@ export type CatalogSeed = {
   tasks: Schemas['TaskSummary'][]
 }
 
-export type CatalogOptions = { delayMs?: number; persistKey?: string }
+/** `taskBook` shares one task book with the task handlers; omitted, the catalog keeps its own built from `seed.tasks`. */
+export type CatalogOptions = { delayMs?: number; persistKey?: string; taskBook?: PreviewTaskBook }
 
 type CatalogState = Omit<CatalogSeed, 'tasks'>
 
@@ -70,15 +72,15 @@ function synced(detail: Schemas['ApplicationDetail']): Schemas['ApplicationDetai
 /** One set of handlers owns one catalog: a change lives as long as the handlers, or as long as the tab when a persist key is given. */
 export class PreviewCatalog {
   private state: CatalogState
-  private readonly tasks: Schemas['TaskSummary'][]
+  private readonly taskBook: PreviewTaskBook
   private readonly persistKey: string | undefined
 
-  constructor(seed: CatalogSeed, persistKey?: string) {
+  constructor(seed: CatalogSeed, persistKey?: string, taskBook?: PreviewTaskBook) {
     const stored = persistKey ? sessionStorage.getItem(persistKey) : null
     this.state = stored
       ? (JSON.parse(stored) as CatalogState)
       : { connections: seed.connections, repositories: seed.repositories, catalogue: seed.catalogue, applications: seed.applications }
-    this.tasks = seed.tasks
+    this.taskBook = taskBook ?? new PreviewTaskBook(seed.tasks, [])
     this.persistKey = persistKey
   }
 
@@ -187,6 +189,11 @@ export class PreviewCatalog {
     return detail ? { ...detail, task_count: this.taskCountOf(detail.id) } : null
   }
 
+  applicationSummary(applicationId: string): Schemas['ApplicationSummary'] | null {
+    const detail = this.application(applicationId)
+    return detail ? { id: detail.id, name: detail.name } : null
+  }
+
   detect(input: Schemas['StackfileDetect']): Schemas['StackfileDetection'] | null {
     return this.hasRepository(input.repository_id) ? detectionAt(input.stackfile_path ?? null) : null
   }
@@ -225,6 +232,7 @@ export class PreviewCatalog {
     const next =
       input.stackfile_path === undefined || input.stackfile_path === detail.stackfile_path ? renamed : synced({ ...renamed, stackfile_path: input.stackfile_path })
     this.replaceApplication(next)
+    if (input.name !== undefined) this.taskBook.renameApplication(applicationId, input.name)
     return next
   }
 
@@ -237,11 +245,12 @@ export class PreviewCatalog {
   }
 
   hasActiveTasks(applicationId: string): boolean {
-    return this.tasks.some((row) => row.application.id === applicationId && ACTIVE.includes(row.coarse_status))
+    return this.taskBook.rows().some((row) => row.application.id === applicationId && ACTIVE.includes(row.coarse_status))
   }
 
   removeApplication(applicationId: string): void {
     this.commit({ ...this.state, applications: this.state.applications.filter((detail) => detail.id !== applicationId) })
+    this.taskBook.removeForApplication(applicationId)
   }
 
   private replaceApplication(next: Schemas['ApplicationDetail']): void {
@@ -249,7 +258,7 @@ export class PreviewCatalog {
   }
 
   private taskCountOf(applicationId: string): number {
-    return this.tasks.filter((row) => row.application.id === applicationId).length
+    return this.taskBook.rows().filter((row) => row.application.id === applicationId).length
   }
 
   private commit(next: CatalogState): void {
@@ -258,7 +267,12 @@ export class PreviewCatalog {
   }
 }
 
+/** Exposes the `PreviewCatalog` instance too, for a caller that also wires `taskHandlers` onto the same task book. */
+export function buildCatalog(seed: CatalogSeed, options: CatalogOptions = {}): { catalog: PreviewCatalog; handlers: HttpHandler[] } {
+  const catalog = new PreviewCatalog(seed, options.persistKey, options.taskBook)
+  return { catalog, handlers: [...repositoryHandlers(catalog), ...applicationHandlers(catalog, options.delayMs ?? PREVIEW_DELAY_MS)] }
+}
+
 export function catalogHandlers(seed: CatalogSeed, options: CatalogOptions = {}): HttpHandler[] {
-  const catalog = new PreviewCatalog(seed, options.persistKey)
-  return [...repositoryHandlers(catalog), ...applicationHandlers(catalog, options.delayMs ?? PREVIEW_DELAY_MS)]
+  return buildCatalog(seed, options).handlers
 }
