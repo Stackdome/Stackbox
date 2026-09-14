@@ -1,4 +1,16 @@
-import { ArtifactKind, ArtifactOwner, CheckKind, CheckOutcome, ExecutionStatus, MessageRole, PrState, ReportSource, TaskKind, TaskPhase } from '@stackbox/contract'
+import {
+  ArtifactKind,
+  ArtifactOwner,
+  CheckKind,
+  CheckOutcome,
+  ExecutionStatus,
+  InstanceStatus,
+  MessageRole,
+  PrState,
+  ReportSource,
+  TaskKind,
+  TaskPhase,
+} from '@stackbox/contract'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
@@ -9,7 +21,7 @@ import { TaskEventKind } from '../tasks/types'
 import type { Database } from './client'
 import { artifact, execution, pullRequest, report, run, sandbox, task, taskCheck, taskEvent, taskMessage } from './schema'
 import { ScreenshotNotFound, TaskStore } from './task-store'
-import { IDS, emptyTables, insertApplication, insertOrganization } from './test-support/rows'
+import { IDS, emptyTables, insertApplication, insertInstance, insertOrganization } from './test-support/rows'
 
 describe('TaskStore', () => {
   let db: Database
@@ -52,6 +64,7 @@ describe('TaskStore', () => {
       runNumber: 2,
       blockingQuestion: 'Which browser shows it?',
       pullRequest: { number: 142, isDraft: false, state: PrState.Merged, repositoryFullName: 'acme/shop' },
+      instance: null,
     })
   })
 
@@ -61,6 +74,15 @@ describe('TaskStore', () => {
     await db.insert(task).values(aTask({ id: IDS.otherTask, applicationId: IDS.otherApplication, reportId: null }))
 
     expect(await store.listRows(IDS.org)).toEqual([])
+  })
+
+  it('reads the instance a task points at', async () => {
+    await insertInstance(db, { id: IDS.instance, applicationId: IDS.application, status: InstanceStatus.Provisioning, url: null })
+    await db.insert(task).values(aTask({ id: IDS.task, applicationId: IDS.application, reportId: null, instanceId: IDS.instance }))
+
+    const row = await store.getRow(IDS.org, IDS.task)
+
+    expect(row?.instance).toEqual({ id: IDS.instance, url: null, status: InstanceStatus.Provisioning, expiresAt: null })
   })
 
   it('finds the application a task belongs to within its organization', async () => {

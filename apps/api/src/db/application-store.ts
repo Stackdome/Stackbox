@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { TaskPhase } from '@stackbox/contract'
-import { and, asc, count, eq, inArray, notInArray, or } from 'drizzle-orm'
-import type { ApplicationPatch, ApplicationRecord, NewApplication, ServiceRecord, SyncWrite } from '../applications/types'
+import { InstanceStatus, TaskPhase } from '@stackbox/contract'
+import { and, asc, count, eq, inArray, ne, notInArray, or } from 'drizzle-orm'
+import { type ApplicationPatch, type ApplicationRecord, type NewApplication, RemoveOutcome, type ServiceRecord, type SyncWrite } from '../applications/types'
 import type { ApplicationRef } from '../repositories/types'
 import { isTerminal } from '../tasks/calc/phase-transitions'
 import { DATABASE_CONNECTION, type Database } from './client'
-import { application, artifact, gitConnection, pullRequest, report, repository, service, task, taskCheck, taskMessage } from './schema'
+import { application, applicationInstance, artifact, gitConnection, pullRequest, report, repository, service, task, taskCheck, taskMessage } from './schema'
 
 const TERMINAL_PHASES = Object.values(TaskPhase).filter(isTerminal)
 
@@ -112,7 +112,7 @@ export class ApplicationStore {
     })
   }
 
-  async removeIfIdle(applicationId: string): Promise<boolean> {
+  async removeIfIdle(applicationId: string): Promise<RemoveOutcome> {
     return this.db.transaction(async (tx) => {
       await tx.select({ id: application.id }).from(application).where(eq(application.id, applicationId)).for('update')
       const [active] = await tx
@@ -120,7 +120,13 @@ export class ApplicationStore {
         .from(task)
         .where(and(eq(task.applicationId, applicationId), notInArray(task.phase, TERMINAL_PHASES)))
         .limit(1)
-      if (active) return false
+      if (active) return RemoveOutcome.ActiveTasks
+      const [live] = await tx
+        .select({ id: applicationInstance.id })
+        .from(applicationInstance)
+        .where(and(eq(applicationInstance.applicationId, applicationId), ne(applicationInstance.status, InstanceStatus.TornDown)))
+        .limit(1)
+      if (live) return RemoveOutcome.LiveInstances
       const tasks = tx.select({ id: task.id }).from(task).where(eq(task.applicationId, applicationId))
       const reports = tx.select({ id: report.id }).from(report).where(eq(report.applicationId, applicationId))
       const checks = tx.select({ id: taskCheck.id }).from(taskCheck).where(inArray(taskCheck.taskId, tasks))
@@ -129,7 +135,7 @@ export class ApplicationStore {
       await tx.delete(pullRequest).where(inArray(pullRequest.taskId, tasks))
       await tx.delete(artifact).where(or(inArray(artifact.ownerId, reports), inArray(artifact.ownerId, checks), inArray(artifact.ownerId, messages)))
       await tx.delete(application).where(eq(application.id, applicationId))
-      return true
+      return RemoveOutcome.Removed
     })
   }
 

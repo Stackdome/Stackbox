@@ -6,6 +6,7 @@ import type {
   CheckOutcome,
   ConnectionStatus,
   ExecutionStatus,
+  InstanceStatus,
   MessageRole,
   PrState,
   ReleaseStatus,
@@ -179,6 +180,7 @@ export type TaskListRow = {
   runNumber: number | null
   blockingQuestion: string | null
   pullRequest: { number: number; isDraft: boolean; state: PrState; repositoryFullName: string } | null
+  instance: { id: string; url: string | null; status: InstanceStatus; expiresAt: Date | null } | null
 }
 
 export type ReportDetail = Pick<Report, 'id' | 'description' | 'expectedBehaviour' | 'reporter' | 'source'> & { screenshots: Artifact[] }

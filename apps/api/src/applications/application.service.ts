@@ -7,9 +7,9 @@ import { RepositoryService } from '../repositories/repository.service'
 import type { ProviderRepository } from '../repositories/types'
 import { slugFrom } from './calc/slug'
 import { DEFAULT_STACKFILE_PATH, type ParsedStackfile, stackfileOutcome } from './calc/stackfile'
-import { APPLICATION_HAS_ACTIVE_TASKS, APPLICATION_NOT_FOUND, SLUG_TAKEN } from './errors'
+import { APPLICATION_HAS_ACTIVE_TASKS, APPLICATION_HAS_LIVE_INSTANCES, APPLICATION_NOT_FOUND, SLUG_TAKEN } from './errors'
 import { presentDetail, presentDetection, presentListItem, presentService } from './presenters'
-import type { ApplicationRecord } from './types'
+import { type ApplicationRecord, RemoveOutcome } from './types'
 
 type Schemas = components['schemas']
 
@@ -83,9 +83,9 @@ export class ApplicationService {
 
   async remove(orgId: string, applicationId: string): Promise<void> {
     const record = await this.recordOrThrow(orgId, applicationId)
-    if (!(await this.applications.removeIfIdle(record.id))) {
-      throw new ConflictException(APPLICATION_HAS_ACTIVE_TASKS)
-    }
+    const outcome = await this.applications.removeIfIdle(record.id)
+    if (outcome === RemoveOutcome.ActiveTasks) throw new ConflictException(APPLICATION_HAS_ACTIVE_TASKS)
+    if (outcome === RemoveOutcome.LiveInstances) throw new ConflictException(APPLICATION_HAS_LIVE_INSTANCES)
   }
 
   private async syncRecord(record: ApplicationRecord): Promise<void> {

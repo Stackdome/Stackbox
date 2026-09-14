@@ -26,7 +26,12 @@ export function presentTaskSummary(row: TaskListRow): TaskSummary {
       state: row.pullRequest.state,
       is_draft: row.pullRequest.isDraft,
     },
-    instance: null,
+    instance: row.instance && {
+      id: row.instance.id,
+      url: row.instance.url,
+      status: row.instance.status,
+      expires_at: row.instance.expiresAt?.toISOString() ?? null,
+    },
     cost_cents: row.task.costCents,
     created_at: row.task.createdAt.toISOString(),
     completed_at: row.task.completedAt?.toISOString() ?? null,

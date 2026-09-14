@@ -31,3 +31,10 @@ export type NewApplication = { orgId: string; name: string; slug: string; reposi
 export type ApplicationPatch = { name?: string; stackfilePath?: string }
 
 export type SyncWrite = { sha: string; validatedAt: Date; services: StackfileService[] } | { error: string }
+
+export const RemoveOutcome = {
+  Removed: 'removed',
+  ActiveTasks: 'active_tasks',
+  LiveInstances: 'live_instances',
+} as const
+export type RemoveOutcome = (typeof RemoveOutcome)[keyof typeof RemoveOutcome]

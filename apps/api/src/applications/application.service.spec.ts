@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { ConflictException, NotFoundException } from '@nestjs/common'
-import { ServiceKind, StackfileSync, TaskPhase, type components } from '@stackbox/contract'
+import { InstanceStatus, ServiceKind, StackfileSync, TaskPhase, type components } from '@stackbox/contract'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
 import { ApplicationStore } from '../db/application-store'
@@ -8,7 +8,7 @@ import type { Database } from '../db/client'
 import { GitConnectionStore } from '../db/git-connection-store'
 import { RepositoryStore } from '../db/repository-store'
 import { task } from '../db/schema'
-import { IDS, emptyTables, insertOrganization, insertRepository } from '../db/test-support/rows'
+import { IDS, emptyTables, insertInstance, insertOrganization, insertRepository } from '../db/test-support/rows'
 import { InMemoryClock, type InMemoryGitProvider } from '../ports/fakes'
 import { RepositoryService } from '../repositories/repository.service'
 import { aTask } from '../tasks/test-support/builders'
@@ -161,6 +161,18 @@ describe('ApplicationService', () => {
     expect(refused instanceof ConflictException && refused.getResponse()).toEqual({
       code: 'application_has_active_tasks',
       message: "Cancel or finish the application's running tasks first",
+    })
+  })
+
+  it('refuses to delete an application while one of its instances is not torn down', async () => {
+    const created = await createShop()
+    await insertInstance(db, { id: IDS.instance, applicationId: created.id, status: InstanceStatus.Expired })
+
+    const refused = await service.remove(IDS.org, created.id).catch((error: unknown) => error)
+
+    expect(refused instanceof ConflictException && refused.getResponse()).toEqual({
+      code: 'application_has_live_instances',
+      message: "Tear down the application's instances first",
     })
   })
 
