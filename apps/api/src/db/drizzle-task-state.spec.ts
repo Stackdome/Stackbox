@@ -1,8 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import { MessageRole, TaskEventKind, TaskPhase } from '@stackbox/contract'
+import { InstanceStatus, MessageRole, TaskEventKind, TaskPhase } from '@stackbox/contract'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
+import { DEFAULT_EXPIRY_HOURS } from '../instances/calc/expiry'
 import { leaseFor } from '../reconciler/calc/lease'
 import { PhaseConflict } from '../reconciler/task-state'
 import { reproKey } from '../tasks/calc/idempotency-key'
@@ -120,6 +121,27 @@ describe('DrizzleTaskState', () => {
 
     const [instance] = await db.select().from(applicationInstance).where(eq(applicationInstance.id, IDS.instance))
     expect({ owner: instance.taskId, stored: (await state.load(id)).task.instanceId }).toEqual({ owner: id, stored: IDS.instance })
+  })
+
+  it('gives the instance a task was given the default 72 hour expiry', async () => {
+    const id = await aStoredTask()
+    const { task: loaded } = await state.load(id)
+
+    await state.saveTask({ ...loaded, instanceId: IDS.instance }, TaskPhase.Intake)
+
+    const [instance] = await db.select().from(applicationInstance).where(eq(applicationInstance.id, IDS.instance))
+    expect((instance.expiresAt as Date).getTime() - instance.createdAt.getTime()).toBe(DEFAULT_EXPIRY_HOURS * 3_600_000)
+  })
+
+  it('marks the instance of a task torn down', async () => {
+    const id = await aStoredTask()
+    const { task: loaded } = await state.load(id)
+    await state.saveTask({ ...loaded, instanceId: IDS.instance }, TaskPhase.Intake)
+
+    await state.markInstanceTornDown(IDS.instance)
+
+    const [instance] = await db.select().from(applicationInstance).where(eq(applicationInstance.id, IDS.instance))
+    expect(instance.status).toBe(InstanceStatus.TornDown)
   })
 
   it('returns the stored execution when its idempotency key already exists', async () => {

@@ -428,6 +428,16 @@ describe('the reconciler', () => {
     }).toEqual({ sessions: [], sandboxDestroyed: true, instanceTornDown: true })
   })
 
+  it('marks the instance row torn down once it tears down the instance of a cancelled task', async () => {
+    const { state, deploy, service } = aReconciler()
+    const instance = await anInstanceWithLiveOrigin(deploy)
+    state.seed(aSnapshot({ task: aTask({ phase: TaskPhase.Cancelled, instanceId: instance.id }) }))
+
+    await service.tick()
+
+    expect([deploy.isTornDown(instance), state.isInstanceTornDown(instance.id)]).toEqual([true, true])
+  })
+
   it('stops the batch before its first remote action once an API cancel lands between observe and act', async () => {
     const clock = new InMemoryClock(new Date('2026-09-13T10:00:00Z'))
     const state = new InMemoryTaskState()

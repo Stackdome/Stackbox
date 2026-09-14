@@ -34,6 +34,7 @@ export class InMemoryTaskState implements TaskState {
   private events: TaskEvent[] = []
   private pullRequests: PullRequest[] = []
   private messages: TaskMessage[] = []
+  private readonly tornDownInstances = new Set<string>()
 
   seed(snapshot: TaskSnapshot): void {
     const { organization, repository, connection, report, task } = snapshot
@@ -51,6 +52,10 @@ export class InMemoryTaskState implements TaskState {
 
   eventsOf(taskId: string): TaskEvent[] {
     return this.events.filter((event) => event.taskId === taskId)
+  }
+
+  isInstanceTornDown(instanceId: string): boolean {
+    return this.tornDownInstances.has(instanceId)
   }
 
   async claim(lease: Lease, now: Date, limit: number): Promise<Task[]> {
@@ -93,6 +98,10 @@ export class InMemoryTaskState implements TaskState {
 
   async saveRelease(release: Release): Promise<void> {
     this.releases = upsert(this.releases, release)
+  }
+
+  async markInstanceTornDown(instanceId: string): Promise<void> {
+    this.tornDownInstances.add(instanceId)
   }
 
   async saveSandbox(sandbox: Sandbox): Promise<void> {

@@ -14,6 +14,7 @@ import { DEFAULT_RELEASE_SCRIPT, InMemoryClock, InMemoryDeployTarget, type Relea
 import { ReleaseService } from '../../releases/release.service'
 import { LISTED_HEAD_SHA } from '../../repositories/test-support/builders'
 import { InstanceService } from '../instance.service'
+import { InstanceSweep } from '../instance-sweep'
 
 export const WORLD_NOW = new Date('2026-09-14T10:00:00Z')
 
@@ -41,7 +42,13 @@ export async function aRunningInstance(
 
 export function anInstanceWorld(db: Database, steps: readonly ReleaseStep[] = DEFAULT_RELEASE_SCRIPT) {
   const clock = new InMemoryClock(WORLD_NOW)
-  return worldWith(db, new ScriptedDeployTarget(clock, steps), clock)
+  const deploy = new ScriptedDeployTarget(clock, steps)
+  const git = aShopListing(LISTED_HEAD_SHA)
+  const instances = new InstanceStore(db)
+  const releases = new ReleaseService(instances, new ReleaseStore(db), deploy, git)
+  const service = new InstanceService(instances, new ApplicationStore(db), releases, deploy, clock)
+  const sweep = new InstanceSweep(instances, releases, deploy, clock, { tickEnabled: false })
+  return { clock, deploy, git, instances, releases, service, sweep }
 }
 
 export function anInstanceWorldWithDeploy<D extends DeployTarget>(db: Database, deploy: D) {
