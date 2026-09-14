@@ -6584,7 +6584,8 @@ export enum TaskEventKind {
     RunStarted = "run_started",
     RunEnded = "run_ended",
     CheckRecorded = "check_recorded",
-    MessageSent = "message_sent"
+    MessageSent = "message_sent",
+    MessageSendFailed = "message_send_failed"
 }
 export enum CoarseStatus {
     Running = "running",

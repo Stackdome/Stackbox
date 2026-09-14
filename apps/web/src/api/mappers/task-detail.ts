@@ -232,6 +232,7 @@ const TIMELINE_TITLE: Record<TaskEventKind, (event: Schemas['TaskEvent']) => { t
     return { title: `${CHECK_LABEL[payloadValue(event, 'checkKind') as CheckKind]}: ${OUTCOME_WORD[outcome]}`, failed: outcome !== CheckOutcome.Passed }
   },
   [TaskEventKind.MessageSent]: () => ({ title: 'Sent your reply to the agent', failed: false }),
+  [TaskEventKind.MessageSendFailed]: () => ({ title: 'Could not send your reply to the agent', failed: true }),
 }
 
 export function toTimelineEntry(event: Schemas['TaskEvent']): TimelineEntry {

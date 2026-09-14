@@ -67,6 +67,20 @@ class CancellingRuntime extends InMemoryAgentRuntime {
   }
 }
 
+class SendFailingRuntime extends InMemoryAgentRuntime {
+  private failing = false
+
+  failNextSend(): void {
+    this.failing = true
+  }
+
+  override async sendMessage(sessionId: string, text: string): Promise<void> {
+    if (!this.failing) return super.sendMessage(sessionId, text)
+    this.failing = false
+    throw new Error('session gone')
+  }
+}
+
 class InterruptedTaskState extends InMemoryTaskState {
   private failing = false
   private cancelling = false
@@ -221,6 +235,41 @@ describe('the reconciler', () => {
       inbox: runtime.inboxOf(started.sessionId),
       recorded: state.eventsOf('T1').filter((event) => event.kind === TaskEventKind.MessageSent).length,
     }).toEqual({ inbox: ['Safari 17.4'], recorded: 1 })
+  })
+
+  it('records message_send_failed and does not retry once sendMessage throws', async () => {
+    const clock = new InMemoryClock(new Date('2026-09-13T10:00:00Z'))
+    const state = new InMemoryTaskState()
+    const sandboxes = new InMemorySandboxProvider()
+    const runtime = new SendFailingRuntime(sandboxes, clock)
+    const deploy = new InMemoryDeployTarget()
+    const git = new InMemoryGitProvider()
+    git.seedRepository({ summary: aRepository(), headSha: 'origin-sha' })
+    const settings = { owner: 'replica-a', claimLimit: 10, gitHost: 'github.com', readToken: 'read-token', tickEnabled: false }
+    const service = new ReconcilerService(state, runtime, sandboxes, deploy, git, clock, settings)
+    const started = await runtime.startRun(aRunSpec())
+    runtime.failNextSend()
+    state.seed(
+      aSnapshot({
+        task: aTask({ phase: TaskPhase.Implementing }),
+        runs: [aRun()],
+        executions: [anExecution({ idempotencyKey: runKey('T1', 1), runId: 'T1-run1', sessionRef: started.sessionId })],
+        messages: [
+          aMessage({ id: 'M1', blocking: true, answeredAt: new Date('2026-09-13T10:01:00Z') }),
+          aMessage({ id: 'M2', role: MessageRole.User, body: 'Safari 17.4', repliesToId: 'M1' }),
+        ],
+      }),
+    )
+
+    await service.tick()
+    await service.tick()
+
+    const kinds = state.eventsOf('T1').map((event) => event.kind)
+    expect({
+      inbox: runtime.inboxOf(started.sessionId),
+      sent: kinds.filter((kind) => kind === TaskEventKind.MessageSent).length,
+      failed: kinds.filter((kind) => kind === TaskEventKind.MessageSendFailed).length,
+    }).toEqual({ inbox: [], sent: 1, failed: 1 })
   })
 
   it('reconciles an existing session instead of creating a second one for the same idempotency key', async () => {

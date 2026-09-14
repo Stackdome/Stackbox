@@ -213,7 +213,13 @@ export class ReconcilerService implements OnApplicationBootstrap, OnModuleDestro
   private async sendMessage(snapshot: TaskSnapshot, decision: DecisionOf<typeof DecisionKind.SendMessage>, now: Date): Promise<void> {
     // The key is recorded before the remote call: a crash between the two drops the reply rather than sending it twice.
     await this.event(snapshot, TaskEventKind.MessageSent, { key: decision.key, messageId: decision.messageId }, now)
-    await this.runtime.sendMessage(decision.sessionId, decision.body)
+    try {
+      await this.runtime.sendMessage(decision.sessionId, decision.body)
+    } catch (error: unknown) {
+      // message_sent already guards against a retry this slice; this only records that the agent never received it.
+      const reason = error instanceof Error ? error.message : String(error)
+      await this.event(snapshot, TaskEventKind.MessageSendFailed, { messageId: decision.messageId, reason }, now)
+    }
   }
 
   private async startRun(snapshot: TaskSnapshot, expectedPhase: TaskPhase, decision: DecisionOf<typeof DecisionKind.StartRun>, now: Date): Promise<void> {

@@ -1045,6 +1045,7 @@ const TaskEventKind = z.enum([
   "run_ended",
   "check_recorded",
   "message_sent",
+  "message_send_failed",
 ]);
 const TaskEvent = z
   .object({

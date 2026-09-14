@@ -129,6 +129,8 @@ describe('the task detail mapper', () => {
       makeTaskEvent({ kind: TaskEventKind.RunEnded, payload: { number: 1, outcome: RunOutcome.Failed } }),
       makeTaskEvent({ kind: TaskEventKind.CheckRecorded, payload: { checkKind: CheckKind.InstanceReady, outcome: CheckOutcome.Passed } }),
       makeTaskEvent({ kind: TaskEventKind.BudgetExceeded, payload: {} }),
+      makeTaskEvent({ kind: TaskEventKind.MessageSent, payload: {} }),
+      makeTaskEvent({ kind: TaskEventKind.MessageSendFailed, payload: {} }),
     ].map(toTimelineEntry)
 
     expect(entries.map((entry) => [entry.title, entry.failed])).toEqual([
@@ -136,6 +138,8 @@ describe('the task detail mapper', () => {
       ['Run 1 failed', true],
       ['Instance ready: passed', false],
       ['Stopped: the budget is spent', true],
+      ['Sent your reply to the agent', false],
+      ['Could not send your reply to the agent', true],
     ])
   })
 })

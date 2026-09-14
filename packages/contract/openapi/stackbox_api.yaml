@@ -4598,6 +4598,7 @@ components:
         - run_ended
         - check_recorded
         - message_sent
+        - message_send_failed
       x-enum-varnames:
         - PhaseChanged
         - InstanceRequested
@@ -4607,6 +4608,7 @@ components:
         - RunEnded
         - CheckRecorded
         - MessageSent
+        - MessageSendFailed
     CoarseStatus:
       type: string
       x-stability: draft
