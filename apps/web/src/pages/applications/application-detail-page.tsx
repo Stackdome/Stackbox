@@ -3,9 +3,11 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { cancelTaskErrorMessage, disconnectApplicationErrorMessage } from "@/api/errors";
 import type { Task } from "@/api/mappers/task";
 import { useApplicationDetail } from "@/api/use-application-detail";
+import { useSpinUp } from "@/api/use-instances";
 import { ApplicationDetail } from "@/components/application-detail/application-detail";
 import { SyncStatus } from "@/components/applications/sync-status";
 import { EmptyState, PageHeader, useConfirm } from "@/components/branded";
+import { SpinUpDrawer } from "@/components/instances/spin-up-drawer";
 import { NewTaskDrawer } from "@/components/tasks/new-task-drawer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +15,7 @@ import { toast } from "@/components/ui/use-toast";
 import { useBreadcrumb } from "@/hooks/use-breadcrumb";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useTasks } from "@/hooks/use-tasks";
-import { ROUTES, taskPath } from "@/lib/routes";
+import { ROUTES, instancePath, taskPath } from "@/lib/routes";
 
 export function ApplicationDetailPage() {
   const { applicationId = "" } = useParams();
@@ -25,6 +27,8 @@ export function ApplicationDetailPage() {
   const { setCustomLabel, registerRename } = useBreadcrumb();
   const { data, loading, syncing, refresh, rename, setStackfilePath, sync, remove } = useApplicationDetail(organisationId, applicationId);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
+  const [spinUpOpen, setSpinUpOpen] = useState(false);
+  const spinUp = useSpinUp(organisationId);
 
   useEffect(() => {
     if (data) setCustomLabel(pathname, data.detail.name);
@@ -84,7 +88,14 @@ export function ApplicationDetailPage() {
       <PageHeader
         identity={<span className="font-mono text-meta text-fg-muted">{data.detail.slug}</span>}
         status={<SyncStatus sync={data.detail.sync} />}
-        actions={<Button onClick={() => setNewTaskOpen(true)}>New task</Button>}
+        actions={
+          <>
+            <Button variant="outline" onClick={() => setSpinUpOpen(true)}>
+              Spin up
+            </Button>
+            <Button onClick={() => setNewTaskOpen(true)}>New task</Button>
+          </>
+        }
       />
       <ApplicationDetail
         data={data}
@@ -98,7 +109,21 @@ export function ApplicationDetailPage() {
         onDisconnect={() => void askToDisconnect()}
         onOpenTask={(task) => navigate(taskPath(task.id))}
         onCancelTask={(task) => void askToCancel(task)}
+        onOpenInstance={(instance) => navigate(instancePath(instance.id))}
       />
+      {spinUpOpen && (
+        <SpinUpDrawer
+          open
+          onOpenChange={setSpinUpOpen}
+          applications={[{ id: data.detail.id, name: data.detail.name, defaultBranch: data.detail.repository.defaultBranch }]}
+          initial={{ application: { id: data.detail.id, name: data.detail.name, defaultBranch: data.detail.repository.defaultBranch }, locked: true }}
+          onSubmit={async (draft) => {
+            const id = await spinUp(draft);
+            setSpinUpOpen(false);
+            navigate(instancePath(id));
+          }}
+        />
+      )}
       {newTaskOpen && (
         <NewTaskDrawer
           open

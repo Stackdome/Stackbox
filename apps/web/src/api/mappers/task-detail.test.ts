@@ -3,6 +3,7 @@ import {
   CheckKind,
   CheckOutcome,
   CoarseStatus,
+  InstanceStatus,
   MessageRole,
   PrState,
   ReportSource,
@@ -21,7 +22,7 @@ import {
   makeTaskMessage,
   makeTaskRun,
 } from '../../../.storybook/fixtures'
-import { NOT_STARTED_INSTANCE, toArtifact, toCheck, toMessage, toRun, toTaskDetail, toTimelineEntry } from './task-detail'
+import { toArtifact, toCheck, toMessage, toRun, toTaskDetail, toTimelineEntry } from './task-detail'
 
 const diversion = (from: TaskPhase, to: TaskPhase) => makeTaskEvent({ payload: { from, to } })
 
@@ -65,7 +66,16 @@ describe('the task detail mapper', () => {
   it('titles a task with no report as a change request and says its instance has not started', () => {
     const view = toTaskDetail(makeTaskDetail({ report: null }), [])
 
-    expect([view.title, view.report, view.instanceLabel]).toEqual(['Change request', null, NOT_STARTED_INSTANCE])
+    expect([view.title, view.report, view.instance]).toEqual(['Change request', null, null])
+  })
+
+  it('names the instance a task points at for the rail', () => {
+    const view = toTaskDetail(
+      makeTaskDetail({ instance: { id: '7c3e1b2a-4d5e-4f60-8a71-b2c3d4e5f601', url: null, status: InstanceStatus.Ready, expires_at: null } }),
+      [],
+    )
+
+    expect(view.instance).toEqual({ id: '7c3e1b2a-4d5e-4f60-8a71-b2c3d4e5f601', identifier: 'task 7c3e', status: InstanceStatus.Ready })
   })
 
   it('labels every report source', () => {
