@@ -19,7 +19,7 @@ export function App() {
               <Route element={<AppLayout />}>
                 <Route index element={<Navigate to={ROUTES.tasks} replace />} />
                 <Route path={ROUTES.tasks} element={<TasksPage />} />
-                <Route path={ROUTES.newTask} element={<PlaceholderPage />} />
+                <Route path={ROUTES.newTask} element={<TasksPage newTaskOpen />} />
                 <Route path={ROUTES.task} element={<TaskDetailPage />} />
                 <Route path={ROUTES.applications} element={<PlaceholderPage />} />
                 <Route path={ROUTES.instances} element={<PlaceholderPage />} />

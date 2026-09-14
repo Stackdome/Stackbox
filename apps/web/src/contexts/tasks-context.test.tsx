@@ -5,7 +5,8 @@ import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
 import type { ReactNode } from 'react'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { APPLICATIONS, TASK_SUMMARIES, makeUser } from '../../.storybook/fixtures'
+import { APPLICATIONS, TASK_DETAILS, TASK_SUMMARIES, makeUser } from '../../.storybook/fixtures'
+import { emptyDraft } from '@/api/mappers/new-task'
 import { clearAuthSession } from '@/lib/common'
 import { useTasks } from '@/hooks/use-tasks'
 import { taskHandlers } from '@/preview/handlers/tasks'
@@ -27,7 +28,7 @@ describe('TasksProvider', () => {
   afterAll(() => server.close())
   beforeEach(() => {
     localStorage.setItem('currentUser', JSON.stringify(makeUser()))
-    server.resetHandlers(...taskHandlers(TASK_SUMMARIES, APPLICATIONS))
+    server.resetHandlers(...taskHandlers(TASK_SUMMARIES, APPLICATIONS, TASK_DETAILS))
   })
 
   it('counts the tasks that need you from the list the API answers', async () => {
@@ -64,5 +65,18 @@ describe('TasksProvider', () => {
     act(() => clearAuthSession())
 
     await waitFor(() => expect(result.current.tasks.length).toBe(0))
+  })
+
+  it('puts a created task on top of the list, running in phase intake', async () => {
+    const { result } = renderHook(() => useTasks(), { wrapper })
+    await waitFor(() => expect(result.current.loading).toBe(false))
+
+    await act(() => result.current.create({ ...emptyDraft('app-shop'), description: 'The cart badge shows zero.' }))
+
+    expect({ title: result.current.tasks[0].title, status: result.current.tasks[0].status, line: result.current.tasks[0].phaseLine }).toEqual({
+      title: 'The cart badge shows zero.',
+      status: CoarseStatus.Running,
+      line: 'Starting',
+    })
   })
 })
