@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { APPLICATIONS, TASK_SUMMARIES } from '../../.storybook/fixtures'
+import { APPLICATIONS, TASK_DETAILS, TASK_SUMMARIES } from '../../.storybook/fixtures'
 import { baselineHandlers } from '../../.storybook/msw-handlers'
 import { taskHandlers } from './handlers/tasks'
 
@@ -9,7 +9,7 @@ const EMPTY_SCENARIO = 'empty'
 
 // MSW answers with the first match, and the baseline already carries populated tasks, so the scenario goes first.
 export const previewHandlers = [
-  ...(scenario === EMPTY_SCENARIO ? taskHandlers([], []) : taskHandlers(TASK_SUMMARIES, APPLICATIONS)),
+  ...(scenario === EMPTY_SCENARIO ? taskHandlers([], []) : taskHandlers(TASK_SUMMARIES, APPLICATIONS, TASK_DETAILS)),
   ...baselineHandlers,
   http.all('/api/v1/*', () => HttpResponse.json({ items: [], total: 0 })),
 ]

@@ -42,7 +42,7 @@ const PHASE_LABEL: Record<TaskPhase, string> = {
   [TaskPhase.Cancelled]: 'Cancelled',
 }
 
-const RESOLUTION_LABEL: Record<TaskResolution, string> = {
+export const RESOLUTION_LABEL: Record<TaskResolution, string> = {
   [TaskResolution.FixVerified]: 'Fix verified',
   [TaskResolution.FixUnverified]: 'Fix unverified',
   [TaskResolution.NotReproduced]: 'Not reproduced',
@@ -50,7 +50,7 @@ const RESOLUTION_LABEL: Record<TaskResolution, string> = {
   [TaskResolution.Abandoned]: 'Abandoned',
 }
 
-const SOURCE_LABEL: Record<ReportSource, string> = {
+export const SOURCE_LABEL: Record<ReportSource, string> = {
   [ReportSource.Web]: 'Reported on the web',
   [ReportSource.Slack]: 'Reported in Slack',
   [ReportSource.Sentry]: 'Reported by Sentry',
