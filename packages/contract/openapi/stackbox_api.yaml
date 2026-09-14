@@ -4809,9 +4809,11 @@ components:
         description:
           type: string
           minLength: 1
+          maxLength: 10000
           pattern: '\S'
         expected_behaviour:
           type: string
+          maxLength: 10000
         screenshot_artifact_id:
           type: string
           format: uuid
@@ -5152,4 +5154,5 @@ components:
         body:
           type: string
           minLength: 1
+          maxLength: 4000
           pattern: '\S'

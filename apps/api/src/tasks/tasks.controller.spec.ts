@@ -43,4 +43,10 @@ describe('TasksController', () => {
 
     expect(response.status).toBe(400)
   })
+
+  it('answers 400 when the description is over the length cap', async () => {
+    const response = await createTask({ description: 'x'.repeat(10001) })
+
+    expect(response.status).toBe(400)
+  })
 })

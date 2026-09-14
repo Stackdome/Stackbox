@@ -978,8 +978,8 @@ const TaskList = z
 const TaskCreate = z
   .object({
     application_id: z.string(),
-    description: z.string().min(1).regex(/\S/),
-    expected_behaviour: z.string().optional(),
+    description: z.string().min(1).max(10000).regex(/\S/),
+    expected_behaviour: z.string().max(10000).optional(),
     screenshot_artifact_id: z.string().uuid().optional(),
     target_branch: z.string().min(1).optional(),
     run_limit: z.number().int().gte(1).lte(5).optional().default(2),
@@ -1103,7 +1103,7 @@ const TaskMessage = z
   .passthrough();
 const TaskMessageList = z.object({ items: z.array(TaskMessage) }).passthrough();
 const TaskMessageCreate = z
-  .object({ body: z.string().min(1).regex(/\S/) })
+  .object({ body: z.string().min(1).max(4000).regex(/\S/) })
   .passthrough();
 const ArtifactList = z.object({ items: z.array(Artifact) }).passthrough();
 const ApplicationList = z
@@ -4177,7 +4177,9 @@ whether the instance already exists.
       {
         name: "body",
         type: "Body",
-        schema: z.object({ body: z.string().min(1).regex(/\S/) }).passthrough(),
+        schema: z
+          .object({ body: z.string().min(1).max(4000).regex(/\S/) })
+          .passthrough(),
       },
       {
         name: "org_id",
