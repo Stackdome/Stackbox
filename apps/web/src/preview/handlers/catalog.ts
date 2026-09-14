@@ -327,8 +327,16 @@ export class PreviewCatalog {
     return this.taskBook.rows().some((row) => row.application.id === applicationId && ACTIVE.includes(row.coarse_status))
   }
 
+  hasLiveInstances(applicationId: string): boolean {
+    return this.state.instances.some((detail) => detail.application.id === applicationId && RUNNING.includes(detail.status))
+  }
+
   removeApplication(applicationId: string): void {
-    this.commit({ ...this.state, applications: this.state.applications.filter((detail) => detail.id !== applicationId) })
+    this.commit({
+      ...this.state,
+      applications: this.state.applications.filter((detail) => detail.id !== applicationId),
+      instances: this.state.instances.filter((detail) => detail.application.id !== applicationId),
+    })
     this.taskBook.removeForApplication(applicationId)
   }
 
@@ -403,7 +411,9 @@ export class PreviewCatalog {
     if (!detail) return null
     if (detail.purpose === InstancePurpose.Persistent) return refusal(409, INSTANCE_HAS_NO_EXPIRY)
     if (!RUNNING.includes(detail.status)) return refusal(409, INSTANCE_NOT_RUNNING)
-    const next = { ...detail, expires_at: new Date(Date.now() + hours * HOUR_MS).toISOString() }
+    const proposed = Date.now() + hours * HOUR_MS
+    const current = detail.expires_at === null ? proposed : Date.parse(detail.expires_at)
+    const next = { ...detail, expires_at: new Date(Math.max(current, proposed)).toISOString() }
     this.replaceInstance(next)
     return next
   }

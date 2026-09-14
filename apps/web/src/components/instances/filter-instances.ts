@@ -28,3 +28,8 @@ export function filterInstances(instances: InstanceView[], filter: InstanceFilte
 export function isFiltered(filter: InstanceFilter): boolean {
   return filter.q.trim() !== '' || filter.applicationId !== ALL || filter.purpose !== ALL || filter.status !== ALL
 }
+
+/** Picking the Torn down status turns Show torn down on too, so the fetch and the filter agree on which rows exist. */
+export function statusPicked(filter: InstanceFilter, status: InstanceFilter['status']): InstanceFilter {
+  return status === InstanceStatus.TornDown ? { ...filter, status, showTornDown: true } : { ...filter, status }
+}

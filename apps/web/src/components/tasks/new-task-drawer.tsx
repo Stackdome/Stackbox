@@ -1,15 +1,13 @@
 import { useReducer } from "react";
-import { Link } from "react-router-dom";
 import type { Application } from "@/api/mappers/application";
 import type { NewTaskDraft } from "@/api/mappers/new-task";
 import type { ArtifactView } from "@/api/mappers/task-detail";
-import { Disclosure, EmptyState, FieldError, FieldShell } from "@/components/branded";
+import { Disclosure, FieldError, FieldShell, NoApplicationsEmptyState } from "@/components/branded";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerActions, DrawerBody, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ROUTES } from "@/lib/routes";
 import { ScreenshotDrop } from "./screenshot-drop";
 import { problemsOf } from "./new-task-draft";
 import { drawerReducer, initialDrawerState } from "./new-task-drawer-state";
@@ -91,15 +89,7 @@ export function NewTaskDrawer({
         {applications.length === 0 ? (
           <>
             <DrawerBody>
-              <EmptyState
-                title="No application to run against"
-                description="A task runs against an application. Connect one, then report the bug."
-                action={
-                  <Button asChild variant="outline">
-                    <Link to={ROUTES.applications}>Connect an application first</Link>
-                  </Button>
-                }
-              />
+              <NoApplicationsEmptyState title="No application to run against" description="A task runs against an application. Connect one, then report the bug." />
             </DrawerBody>
             <DrawerFooter>
               <DrawerActions>

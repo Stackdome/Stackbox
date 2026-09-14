@@ -63,6 +63,12 @@ describe('the instance mapper', () => {
     expect([needsPolling(provisioning), needsPolling(deploying), needsPolling(settled)]).toEqual([true, true, false])
   })
 
+  it('stops polling a torn down instance even with a release still queued', () => {
+    const tornDown = toInstanceDetail(makeInstanceDetail({ status: InstanceStatus.TornDown, releases: [makeRelease({ status: ReleaseStatus.Queued })] }))
+
+    expect(needsPolling(tornDown)).toBe(false)
+  })
+
   it('blocks Deploy on an instance that stopped running and while a release is in flight', () => {
     const expired = toInstanceDetail(makeInstanceDetail({ status: InstanceStatus.Expired }))
     const queued = toInstanceDetail(makeInstanceDetail({ releases: [makeRelease({ status: ReleaseStatus.Queued })] }))

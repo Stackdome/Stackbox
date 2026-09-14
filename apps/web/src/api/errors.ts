@@ -86,11 +86,14 @@ export function createApplicationErrorMessage(error: unknown): string {
 }
 
 export function disconnectApplicationErrorMessage(error: unknown): string {
-  return isErrorStatus(error, 409) ? "Cancel or finish this application's running tasks first" : "The application was not disconnected. Try again.";
+  if (!isErrorStatus(error, 409)) return "The application was not disconnected. Try again.";
+  const body = isAxiosError(error) ? asRecord(error.response?.data) : undefined;
+  return body?.code === "application_has_live_instances" ? "Tear down this application's instances first" : "Cancel or finish this application's running tasks first";
 }
 
 // A refused Deploy says why in the api's own words: a release in flight, or an instance that stopped running.
 export function releaseErrorMessage(error: unknown): string {
+  if (isForbiddenError(error)) return "You do not have permission to deploy this instance";
   const body = isAxiosError(error) ? asRecord(error.response?.data) : undefined;
   if (isErrorStatus(error, 409) && typeof body?.message === "string") return body.message;
   return "The release was not started. Try again.";
@@ -100,9 +103,20 @@ export const TEARDOWN_ERROR_MESSAGE = "The instance was not torn down. Try again
 
 export const EXTEND_EXPIRY_ERROR_MESSAGE = "The expiry was not extended. Try again.";
 
+export function teardownErrorMessage(error: unknown): string {
+  return isForbiddenError(error) ? "You do not have permission to tear down this instance" : TEARDOWN_ERROR_MESSAGE;
+}
+
+export function extendExpiryErrorMessage(error: unknown): string {
+  return isForbiddenError(error) ? "You do not have permission to extend this instance's expiry" : EXTEND_EXPIRY_ERROR_MESSAGE;
+}
+
 export function spinUpErrorMessage(error: unknown): string {
   if (isErrorStatus(error, 409)) return "Sync the application's Stackfile before spinning up an instance";
-  if (isErrorStatus(error, 404)) return "The repository has no branch or tag with this name";
+  if (isErrorStatus(error, 404)) {
+    const body = isAxiosError(error) ? asRecord(error.response?.data) : undefined;
+    return body?.code === "unknown_application" ? "This application no longer exists" : "The repository has no branch or tag with this name";
+  }
   return "The instance was not spun up. Try again.";
 }
 

@@ -2,7 +2,7 @@
 import { CoarseStatus, ConnectionStatus, InstanceExpiryHours, InstancePurpose, InstanceStatus, RepoProvider, ReleaseStatus, type components } from '@stackbox/contract'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { INSTANCE_IDS, ORG_ID, PREVIEW_CATALOG_SEED, TASK_SUMMARIES } from '../../../.storybook/fixtures'
+import { INSTANCE_IDS, makeApplicationDetail, makeInstanceDetail, ORG_ID, PREVIEW_CATALOG_SEED, TASK_SUMMARIES } from '../../../.storybook/fixtures'
 import { buildCatalog, PreviewCatalog, type CatalogSeed } from './catalog'
 import { PreviewTaskBook } from './task-detail'
 import { taskHandlers } from './tasks'
@@ -52,6 +52,46 @@ describe('the preview catalog and task handlers sharing one task book', () => {
     const disconnect = await fetch(`/api/v1/organizations/${ORG_ID}/applications/${created.id}`, { method: 'DELETE' })
 
     expect(disconnect.status).toBe(409)
+  })
+})
+
+describe('the preview catalog disconnecting an application with instances', () => {
+  const APPLICATION_ID = 'app-widgets'
+
+  const seedWith = (status: InstanceStatus): CatalogSeed => ({
+    connections: [],
+    repositories: [],
+    catalogue: {},
+    applications: [makeApplicationDetail({ id: APPLICATION_ID, name: 'widgets', slug: 'widgets' })],
+    tasks: [],
+    instances: [makeInstanceDetail({ id: 'instance-widgets-1', application: { id: APPLICATION_ID, name: 'widgets' }, status })],
+  })
+
+  it('refuses a running instance with the live-instances code', async () => {
+    const { catalog, handlers } = buildCatalog(seedWith(InstanceStatus.Ready), { delayMs: 0 })
+    const server = setupServer(...handlers)
+    server.listen({ onUnhandledRequest: 'error' })
+
+    const disconnect = await fetch(`/api/v1/organizations/${ORG_ID}/applications/${APPLICATION_ID}`, { method: 'DELETE' })
+    const body = await disconnect.json()
+    server.close()
+
+    expect([disconnect.status, body, catalog.hasLiveInstances(APPLICATION_ID)]).toEqual([
+      409,
+      { code: 'application_has_live_instances', message: "Tear down this application's instances first" },
+      true,
+    ])
+  })
+
+  it('succeeds when the only instance is expired and leaves no orphan instance', async () => {
+    const { catalog, handlers } = buildCatalog(seedWith(InstanceStatus.Expired), { delayMs: 0 })
+    const server = setupServer(...handlers)
+    server.listen({ onUnhandledRequest: 'error' })
+
+    const disconnect = await fetch(`/api/v1/organizations/${ORG_ID}/applications/${APPLICATION_ID}`, { method: 'DELETE' })
+    server.close()
+
+    expect([disconnect.status, catalog.instances({ applicationId: null, includeTornDown: true })]).toEqual([204, []])
   })
 })
 
@@ -199,6 +239,15 @@ describe('the preview catalog walking instances and releases', () => {
       { status: 409, body: { code: 'instance_not_running', message: 'This instance has expired or been torn down' } },
       { status: 409, body: { code: 'instance_has_no_expiry', message: 'A persistent instance never expires' } },
     ])
+  })
+
+  it('never shortens the expiry: extending an instance with 30h left by 24h leaves the later date in place', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+    const before = catalog.instance(INSTANCE_IDS.degraded)?.expires_at
+
+    const extended = detailOf(catalog.extendExpiry(INSTANCE_IDS.degraded, InstanceExpiryHours.Day))
+
+    expect(extended.expires_at).toBe(before)
   })
 
   it('leaves torn down instances out of the list unless asked, newest first', () => {
