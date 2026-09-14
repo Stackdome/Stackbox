@@ -164,6 +164,51 @@ describe('TaskStore', () => {
     ).rejects.toBeInstanceOf(ScreenshotNotFound)
   })
 
+  it('refuses to claim a screenshot uploaded by another organization', async () => {
+    await insertOrganization(db, IDS.otherOrg, 'globex')
+    const [theirs] = await db
+      .insert(artifact)
+      .values({ ownerType: ArtifactOwner.Report, ownerId: IDS.otherOrg, kind: ArtifactKind.Screenshot, url: 'data:image/png;base64,AA==' })
+      .returning()
+
+    await expect(
+      store.create({
+        orgId: IDS.org,
+        applicationId: IDS.application,
+        description: 'The cart badge shows zero.',
+        expectedBehaviour: null,
+        reporter: 'Ada Lovelace',
+        screenshotArtifactId: theirs.id,
+        targetBranch: null,
+        runLimit: 2,
+        kind: TaskKind.Fix,
+      }),
+    ).rejects.toBeInstanceOf(ScreenshotNotFound)
+  })
+
+  it('refuses to claim a screenshot that a task already claimed', async () => {
+    const [upload] = await db
+      .insert(artifact)
+      .values({ ownerType: ArtifactOwner.Report, ownerId: IDS.org, kind: ArtifactKind.Screenshot, url: 'data:image/png;base64,AA==' })
+      .returning()
+    const attach = () =>
+      store.create({
+        orgId: IDS.org,
+        applicationId: IDS.application,
+        description: 'The cart badge shows zero.',
+        expectedBehaviour: null,
+        reporter: 'Ada Lovelace',
+        screenshotArtifactId: upload.id,
+        targetBranch: null,
+        runLimit: 2,
+        kind: TaskKind.Fix,
+      })
+
+    await attach()
+
+    await expect(attach()).rejects.toBeInstanceOf(ScreenshotNotFound)
+  })
+
   it('answers the open question and resumes the diverted phase when the reporter replies', async () => {
     await db.insert(task).values(aTask({ id: IDS.task, applicationId: IDS.application, reportId: null, phase: TaskPhase.NeedsInput }))
     await db.insert(taskEvent).values({ taskId: IDS.task, kind: TaskEventKind.PhaseChanged, payload: { from: TaskPhase.Implementing, to: TaskPhase.NeedsInput } })

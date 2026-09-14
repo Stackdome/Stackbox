@@ -8,6 +8,8 @@ import { TaskEventKind, type TaskListRow } from '../tasks/types'
 import { DATABASE_CONNECTION, type Database } from './client'
 import { application, artifact, execution, pullRequest, report, repository, run, task, taskCheck, taskEvent, taskMessage } from './schema'
 
+type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
+
 export class ScreenshotNotFound extends Error {
   constructor(artifactId: string) {
     super(`no unattached screenshot ${artifactId} in this organization`)
@@ -48,12 +50,7 @@ export class TaskStore {
         return false
       }
       // completedAt stays null: the reconciler's cleanup tick sets it once the sandbox is gone.
-      await tx.update(task).set({ phase: TaskPhase.Cancelled, completedAt: null }).where(eq(task.id, taskId))
-      await tx.insert(taskEvent).values({
-        taskId,
-        kind: TaskEventKind.PhaseChanged,
-        payload: { from: current.phase, to: TaskPhase.Cancelled },
-      })
+      await this.movePhase(tx, taskId, current.phase, TaskPhase.Cancelled, { completedAt: null })
       return true
     })
     return cancelled ? this.getRow(orgId, taskId) : null
@@ -221,10 +218,21 @@ export class TaskStore {
       if (resumed === null) {
         return written
       }
-      await tx.update(task).set({ phase: resumed }).where(eq(task.id, taskId))
-      await tx.insert(taskEvent).values({ taskId, kind: TaskEventKind.PhaseChanged, payload: { from: current.phase, to: resumed } })
+      await this.movePhase(tx, taskId, current.phase, resumed)
       return written
     })
+  }
+
+  // Every phase change gets a paired PhaseChanged event row; cancel and reply both move through here.
+  private async movePhase(
+    tx: Transaction,
+    taskId: string,
+    from: TaskPhase,
+    to: TaskPhase,
+    extraFields: Partial<typeof task.$inferInsert> = {},
+  ): Promise<void> {
+    await tx.update(task).set({ phase: to, ...extraFields }).where(eq(task.id, taskId))
+    await tx.insert(taskEvent).values({ taskId, kind: TaskEventKind.PhaseChanged, payload: { from, to } })
   }
 
   private async rowsWhere(where: SQL | undefined): Promise<TaskListRow[]> {
