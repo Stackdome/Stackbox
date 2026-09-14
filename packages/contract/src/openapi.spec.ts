@@ -42,6 +42,28 @@ const TASK_SUMMARY_FIELDS = [
 
 const TASK_DETAIL_ONLY_FIELDS = ['target_branch', 'budget_cents', 'pull_requests']
 
+const PATH_COUNT = 62
+
+const APPLICATION_ENUMS = ['StackfileSync', 'ServiceKind']
+
+const REPOSITORY_AND_APPLICATION_PATHS = [
+  '/api/v1/organizations/{org_id}/git-connections',
+  '/api/v1/organizations/{org_id}/git-connections/{connection_id}/verify',
+  '/api/v1/organizations/{org_id}/git-connections/{connection_id}/available-repositories',
+  '/api/v1/organizations/{org_id}/repositories',
+  '/api/v1/organizations/{org_id}/repositories/{repository_id}',
+  '/api/v1/organizations/{org_id}/applications',
+  '/api/v1/organizations/{org_id}/applications/detect',
+  '/api/v1/organizations/{org_id}/applications/{application_id}',
+  '/api/v1/organizations/{org_id}/applications/{application_id}/services',
+  '/api/v1/organizations/{org_id}/applications/{application_id}/sync',
+]
+
+const APPLICATION_DETAIL_FIELDS = [
+  'id', 'name', 'slug', 'repository', 'stackfile_path', 'sync', 'synced_at_sha', 'head_sha',
+  'validated_at', 'validation_error', 'credentials', 'services', 'task_count', 'created_at',
+]
+
 const yamlPath = fileURLToPath(new URL('../openapi/stackbox_api.yaml', import.meta.url))
 const source = readFileSync(yamlPath, 'utf8')
 const document = load(source) as Document
@@ -75,7 +97,7 @@ describe('the committed contract', () => {
 
   it('has no property key naming a stack', () => {
     const keys = Object.values(schemas).flatMap((schema) => Object.keys(schema.properties ?? {}))
-    expect(keys.filter((key) => /stack/i.test(key))).toEqual([])
+    expect(keys.filter((key) => /stack/i.test(key) && !/stackfile/i.test(key))).toEqual([])
   })
 
   it('declares every spec section 4.1 enum with one varname per value', () => {
@@ -102,5 +124,30 @@ describe('the committed contract', () => {
 
   it('refuses the onboarding kind with the exact message the new task drawer shows', () => {
     expect(source).toContain("message: Tasks of kind onboarding are not supported yet")
+  })
+
+  it('declares exactly 62 paths', () => {
+    expect(paths).toHaveLength(PATH_COUNT)
+  })
+
+  it('carries no legacy git integration or GitHub webhook path', () => {
+    expect(paths.filter((path) => /git-integrations|webhooks\/github/.test(path))).toEqual([])
+  })
+
+  it('declares the git connection, repository and application paths under the organization', () => {
+    expect(REPOSITORY_AND_APPLICATION_PATHS.filter((path) => !paths.includes(path))).toEqual([])
+  })
+
+  it('declares the Stackfile sync and service kind enums with one varname per value', () => {
+    const mismatched = APPLICATION_ENUMS.filter((name) => {
+      const schema = schemas[name]
+      return schema?.enum === undefined || schema['x-enum-varnames']?.length !== schema.enum.length
+    })
+    expect(mismatched).toEqual([])
+  })
+
+  it('requires every field the Application detail screen draws on ApplicationDetail', () => {
+    const detail = schemas.ApplicationDetail as Schema & { required?: string[] }
+    expect(detail?.required).toEqual(APPLICATION_DETAIL_FIELDS)
   })
 })

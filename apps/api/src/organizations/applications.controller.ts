@@ -11,7 +11,7 @@ export class ApplicationsController {
 
   @Get()
   @RequirePermission('/organizations/:org_id/applications', Action.List)
-  async list(@Param('org_id') orgId: string): Promise<components['schemas']['ApplicationList']> {
+  async list(@Param('org_id') orgId: string): Promise<{ items: components['schemas']['ApplicationSummary'][]; total: number }> {
     const items = await this.organizations.listApplications(orgId)
     return { items, total: items.length }
   }
