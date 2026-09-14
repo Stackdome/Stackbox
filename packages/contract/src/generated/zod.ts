@@ -980,7 +980,7 @@ const TaskCreate = z
     application_id: z.string(),
     description: z.string().min(1).regex(/\S/),
     expected_behaviour: z.string().optional(),
-    screenshot_artifact_id: z.string().optional(),
+    screenshot_artifact_id: z.string().uuid().optional(),
     target_branch: z.string().min(1).optional(),
     run_limit: z.number().int().gte(1).lte(5).optional().default(2),
     kind: TaskKind.optional().default("fix"),

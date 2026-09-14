@@ -4812,6 +4812,7 @@ components:
           type: string
         screenshot_artifact_id:
           type: string
+          format: uuid
         target_branch:
           type: string
           minLength: 1

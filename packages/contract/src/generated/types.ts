@@ -4963,6 +4963,7 @@ export interface components {
             application_id: string;
             description: string;
             expected_behaviour?: string;
+            /** Format: uuid */
             screenshot_artifact_id?: string;
             target_branch?: string;
             /** @default 2 */
