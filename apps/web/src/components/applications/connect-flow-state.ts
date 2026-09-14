@@ -27,7 +27,7 @@ export type ConnectFlowAction =
   | { type: 'repository chosen'; repositoryId: string; fullName: string; shortName: string }
   | { type: 'path changed'; stackfilePath: string }
   | { type: 'detect started' }
-  | { type: 'detect succeeded'; detection: DetectionView }
+  | { type: 'detect succeeded'; detection: DetectionView; repositoryId: string; stackfilePath: string }
   | { type: 'detect failed' }
   | { type: 'back' }
   | { type: 'name changed'; name: string }
@@ -63,6 +63,7 @@ export function connectFlowReducer(state: ConnectFlowState, action: ConnectFlowA
     case 'detect started':
       return { ...state, step: ConnectStep.Detect, detect: { status: 'detecting' }, failure: null }
     case 'detect succeeded':
+      if (action.repositoryId !== state.repositoryId || action.stackfilePath !== state.stackfilePath) return state
       return { ...state, detect: { status: 'done', detection: action.detection } }
     case 'detect failed':
       return { ...state, detect: { status: 'failed' } }
