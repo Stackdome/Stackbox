@@ -101,6 +101,10 @@ api.interceptors.request.use((config) => {
     config.headers['Authorization'] = `Bearer ${token}`;
     document.cookie = `auth_token=${token}; path=/; secure; samesite=strict`;
   }
+  // The default JSON content type must not override the multipart boundary a FormData body needs.
+  if (config.data instanceof FormData && config.headers) {
+    delete config.headers['Content-Type'];
+  }
   return config;
 });
 
