@@ -216,6 +216,39 @@ export const FooterRanking: Story = {
   },
 }
 
+/** Cancel must not resolve the dialog false while the in-dialog action is
+ *  still running: a click landing between the request and its answer would
+ *  otherwise let the delete proceed on a page that already navigated away. */
+export const CancelDisabledWhileRunning: Story = {
+  args: {
+    opts: {
+      title: 'Disconnect shop?',
+      description: 'Its services, tasks and their evidence are deleted.',
+      confirmLabel: 'Disconnect application',
+      variant: 'destructive',
+      gate: { kind: 'retype', name: 'shop' },
+      onConfirm: () => new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 200)),
+    },
+  },
+  play: async ({ canvas, canvasElement, userEvent }) => {
+    await userEvent.click(canvas.getByRole('button', { name: 'Delete' }))
+    const body = within(canvasElement.ownerDocument.body)
+    await userEvent.type(await body.findByLabelText('Type shop to confirm'), 'shop')
+
+    await userEvent.click(body.getByRole('button', { name: 'Disconnect application' }))
+
+    const cancel = body.getByRole('button', { name: 'Cancel' })
+    await expect(cancel).toBeDisabled()
+
+    await userEvent.click(cancel)
+    await expect(body.getByRole('alertdialog')).toBeVisible()
+
+    await waitFor(async () => {
+      await expect(body.queryByRole('alertdialog')).toBeNull()
+    })
+  },
+}
+
 /** A retype confirm whose action the server refuses: the reason stays in the dialog, which stays open. */
 export const RetypeRefusedByTheServer: Story = {
   args: {
