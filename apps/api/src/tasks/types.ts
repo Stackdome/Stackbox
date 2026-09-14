@@ -189,3 +189,15 @@ export type TaskDetailRow = { summary: TaskListRow; report: ReportDetail | null;
 export type CheckRow = TaskCheck & { runNumber: number | null; artifacts: Artifact[] }
 
 export type RunRow = Run & { costCents: number }
+
+export type NewTask = {
+  orgId: string
+  applicationId: string
+  description: string
+  expectedBehaviour: string | null
+  reporter: string
+  screenshotArtifactId: string | null
+  targetBranch: string | null
+  runLimit: number
+  kind: TaskKind
+}

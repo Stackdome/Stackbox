@@ -1,4 +1,4 @@
-import { ArtifactKind, ArtifactOwner, CheckKind, CheckOutcome, ExecutionStatus, MessageRole, PrState, ReportSource, TaskPhase } from '@stackbox/contract'
+import { ArtifactKind, ArtifactOwner, CheckKind, CheckOutcome, ExecutionStatus, MessageRole, PrState, ReportSource, TaskKind, TaskPhase } from '@stackbox/contract'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
@@ -8,7 +8,7 @@ import { aReport, aRun, aTask } from '../tasks/test-support/builders'
 import { TaskEventKind } from '../tasks/types'
 import type { Database } from './client'
 import { artifact, execution, pullRequest, report, run, sandbox, task, taskCheck, taskEvent, taskMessage } from './schema'
-import { TaskStore } from './task-store'
+import { ScreenshotNotFound, TaskStore } from './task-store'
 import { IDS, emptyTables, insertApplication, insertOrganization } from './test-support/rows'
 
 describe('TaskStore', () => {
@@ -124,5 +124,69 @@ describe('TaskStore', () => {
     const artifacts = await store.artifactsOf(IDS.task)
 
     expect(artifacts.map((row) => row.kind)).toEqual([ArtifactKind.Screenshot, ArtifactKind.TestLog, ArtifactKind.Har])
+  })
+
+  it('creates the report and the task in intake on the repository default branch', async () => {
+    const taskId = await store.create({
+      orgId: IDS.org,
+      applicationId: IDS.application,
+      description: 'The cart badge shows zero.',
+      expectedBehaviour: 'The badge counts the items.',
+      reporter: 'Ada Lovelace',
+      screenshotArtifactId: null,
+      targetBranch: null,
+      runLimit: 2,
+      kind: TaskKind.Fix,
+    })
+
+    const row = await store.getDetailRow(IDS.org, taskId)
+    expect({ phase: row?.summary.task.phase, branch: row?.summary.task.targetBranch, reporter: row?.report?.reporter, source: row?.report?.source }).toEqual({
+      phase: TaskPhase.Intake,
+      branch: 'main',
+      reporter: 'Ada Lovelace',
+      source: ReportSource.Web,
+    })
+  })
+
+  it('refuses a screenshot the organization never uploaded', async () => {
+    await expect(
+      store.create({
+        orgId: IDS.org,
+        applicationId: IDS.application,
+        description: 'The cart badge shows zero.',
+        expectedBehaviour: null,
+        reporter: 'Ada Lovelace',
+        screenshotArtifactId: '00000000-0000-4000-8000-0000000000ff',
+        targetBranch: null,
+        runLimit: 2,
+        kind: TaskKind.Fix,
+      }),
+    ).rejects.toBeInstanceOf(ScreenshotNotFound)
+  })
+
+  it('answers the open question and resumes the diverted phase when the reporter replies', async () => {
+    await db.insert(task).values(aTask({ id: IDS.task, applicationId: IDS.application, reportId: null, phase: TaskPhase.NeedsInput }))
+    await db.insert(taskEvent).values({ taskId: IDS.task, kind: TaskEventKind.PhaseChanged, payload: { from: TaskPhase.Implementing, to: TaskPhase.NeedsInput } })
+    const [question] = await db.insert(taskMessage).values({ taskId: IDS.task, role: MessageRole.Agent, body: 'Which Safari?', blocking: true }).returning()
+
+    const reply = await store.reply(IDS.task, 'Safari 17.4')
+
+    const [stored] = await db.select().from(task).where(eq(task.id, IDS.task))
+    const [answered] = await db.select().from(taskMessage).where(eq(taskMessage.id, question.id))
+    expect({ phase: stored.phase, repliesTo: reply.repliesToId, answered: answered.answeredAt !== null }).toEqual({
+      phase: TaskPhase.Implementing,
+      repliesTo: question.id,
+      answered: true,
+    })
+  })
+
+  it('only appends a message when the task is not waiting on an answer', async () => {
+    await db.insert(task).values(aTask({ id: IDS.task, applicationId: IDS.application, reportId: null, phase: TaskPhase.Implementing }))
+    await db.insert(taskMessage).values({ taskId: IDS.task, role: MessageRole.Agent, body: 'Which Safari?', blocking: true })
+
+    const reply = await store.reply(IDS.task, 'Also on Chrome.')
+
+    const events = await db.select().from(taskEvent).where(eq(taskEvent.taskId, IDS.task))
+    expect({ repliesTo: reply.repliesToId, events: events.length }).toEqual({ repliesTo: null, events: 0 })
   })
 })

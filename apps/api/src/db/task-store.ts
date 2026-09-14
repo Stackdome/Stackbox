@@ -1,11 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { ArtifactKind, ArtifactOwner, TaskPhase } from '@stackbox/contract'
+import { ArtifactKind, ArtifactOwner, MessageRole, ReportSource, TaskPhase } from '@stackbox/contract'
 import { and, asc, desc, eq, inArray, isNull, max, type SQL, sum } from 'drizzle-orm'
+import { phaseAfterReply } from '../tasks/calc/reply'
 import { isTerminal } from '../tasks/calc/phase-transitions'
-import type { Artifact, CheckRow, RunRow, TaskDetailRow, TaskEvent, TaskMessage } from '../tasks/types'
+import type { Artifact, CheckRow, NewTask, RunRow, TaskDetailRow, TaskEvent, TaskMessage } from '../tasks/types'
 import { TaskEventKind, type TaskListRow } from '../tasks/types'
 import { DATABASE_CONNECTION, type Database } from './client'
 import { application, artifact, execution, pullRequest, report, repository, run, task, taskCheck, taskEvent, taskMessage } from './schema'
+
+export class ScreenshotNotFound extends Error {
+  constructor(artifactId: string) {
+    super(`no unattached screenshot ${artifactId} in this organization`)
+  }
+}
 
 @Injectable()
 export class TaskStore {
@@ -146,6 +153,78 @@ export class TaskStore {
       .from(artifact)
       .where(and(eq(artifact.ownerType, ownerType), inArray(artifact.ownerId, ownerIds)))
       .orderBy(asc(artifact.createdAt))
+  }
+
+  create(input: NewTask): Promise<string> {
+    return this.db.transaction(async (tx) => {
+      const [target] = await tx
+        .select({ defaultBranch: repository.defaultBranch })
+        .from(application)
+        .innerJoin(repository, eq(application.repositoryId, repository.id))
+        .where(eq(application.id, input.applicationId))
+      const [written] = await tx
+        .insert(report)
+        .values({
+          applicationId: input.applicationId,
+          source: ReportSource.Web,
+          description: input.description,
+          expectedBehaviour: input.expectedBehaviour,
+          reporter: input.reporter,
+        })
+        .returning({ id: report.id })
+      if (input.screenshotArtifactId !== null) {
+        const claimed = await tx
+          .update(artifact)
+          .set({ ownerId: written.id })
+          .where(and(eq(artifact.id, input.screenshotArtifactId), eq(artifact.ownerType, ArtifactOwner.Report), eq(artifact.ownerId, input.orgId)))
+          .returning({ id: artifact.id })
+        if (claimed.length === 0) {
+          throw new ScreenshotNotFound(input.screenshotArtifactId)
+        }
+      }
+      const [created] = await tx
+        .insert(task)
+        .values({
+          applicationId: input.applicationId,
+          reportId: written.id,
+          kind: input.kind,
+          targetBranch: input.targetBranch ?? target.defaultBranch,
+          runLimit: input.runLimit,
+        })
+        .returning({ id: task.id })
+      return created.id
+    })
+  }
+
+  reply(taskId: string, body: string): Promise<TaskMessage> {
+    return this.db.transaction(async (tx) => {
+      const [current] = await tx.select({ phase: task.phase }).from(task).where(eq(task.id, taskId)).for('update')
+      const [open] =
+        current.phase === TaskPhase.NeedsInput
+          ? await tx
+            .select({ id: taskMessage.id })
+            .from(taskMessage)
+            .where(and(eq(taskMessage.taskId, taskId), eq(taskMessage.blocking, true), isNull(taskMessage.answeredAt)))
+            .orderBy(desc(taskMessage.createdAt))
+            .limit(1)
+          : []
+      const [written] = await tx
+        .insert(taskMessage)
+        .values({ taskId, role: MessageRole.User, body, repliesToId: open?.id ?? null })
+        .returning()
+      if (!open) {
+        return written
+      }
+      await tx.update(taskMessage).set({ answeredAt: written.createdAt }).where(eq(taskMessage.id, open.id))
+      const events = await tx.select().from(taskEvent).where(eq(taskEvent.taskId, taskId)).orderBy(asc(taskEvent.at), asc(taskEvent.id))
+      const resumed = phaseAfterReply(current.phase, events)
+      if (resumed === null) {
+        return written
+      }
+      await tx.update(task).set({ phase: resumed }).where(eq(task.id, taskId))
+      await tx.insert(taskEvent).values({ taskId, kind: TaskEventKind.PhaseChanged, payload: { from: current.phase, to: resumed } })
+      return written
+    })
   }
 
   private async rowsWhere(where: SQL | undefined): Promise<TaskListRow[]> {

@@ -1,7 +1,10 @@
-import { ConflictException, NotFoundException } from '@nestjs/common'
-import { CoarseStatus } from '@stackbox/contract'
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
+import { ArtifactKind, CoarseStatus, TaskKind, TaskPhase } from '@stackbox/contract'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
+import type { AuthUser } from '../access'
+import { ApplicationStore } from '../db/application-store'
+import { ArtifactStore } from '../db/artifact-store'
 import type { Database } from '../db/client'
 import { FIXTURE, seed } from '../db/seed'
 import { TaskStore } from '../db/task-store'
@@ -15,7 +18,7 @@ describe('TaskService', () => {
 
   beforeAll(async () => {
     db = await migratedTestDatabase()
-    service = new TaskService(new TaskStore(db))
+    service = new TaskService(new TaskStore(db), new UserStore(db), new ArtifactStore(db))
   })
 
   afterAll(async () => {
@@ -26,6 +29,12 @@ describe('TaskService', () => {
     await seed(db, { passwordHash: 'scrypt$c2FsdA==$a2V5', now: new Date('2026-09-14T10:00:00Z') })
     orgId = (await new UserStore(db).findByEmail(FIXTURE.adminEmail))!.orgId
   })
+
+  async function theAdminAndShop(): Promise<{ admin: AuthUser; shopId: string }> {
+    const profile = (await new UserStore(db).findByEmail(FIXTURE.adminEmail))!
+    const [shop] = (await new ApplicationStore(db).listByOrg(orgId)).filter((row) => row.name === 'shop')
+    return { admin: { id: profile.id, orgId: profile.orgId, email: profile.email, orgRole: profile.orgRole }, shopId: shop.id }
+  }
 
   it('counts the tasks that need you over the whole organization while filtering the items', async () => {
     const list = await service.list(orgId, { status: CoarseStatus.Failed })
@@ -52,5 +61,49 @@ describe('TaskService', () => {
       description: 'Password reset link expires immediately',
       pullRequests: [[142, 'acme/shop']],
     })
+  })
+
+  it('refuses a task whose kind is onboarding with a clear error naming the unsupported kind', async () => {
+    const { admin, shopId } = await theAdminAndShop()
+
+    const refused = await service
+      .create(orgId, admin, { application_id: shopId, description: 'Set up the billing app.', kind: TaskKind.Onboarding })
+      .catch((error: unknown) => error)
+
+    expect(refused instanceof BadRequestException && refused.getResponse()).toEqual({
+      code: 'unsupported_task_kind',
+      message: 'Tasks of kind onboarding are not supported yet',
+    })
+  })
+
+  it('creates a task in intake with the default run limit and the admin as reporter', async () => {
+    const { admin, shopId } = await theAdminAndShop()
+
+    const created = await service.create(orgId, admin, { application_id: shopId, description: 'The cart badge shows zero.' })
+
+    expect({ phase: created.phase, runLimit: created.run_limit, reporter: created.report?.reporter }).toEqual({
+      phase: TaskPhase.Intake,
+      runLimit: 2,
+      reporter: 'Ada Lovelace',
+    })
+  })
+
+  it('attaches an uploaded screenshot to the report of the new task', async () => {
+    const { admin, shopId } = await theAdminAndShop()
+    const image = await service.uploadScreenshot(orgId, { buffer: Buffer.from('png'), mimetype: 'image/png', size: 3, originalname: 'cart.png' })
+
+    const created = await service.create(orgId, admin, { application_id: shopId, description: 'The cart badge shows zero.', screenshot_artifact_id: image.id })
+
+    expect(created.report?.screenshots.map((shot) => [shot.id, shot.kind, shot.url])).toEqual([[image.id, ArtifactKind.Screenshot, 'data:image/png;base64,cG5n']])
+  })
+
+  it('refuses an upload that is not an image', async () => {
+    await expect(
+      service.uploadScreenshot(orgId, { buffer: Buffer.from('%PDF'), mimetype: 'application/pdf', size: 4, originalname: 'report.pdf' }),
+    ).rejects.toBeInstanceOf(BadRequestException)
+  })
+
+  it('answers not found for an artifact id that is not a uuid', async () => {
+    await expect(service.artifact(orgId, 'not-a-uuid')).rejects.toBeInstanceOf(NotFoundException)
   })
 })

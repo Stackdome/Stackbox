@@ -1,9 +1,9 @@
-import { Controller, Get, HttpCode, Inject, Param, Post, Query, UseGuards } from '@nestjs/common'
+import { Body, Controller, Get, HttpCode, Inject, Param, Post, Query, UseGuards } from '@nestjs/common'
 import { type components, schemas } from '@stackbox/contract'
-import { AccessGuard, Action, RequirePermission } from '../access'
-import { JwtCookieGuard } from '../auth'
+import { AccessGuard, Action, type AuthUser, ApplicationSource, RequirePermission } from '../access'
+import { CurrentUser, JwtCookieGuard } from '../auth'
 import { ZodValidationPipe } from '../common/zod-validation.pipe'
-import type { TaskDetail } from './presenters/task-detail'
+import type { TaskDetail, TaskMessageView } from './presenters/task-detail'
 import type { TaskSummary } from './presenters/task-summary'
 import { TaskService } from './task.service'
 
@@ -16,6 +16,26 @@ const TASK_RESOURCE = '/organizations/:org_id/applications/:application_id/tasks
 @UseGuards(JwtCookieGuard, AccessGuard)
 export class TasksController {
   constructor(@Inject(TaskService) private readonly tasks: TaskService) {}
+
+  @Post()
+  @RequirePermission('/organizations/:org_id/applications/:application_id/tasks', Action.Create, ApplicationSource.Body)
+  create(
+    @Param('org_id') orgId: string,
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(schemas.TaskCreate)) input: components['schemas']['TaskCreate'],
+  ): Promise<TaskDetail> {
+    return this.tasks.create(orgId, user, input)
+  }
+
+  @Post(':task_id/messages')
+  @HttpCode(200)
+  @RequirePermission(TASK_RESOURCE, Action.Write)
+  reply(
+    @Param('task_id') taskId: string,
+    @Body(new ZodValidationPipe(schemas.TaskMessageCreate)) input: components['schemas']['TaskMessageCreate'],
+  ): Promise<TaskMessageView> {
+    return this.tasks.reply(taskId, input.body)
+  }
 
   @Get()
   @RequirePermission('/organizations/:org_id/tasks', Action.List)
