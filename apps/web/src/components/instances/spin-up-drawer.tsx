@@ -1,15 +1,13 @@
 import { InstancePurpose } from "@stackbox/contract";
 import { useReducer } from "react";
-import { Link } from "react-router-dom";
 import { spinUpErrorMessage } from "@/api/errors";
 import { EXPIRY_PRESETS, EXPIRY_PRESET_LABEL, PURPOSE_LABEL, SPIN_UP_PURPOSES, type SpinUpDraft } from "@/api/mappers/instance";
-import { BlockedAction, EmptyState, FieldError, FieldShell, FormSection } from "@/components/branded";
+import { BlockedAction, FieldError, FieldShell, FormSection, NoApplicationsEmptyState } from "@/components/branded";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerActions, DrawerBody, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ROUTES } from "@/lib/routes";
 import {
   type ExpiryKey,
   NO_EXPIRY,
@@ -68,14 +66,9 @@ export function SpinUpDrawer({ open, onOpenChange, applications, initial, onSubm
         {applications.length === 0 ? (
           <>
             <DrawerBody>
-              <EmptyState
+              <NoApplicationsEmptyState
                 title="No application to spin up"
                 description="An Application Instance runs one application. Connect one, then spin it up."
-                action={
-                  <Button asChild variant="outline">
-                    <Link to={ROUTES.applications}>Connect an application first</Link>
-                  </Button>
-                }
               />
             </DrawerBody>
             <DrawerFooter>
