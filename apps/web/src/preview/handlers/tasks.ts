@@ -14,12 +14,14 @@ export function taskHandlers(seed: TaskSummary[], applications: ApplicationSumma
 
   return [
     ...taskDetailHandlers(book, applications),
-    http.get('*/api/v1/organizations/:orgId/tasks', () => {
-      const rows = book.rows()
+    http.get('*/api/v1/organizations/:orgId/tasks', ({ request }) => {
+      const applicationId = new URL(request.url).searchParams.get('application_id')
+      const all = book.rows()
+      const rows = all.filter((row) => applicationId === null || row.application.id === applicationId)
       return HttpResponse.json({
         items: rows,
         total: rows.length,
-        needs_you_count: rows.filter((row) => row.coarse_status === CoarseStatus.NeedsYou).length,
+        needs_you_count: all.filter((row) => row.coarse_status === CoarseStatus.NeedsYou).length,
       })
     }),
     http.post('*/api/v1/organizations/:orgId/tasks/:taskId/cancel', ({ params }) => {
