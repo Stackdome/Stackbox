@@ -150,4 +150,10 @@ describe('the committed contract', () => {
     const detail = schemas.ApplicationDetail as Schema & { required?: string[] }
     expect(detail?.required).toEqual(APPLICATION_DETAIL_FIELDS)
   })
+
+  it('refuses a Stackfile path that walks out of the repository or starts from root, keeping a nested one', () => {
+    const parse = (stackfile_path: string) =>
+      contract.schemas.StackfileDetect.safeParse({ repository_id: '00000000-0000-4000-8000-000000000000', stackfile_path }).success
+    expect([parse('../stackfile.yaml'), parse('/stackfile.yaml'), parse('admin/stackfile.yaml')]).toEqual([false, false, true])
+  })
 })

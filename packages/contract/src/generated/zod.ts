@@ -1124,7 +1124,12 @@ const ApplicationCreate = z
       .regex(/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$/)
       .optional(),
     repository_id: z.string().uuid(),
-    stackfile_path: z.string().min(1).max(500).optional(),
+    stackfile_path: z
+      .string()
+      .min(1)
+      .max(500)
+      .regex(/^(?!\/)(?!.*(^|\/)\.\.(\/|$))[^\\]+$/)
+      .optional(),
   })
   .passthrough();
 const CredentialRef = z
@@ -1162,7 +1167,12 @@ const ApplicationDetail = z
 const StackfileDetect = z
   .object({
     repository_id: z.string().uuid(),
-    stackfile_path: z.string().min(1).max(500).optional(),
+    stackfile_path: z
+      .string()
+      .min(1)
+      .max(500)
+      .regex(/^(?!\/)(?!.*(^|\/)\.\.(\/|$))[^\\]+$/)
+      .optional(),
   })
   .passthrough();
 const DetectedService = z
@@ -1183,7 +1193,11 @@ const StackfileDetection = z
 const ApplicationUpdate = z
   .object({
     name: z.string().min(1).max(100).regex(/\S/),
-    stackfile_path: z.string().min(1).max(500),
+    stackfile_path: z
+      .string()
+      .min(1)
+      .max(500)
+      .regex(/^(?!\/)(?!.*(^|\/)\.\.(\/|$))[^\\]+$/),
   })
   .partial()
   .passthrough();
