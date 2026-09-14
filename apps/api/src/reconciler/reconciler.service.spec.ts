@@ -1,4 +1,4 @@
-import { ArtifactKind, CheckKind, CheckOutcome, ExecutionStatus, MessageRole, ReleaseStatus, TaskPhase, TaskResolution } from '@stackbox/contract'
+import { ArtifactKind, CheckKind, CheckOutcome, ExecutionStatus, MessageRole, ReleaseStatus, RunOutcome, TaskPhase, TaskResolution } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import type { StartRunSpec, StartedRun } from '../ports'
 import {
@@ -10,7 +10,7 @@ import {
   reportCheckCall,
   turnCompleted,
 } from '../ports/fakes'
-import { runKey } from '../tasks/calc/idempotency-key'
+import { runKey, verifyKey } from '../tasks/calc/idempotency-key'
 import {
   aCheck,
   aMessage,
@@ -42,6 +42,28 @@ class StartFailingOnceRuntime extends InMemoryAgentRuntime {
     if (!this.failing) return super.startRun(spec)
     this.failing = false
     throw new Error('503 Service Unavailable')
+  }
+}
+
+class CancellingRuntime extends InMemoryAgentRuntime {
+  private armed = false
+
+  constructor(sandboxes: InMemorySandboxProvider, clock: InMemoryClock, private readonly state: InMemoryTaskState, private readonly taskId: string) {
+    super(sandboxes, clock)
+  }
+
+  // Simulates the API's cancel landing while the reconciler is still awaiting the agent's items.
+  cancelOnNextRead(): void {
+    this.armed = true
+  }
+
+  override async items(sessionId: string, opts: { after?: string; limit?: number } = {}) {
+    if (this.armed) {
+      this.armed = false
+      const { task } = await this.state.load(this.taskId)
+      await this.state.saveTask({ ...task, phase: TaskPhase.Cancelled }, task.phase)
+    }
+    return super.items(sessionId, opts)
   }
 }
 
@@ -357,6 +379,42 @@ describe('the reconciler', () => {
     }).toEqual({ sessions: [], sandboxDestroyed: true, instanceTornDown: true })
   })
 
+  it('stops the batch before its first remote action once an API cancel lands between observe and act', async () => {
+    const clock = new InMemoryClock(new Date('2026-09-13T10:00:00Z'))
+    const state = new InMemoryTaskState()
+    const sandboxes = new InMemorySandboxProvider()
+    const runtime = new CancellingRuntime(sandboxes, clock, state, 'T1')
+    const deploy = new InMemoryDeployTarget()
+    const git = new InMemoryGitProvider()
+    git.seedRepository({ summary: aRepository(), headSha: 'origin-sha' })
+    const settings = { owner: 'replica-a', claimLimit: 10, gitHost: 'github.com', readToken: 'read-token', tickEnabled: false }
+    const service = new ReconcilerService(state, runtime, sandboxes, deploy, git, clock, settings)
+
+    runtime.queueRun({
+      events: [reportCheckCall('call-1', { checkKind: CheckKind.FixVerified, outcome: CheckOutcome.Passed, artifacts: [] }), turnCompleted()],
+    })
+    const verify = await runtime.startRun(aRunSpec())
+    state.seed(
+      aSnapshot({
+        task: aTask({ phase: TaskPhase.Verifying }),
+        runs: [aRun({ id: 'T1-run1', candidateSha: 'sha-1' })],
+        executions: [anExecution({ idempotencyKey: verifyKey('T1', 1), runId: 'T1-run1', sessionRef: verify.sessionId })],
+      }),
+    )
+    runtime.cancelOnNextRead()
+
+    await service.tick()
+
+    const { task, checks, runs, pullRequest } = await state.load('T1')
+    expect({
+      phase: task.phase,
+      checks,
+      runOutcome: runs[0]?.outcome,
+      pullRequest,
+      sessionsStarted: runtime.sessionIds().length,
+    }).toEqual({ phase: TaskPhase.Cancelled, checks: [], runOutcome: RunOutcome.Running, pullRequest: null, sessionsStarted: 1 })
+  })
+
   it('does not overwrite a cancel written while it was acting on the task', async () => {
     const { state, service } = aReconciler()
     state.seed(aSnapshot())
@@ -372,6 +430,19 @@ describe('the reconciler', () => {
     await service.tick()
     expect((await state.load('T1')).task.completedAt).not.toBeNull()
   })
+  it('skips a tick that starts while the previous one is still running', async () => {
+    const { state, deploy, service } = aReconciler()
+    const instance = await anInstanceWithLiveOrigin(deploy)
+    state.seed(aSnapshot({ task: aTask({ phase: TaskPhase.Preparing, instanceId: instance.id }), releases: [aRelease()] }))
+
+    const first = service.tick()
+    const second = service.tick()
+    await Promise.all([first, second])
+
+    const { executions } = await state.load('T1')
+    expect(executions.filter((execution) => execution.sessionRef !== null)).toHaveLength(1)
+  })
+
   describe('replaying a batch that stopped part way', () => {
     it('does not append report_reproduced twice when the implementation run fails to start once', async () => {
       const { state, runtime, deploy, service } = aReconciler()

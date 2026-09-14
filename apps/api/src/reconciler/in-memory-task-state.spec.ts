@@ -41,8 +41,15 @@ describe('the in-memory task state', () => {
   it('makes a task claimable again once its lease is released', async () => {
     const state = aStateWith(aTask())
     await state.claim(leaseFor('replica-a', START), START, 10)
-    await state.releaseLease('T1')
+    await state.releaseLease('T1', 'replica-a')
     expect(await state.claim(leaseFor('replica-b', START), START, 10)).toHaveLength(1)
+  })
+
+  it('does not release a lease owned by another replica', async () => {
+    const state = aStateWith(aTask())
+    await state.claim(leaseFor('replica-a', START), START, 10)
+    await state.releaseLease('T1', 'replica-b')
+    expect(await state.claim(leaseFor('replica-c', START), START, 10)).toEqual([])
   })
 
   it('returns the stored execution when its idempotency key already exists', async () => {

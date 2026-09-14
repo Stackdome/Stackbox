@@ -91,9 +91,18 @@ describe('DrizzleTaskState', () => {
     const id = await aStoredTask()
     await state.claim(leaseFor('replica-a', NOW), NOW, 10)
 
-    await state.releaseLease(id)
+    await state.releaseLease(id, 'replica-a')
 
     expect(await state.claim(leaseFor('replica-b', NOW), NOW, 10)).toHaveLength(1)
+  })
+
+  it('does not release a lease owned by another replica', async () => {
+    const id = await aStoredTask()
+    await state.claim(leaseFor('replica-a', NOW), NOW, 10)
+
+    await state.releaseLease(id, 'replica-b')
+
+    expect(await state.claim(leaseFor('replica-c', NOW), NOW, 10)).toHaveLength(0)
   })
 
   it('refuses to save a task whose stored phase has moved on', async () => {

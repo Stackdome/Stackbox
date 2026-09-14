@@ -126,8 +126,8 @@ export class InMemoryTaskState implements TaskState {
     this.pullRequests = upsert(this.pullRequests, pullRequest)
   }
 
-  async releaseLease(taskId: string): Promise<void> {
+  async releaseLease(taskId: string, owner: string): Promise<void> {
     const task = this.tasks.get(taskId)
-    if (task) this.tasks.set(taskId, { ...task, leaseOwner: null, leaseExpiresAt: null })
+    if (task && task.leaseOwner === owner) this.tasks.set(taskId, { ...task, leaseOwner: null, leaseExpiresAt: null })
   }
 }

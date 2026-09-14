@@ -169,7 +169,10 @@ export class DrizzleTaskState implements TaskState {
       .onConflictDoUpdate({ target: pullRequest.id, set: { state: next.state, isDraft: next.isDraft } })
   }
 
-  async releaseLease(taskId: string): Promise<void> {
-    await this.db.update(task).set({ leaseOwner: null, leaseExpiresAt: null }).where(eq(task.id, taskId))
+  async releaseLease(taskId: string, owner: string): Promise<void> {
+    await this.db
+      .update(task)
+      .set({ leaseOwner: null, leaseExpiresAt: null })
+      .where(and(eq(task.id, taskId), eq(task.leaseOwner, owner)))
   }
 }
