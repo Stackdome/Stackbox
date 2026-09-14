@@ -36,7 +36,7 @@ export function InstancesPage() {
         <EmptyState
           title="Application Instances did not load"
           description="Check the connection and try again."
-          action={<Button variant="ghost" onClick={() => void refresh()}>Try again</Button>}
+          action={<Button variant="outline" onClick={() => void refresh()}>Try again</Button>}
         />
       );
     }
@@ -66,7 +66,7 @@ export function InstancesPage() {
           icon={<SearchGlyph />}
           title="No instances match"
           description="Try another search, application, purpose or status."
-          action={<Button variant="ghost" onClick={() => setFilter({ ...DEFAULT_INSTANCE_FILTER, showTornDown: filter.showTornDown })}>Clear filters</Button>}
+          action={<Button variant="outline" onClick={() => setFilter({ ...DEFAULT_INSTANCE_FILTER, showTornDown: filter.showTornDown })}>Clear filters</Button>}
         />
       );
     }
