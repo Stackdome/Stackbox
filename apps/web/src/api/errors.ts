@@ -98,6 +98,8 @@ export function releaseErrorMessage(error: unknown): string {
 
 export const TEARDOWN_ERROR_MESSAGE = "The instance was not torn down. Try again.";
 
+export const EXTEND_EXPIRY_ERROR_MESSAGE = "The expiry was not extended. Try again.";
+
 export function spinUpErrorMessage(error: unknown): string {
   if (isErrorStatus(error, 409)) return "Sync the application's Stackfile before spinning up an instance";
   if (isErrorStatus(error, 404)) return "The repository has no branch or tag with this name";
