@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from '@nestjs/common'
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common'
 import { InstanceExpiryHours, InstancePurpose, InstanceStatus, ReleaseStatus } from '@stackbox/contract'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -7,7 +7,7 @@ import type { Database } from '../db/client'
 import { application } from '../db/schema'
 import { IDS, emptyTables } from '../db/test-support/rows'
 import { LISTED_HEAD_SHA } from '../repositories/test-support/builders'
-import { ADA, aSyncedShop, anInstanceWorld } from './test-support/world'
+import { ADA, DeployReleaseFailsOnce, aSyncedShop, anInstanceWorld, anInstanceWorldWithDeploy } from './test-support/world'
 
 const HOUR_MS = 3_600_000
 
@@ -73,6 +73,25 @@ describe('InstanceService', () => {
     await service.spinUp(IDS.org, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch, ref: 'no-such-branch' }).catch(() => undefined)
 
     expect((await service.list(IDS.org, { includeTornDown: true })).total).toBe(0)
+  })
+
+  it('tears the instance down again when its first release cannot be opened', async () => {
+    const failure = new Error('vendor rejected the release')
+    const deploy = new DeployReleaseFailsOnce(failure)
+    const { service } = anInstanceWorldWithDeploy(db, deploy)
+
+    const refused = await service.spinUp(IDS.org, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch }).catch((error: unknown) => error)
+    const [instance] = (await service.list(IDS.org, { includeTornDown: true })).items
+
+    expect([refused, deploy.isTornDown({ id: instance.id }), instance.status]).toEqual([failure, true, InstanceStatus.TornDown])
+  })
+
+  it('refuses an application of another organization as unknown', async () => {
+    const { service } = anInstanceWorld(db)
+
+    const refused = await service.spinUp(IDS.otherOrg, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch }).catch((error: unknown) => error)
+
+    expect(refused instanceof NotFoundException && refused.getResponse()).toEqual({ code: 'unknown_application', message: 'application not found' })
   })
 
   it('tears an instance down and answers it torn down again on a second call', async () => {

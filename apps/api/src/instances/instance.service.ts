@@ -66,7 +66,13 @@ export class InstanceService {
       url: await this.deploy.instanceUrl(created),
       expiresAt: expiresAtFor(input.purpose, input.expires_in_hours, this.clock.now()),
     })
-    await this.releases.open(created.id, { commitSha, ref })
+    try {
+      await this.releases.open(created.id, { commitSha, ref })
+    } catch (error: unknown) {
+      await this.deploy.teardown({ id: created.id })
+      await this.instances.setStatus(created.id, InstanceStatus.TornDown)
+      throw error
+    }
     return this.detail(orgId, created.id)
   }
 
