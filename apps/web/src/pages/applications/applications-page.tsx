@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { ApplicationListView } from "@/api/mappers/application";
 import { useApplications } from "@/api/use-applications";
+import { useRepositories } from "@/api/use-repositories";
 import { ApplicationCards } from "@/components/applications/application-cards";
 import { ApplicationList } from "@/components/applications/application-list";
+import { emptyStateFor } from "@/components/applications/empty-state-for";
 import { filterApplications } from "@/components/applications/filter-applications";
 import { EmptyState, PageHeader, SearchField, SearchGlyph, StackArchitectureGlyph, ViewToggle, useViewMode } from "@/components/branded";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ export const APPLICATIONS_VIEW_PAGE = "applications";
 export function ApplicationsPage() {
   const { organisationId } = useCurrentUser();
   const { applications, loading, failed, refresh } = useApplications(organisationId);
+  const { repositories } = useRepositories(organisationId);
   const [q, setQ] = useState("");
   const [view, setView] = useViewMode(APPLICATIONS_VIEW_PAGE);
   const navigate = useNavigate();
@@ -34,14 +37,15 @@ export function ApplicationsPage() {
       );
     }
     if (applications.length === 0) {
+      const empty = emptyStateFor(repositories.length);
       return (
         <EmptyState
           icon={<StackArchitectureGlyph />}
           title="Connect your first application"
-          description="An application is one repository plus its Stackfile. Stackbox reads the Stackfile to find the services it runs."
+          description={empty.description}
           action={
             <Button asChild variant="outline">
-              <Link to={ROUTES.newApplication}>Connect application</Link>
+              <Link to={empty.action.to}>{empty.action.label}</Link>
             </Button>
           }
         />
