@@ -1,5 +1,5 @@
 import { PrState } from '@stackbox/contract'
-import type { GitProvider } from '../ports'
+import { type GitProvider, UnknownRefError } from '../ports'
 import type { ConnectionRef, PullRequestSummary, RepoRef, RepoSummary } from '../types'
 
 type SeededRepository = {
@@ -38,7 +38,7 @@ export class InMemoryGitProvider implements GitProvider {
 
   async headSha(_conn: ConnectionRef, repo: RepoRef, branch: string): Promise<string> {
     const sha = this.repository(repo).branches.get(branch)
-    if (sha === undefined) throw new Error(`unknown branch ${branch}`)
+    if (sha === undefined) throw new UnknownRefError(branch)
     return sha
   }
 

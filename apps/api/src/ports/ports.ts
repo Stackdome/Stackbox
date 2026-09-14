@@ -60,6 +60,12 @@ export interface DeployTarget {
   teardown(ref: InstanceRef): Promise<void>
 }
 
+export class UnknownRefError extends Error {
+  constructor(readonly ref: string) {
+    super(`unknown ref ${ref}`)
+  }
+}
+
 export interface GitProvider {
   listRepositories(conn: ConnectionRef): Promise<RepoSummary[]>
   listBranches(conn: ConnectionRef, repo: RepoRef): Promise<string[]>

@@ -5,7 +5,7 @@ import { InstanceStore } from '../db/instance-store'
 import { ReleaseStore } from '../db/release-store'
 import { isRunning } from '../instances/calc/instance-status'
 import type { InstanceRecord, ReleaseRecord } from '../instances/types'
-import { DEPLOY_TARGET, type DeployTarget, GIT_PROVIDER, type GitProvider } from '../ports'
+import { DEPLOY_TARGET, type DeployTarget, GIT_PROVIDER, type GitProvider, UnknownRefError } from '../ports'
 import type { ProviderRepository } from '../repositories/types'
 import { advancedStatus, isInFlight } from './calc/release-progress'
 import { INSTANCE_NOT_FOUND, INSTANCE_NOT_RUNNING, RELEASE_IN_FLIGHT, UNKNOWN_REF } from './errors'
@@ -42,7 +42,8 @@ export class ReleaseService {
   async resolveCommit(repository: ProviderRepository, ref: string): Promise<string> {
     try {
       return await this.git.headSha({ id: repository.installationRef }, { id: repository.externalId }, ref)
-    } catch {
+    } catch (error: unknown) {
+      if (!(error instanceof UnknownRefError)) throw error
       throw new NotFoundException(UNKNOWN_REF)
     }
   }
@@ -53,6 +54,7 @@ export class ReleaseService {
   }
 
   async advance(release: ReleaseRecord): Promise<ReleaseStatus> {
+    if (!isInFlight(release.status)) return release.status
     const observed = (await this.deploy.releaseStatus({ id: release.id })).status
     const next = advancedStatus(release.status, observed)
     if (next !== release.status) await this.releases.setStatus(release.id, next)

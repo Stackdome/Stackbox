@@ -2,11 +2,16 @@ import { ConflictException, NotFoundException } from '@nestjs/common'
 import { InstanceStatus, ReleaseStatus } from '@stackbox/contract'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
-import { SHOP_LISTED } from '../applications/test-support/builders'
+import { SHOP_LISTED, aShopListing } from '../applications/test-support/builders'
 import type { Database } from '../db/client'
+import { InstanceStore } from '../db/instance-store'
+import { ReleaseStore } from '../db/release-store'
 import { IDS, TEST_INSTALLATION_REF, emptyTables, insertRelease } from '../db/test-support/rows'
 import { aRunningInstance, aSyncedShop, anInstanceWorld } from '../instances/test-support/world'
+import type { DeployTarget } from '../ports'
+import { DEFAULT_RELEASE_SCRIPT, InMemoryClock, ScriptedDeployTarget } from '../ports/fakes'
 import { LISTED_HEAD_SHA } from '../repositories/test-support/builders'
+import { ReleaseService } from './release.service'
 
 describe('ReleaseService', () => {
   let db: Database
@@ -81,6 +86,32 @@ describe('ReleaseService', () => {
     })
   })
 
+  it('propagates a provider failure that is not an unknown ref', async () => {
+    const { releases } = anInstanceWorld(db)
+    const unlistedRepository = { id: 'missing-repo', fullName: 'acme/missing', defaultBranch: 'main', externalId: 'missing-external-id', installationRef: TEST_INSTALLATION_REF }
+
+    const failure = await releases.resolveCommit(unlistedRepository, 'main').catch((error: unknown) => error)
+
+    expect(failure instanceof NotFoundException).toBe(false)
+    expect(failure).toBeInstanceOf(Error)
+  })
+
+  it('leaves no release row when the deploy target rejects a resolved commit', async () => {
+    class RejectingDeployTarget extends ScriptedDeployTarget {
+      override async deployRelease(): Promise<never> {
+        throw new Error('deploy target unavailable')
+      }
+    }
+    const deploy = new RejectingDeployTarget(new InMemoryClock(new Date()), DEFAULT_RELEASE_SCRIPT)
+    const instanceId = await aRunningInstance(db, deploy)
+    const releases = new ReleaseService(new InstanceStore(db), new ReleaseStore(db), deploy, aShopListing(LISTED_HEAD_SHA))
+
+    const failure = await releases.create(IDS.org, instanceId, {}).catch((error: unknown) => error)
+
+    expect(failure).toBeInstanceOf(Error)
+    expect((await releases.list(IDS.org, instanceId)).items).toEqual([])
+  })
+
   it('answers not found for an instance of another organization and for an id that is not a uuid', async () => {
     const { deploy, releases } = anInstanceWorld(db)
     const instanceId = await aRunningInstance(db, deploy)
@@ -104,6 +135,24 @@ describe('ReleaseService', () => {
       ReleaseStatus.Live,
       [ReleaseStatus.Building],
     ])
+  })
+
+  it('advancing a settled release makes no call to the deploy target', async () => {
+    class CountingDeployTarget extends ScriptedDeployTarget {
+      releaseStatusCalls = 0
+      override async releaseStatus(ref: Parameters<DeployTarget['releaseStatus']>[0]): ReturnType<DeployTarget['releaseStatus']> {
+        this.releaseStatusCalls += 1
+        return super.releaseStatus(ref)
+      }
+    }
+    const deploy = new CountingDeployTarget(new InMemoryClock(new Date()), DEFAULT_RELEASE_SCRIPT)
+    const instanceId = await aRunningInstance(db, deploy)
+    const releases = new ReleaseService(new InstanceStore(db), new ReleaseStore(db), deploy, aShopListing(LISTED_HEAD_SHA))
+    const opened = await releases.open(instanceId, { commitSha: LISTED_HEAD_SHA, ref: 'main' })
+
+    const settled = await releases.advance({ ...opened, status: ReleaseStatus.Live })
+
+    expect([settled, deploy.releaseStatusCalls]).toEqual([ReleaseStatus.Live, 0])
   })
 
   it('lists the releases still in flight across instances', async () => {
