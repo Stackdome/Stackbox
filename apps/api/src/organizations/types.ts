@@ -11,5 +11,3 @@ export type UserAccount = {
 }
 
 export type UserProfile = UserAccount & { organizationName: string }
-
-export type ApplicationRef = { id: string; name: string }
