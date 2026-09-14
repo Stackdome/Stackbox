@@ -7,7 +7,16 @@ import type { Database } from '../db/client'
 import { application } from '../db/schema'
 import { IDS, emptyTables } from '../db/test-support/rows'
 import { LISTED_HEAD_SHA } from '../repositories/test-support/builders'
-import { ADA, DeployReleaseFailsOnce, aSyncedShop, anInstanceWorld, anInstanceWorldWithDeploy } from './test-support/world'
+import {
+  ADA,
+  DeployReleaseAndTeardownFail,
+  DeployReleaseFailsOnce,
+  InsertFailsInstanceStore,
+  anInstanceWorld,
+  anInstanceWorldWithDeploy,
+  anInstanceWorldWithStore,
+  aSyncedShop,
+} from './test-support/world'
 
 const HOUR_MS = 3_600_000
 
@@ -84,6 +93,27 @@ describe('InstanceService', () => {
     const [instance] = (await service.list(IDS.org, { includeTornDown: true })).items
 
     expect([refused, deploy.isTornDown({ id: instance.id }), instance.status]).toEqual([failure, true, InstanceStatus.TornDown])
+  })
+
+  it('tears the vendor instance down when the insert is refused', async () => {
+    const error = new Error('insert refused')
+    const store = new InsertFailsInstanceStore(db, error)
+    const { deploy, service } = anInstanceWorldWithStore(db, store)
+
+    const refused = await service.spinUp(IDS.org, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch }).catch((e: unknown) => e)
+
+    expect([refused, deploy.isTornDown({ id: store.lastAttemptedId ?? '' })]).toEqual([error, true])
+  })
+
+  it('surfaces the original error when teardown also fails after the release could not be opened', async () => {
+    const openError = new Error('vendor rejected the release')
+    const teardownError = new Error('vendor unreachable')
+    const deploy = new DeployReleaseAndTeardownFail(openError, teardownError)
+    const { service } = anInstanceWorldWithDeploy(db, deploy)
+
+    const refused = await service.spinUp(IDS.org, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch }).catch((e: unknown) => e)
+
+    expect(refused).toBe(openError)
   })
 
   it('refuses an application of another organization as unknown', async () => {

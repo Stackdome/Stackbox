@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common'
 import { InstancePurpose, InstanceStatus, type components } from '@stackbox/contract'
 import { z } from 'zod'
 import type { AuthUser } from '../access'
@@ -31,6 +31,8 @@ function toServiceSpec(service: ServiceRecord): ServiceSpec {
 
 @Injectable()
 export class InstanceService {
+  private readonly logger = new Logger(InstanceService.name)
+
   constructor(
     @Inject(InstanceStore) private readonly instances: InstanceStore,
     @Inject(ApplicationStore) private readonly applications: ApplicationStore,
@@ -58,19 +60,22 @@ export class InstanceService {
     const commitSha = await this.releases.resolveCommit(application.repository, ref)
     const services = await this.applications.servicesOf(application.id)
     const created = await this.deploy.createInstance({ applicationId: application.id, services: services.map(toServiceSpec), variables: {} })
-    await this.instances.insert({
-      id: created.id,
-      applicationId: application.id,
-      purpose: input.purpose,
-      createdBy: user.id,
-      url: await this.deploy.instanceUrl(created),
-      expiresAt: expiresAtFor(input.purpose, input.expires_in_hours, this.clock.now()),
-    })
     try {
+      await this.instances.insert({
+        id: created.id,
+        applicationId: application.id,
+        purpose: input.purpose,
+        createdBy: user.id,
+        url: await this.deploy.instanceUrl(created),
+        expiresAt: expiresAtFor(input.purpose, input.expires_in_hours, this.clock.now()),
+      })
       await this.releases.open(created.id, { commitSha, ref })
     } catch (error: unknown) {
-      await this.deploy.teardown({ id: created.id })
-      await this.instances.setStatus(created.id, InstanceStatus.TornDown)
+      // setStatus on a row the failed insert never created is a no-op.
+      await this.deploy.teardown({ id: created.id }).then(
+        () => this.instances.setStatus(created.id, InstanceStatus.TornDown),
+        (teardownError: unknown) => this.logger.error(`instance ${created.id} could not be torn down`, teardownError instanceof Error ? teardownError.stack : String(teardownError)),
+      )
       throw error
     }
     return this.detail(orgId, created.id)

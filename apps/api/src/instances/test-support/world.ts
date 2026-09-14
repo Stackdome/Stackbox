@@ -6,6 +6,7 @@ import { SHOP_LISTED, aShopListing } from '../../applications/test-support/build
 import { ApplicationStore } from '../../db/application-store'
 import type { Database } from '../../db/client'
 import { InstanceStore } from '../../db/instance-store'
+import type { NewInstance } from '../types'
 import { ReleaseStore } from '../../db/release-store'
 import { application, service } from '../../db/schema'
 import { IDS, insertApplicationOn, insertInstance, insertOrganization, insertRepository, insertUser } from '../../db/test-support/rows'
@@ -55,12 +56,64 @@ export function anInstanceWorldWithDeploy<D extends DeployTarget>(db: Database, 
   return worldWith(db, deploy, new InMemoryClock(WORLD_NOW))
 }
 
+export function anInstanceWorldWithStore(db: Database, instances: InstanceStore) {
+  const clock = new InMemoryClock(WORLD_NOW)
+  const deploy = new ScriptedDeployTarget(clock)
+  const git = aShopListing(LISTED_HEAD_SHA)
+  const releases = new ReleaseService(instances, new ReleaseStore(db), deploy, git)
+  const service = new InstanceService(instances, new ApplicationStore(db), releases, deploy, clock)
+  return { clock, deploy, git, instances, releases, service }
+}
+
 function worldWith<D extends DeployTarget>(db: Database, deploy: D, clock: InMemoryClock) {
   const git = aShopListing(LISTED_HEAD_SHA)
   const instances = new InstanceStore(db)
   const releases = new ReleaseService(instances, new ReleaseStore(db), deploy, git)
   const service = new InstanceService(instances, new ApplicationStore(db), releases, deploy, clock)
   return { clock, deploy, git, instances, releases, service }
+}
+
+// Insert always fails, standing in for an insert refused after the vendor instance already exists.
+export class InsertFailsInstanceStore extends InstanceStore {
+  lastAttemptedId: string | undefined
+
+  constructor(
+    db: Database,
+    private readonly error: Error,
+  ) {
+    super(db)
+  }
+
+  override async insert(row: NewInstance): Promise<void> {
+    this.lastAttemptedId = row.id
+    throw this.error
+  }
+}
+
+export class DeployReleaseAndTeardownFail extends InMemoryDeployTarget {
+  constructor(
+    private readonly openError: Error,
+    private readonly teardownError: Error,
+  ) {
+    super()
+  }
+
+  override async deployRelease(): Promise<ReleaseRef> {
+    throw this.openError
+  }
+
+  override async teardown(): Promise<void> {
+    throw this.teardownError
+  }
+
+  // Backs Postgres rows, whose instance and release ids are uuids.
+  protected override newInstanceId(): string {
+    return randomUUID()
+  }
+
+  protected override newReleaseId(): string {
+    return randomUUID()
+  }
 }
 
 export class DeployReleaseFailsOnce extends InMemoryDeployTarget {
