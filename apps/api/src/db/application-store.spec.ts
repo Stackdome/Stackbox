@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto'
 import { ArtifactKind, ArtifactOwner, TaskPhase, TaskResolution } from '@stackbox/contract'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
-import { aReport, aTask } from '../tasks/test-support/builders'
+import { aCheck, aMessage, aReport, aTask } from '../tasks/test-support/builders'
 import { ApplicationStore } from './application-store'
 import type { Database } from './client'
-import { application, artifact, pullRequest, report, service, task } from './schema'
+import { application, artifact, pullRequest, report, service, task, taskCheck, taskMessage } from './schema'
 import { IDS, emptyTables, insertApplication, insertOrganization, insertRepository } from './test-support/rows'
 
 const SYNCED_AT = new Date('2026-09-14T10:00:00Z')
@@ -72,6 +72,25 @@ describe('ApplicationStore', () => {
     })
   })
 
+  it('keeps three services when two syncs of the same never-synced application run at once', async () => {
+    const shop = await aShopApplication()
+    const write = {
+      sha: 'origin-sha',
+      validatedAt: SYNCED_AT,
+      services: [
+        { name: 'web', path: 'apps/web', image: null, port: null },
+        { name: 'api', path: 'apps/api', image: null, port: null },
+        { name: 'worker', path: 'apps/worker', image: null, port: null },
+      ],
+    }
+
+    // Warms two pool connections first so the race lands on the transactions, not on connection setup.
+    await Promise.all([db.execute(sql`select 1`), db.execute(sql`select 1`)])
+    await Promise.all([store.recordSync(shop, IDS.repository, write), store.recordSync(shop, IDS.repository, write)])
+
+    expect(await store.servicesOf(shop)).toHaveLength(3)
+  })
+
   it('replaces the services and stores the sha when a sync succeeds', async () => {
     const shop = await aShopApplication()
     await store.recordSync(shop, IDS.repository, { sha: 'first', validatedAt: SYNCED_AT, services: [{ name: 'old', path: 'old', image: null, port: null }] })
@@ -115,12 +134,34 @@ describe('ApplicationStore', () => {
     expect([await store.removeIfIdle(shop), (await store.findRecord(IDS.org, shop))?.id]).toEqual([false, shop])
   })
 
-  it('removes an idle application together with its pull requests and report artifacts', async () => {
+  it('never lets a task insert succeed once its application has been removed as idle', async () => {
+    const shop = await aShopApplication()
+    const taskId = randomUUID()
+
+    const [removed, inserted] = await Promise.allSettled([
+      store.removeIfIdle(shop),
+      db.insert(task).values(aTask({ id: taskId, applicationId: shop, reportId: null })),
+    ])
+
+    if (removed.status === 'fulfilled' && removed.value === true) {
+      expect(inserted.status).toBe('rejected')
+    }
+  })
+
+  it('removes an idle application together with its pull requests and one artifact per owner type', async () => {
     const shop = await aShopApplication()
     const [written] = await db.insert(report).values(aReport({ id: randomUUID(), applicationId: shop })).returning({ id: report.id })
     const taskId = await aTaskOf(shop, TaskPhase.HandOver)
     await db.insert(pullRequest).values({ taskId, repositoryId: IDS.repository, number: 142 })
-    await db.insert(artifact).values({ ownerType: ArtifactOwner.Report, ownerId: written.id, kind: ArtifactKind.Screenshot, url: 'data:image/png;base64,AA==' })
+    const checkId = randomUUID()
+    await db.insert(taskCheck).values(aCheck({ id: checkId, taskId, releaseId: null }))
+    const messageId = randomUUID()
+    await db.insert(taskMessage).values(aMessage({ id: messageId, taskId }))
+    await db.insert(artifact).values([
+      { ownerType: ArtifactOwner.Report, ownerId: written.id, kind: ArtifactKind.Screenshot, url: 'data:image/png;base64,AA==' },
+      { ownerType: ArtifactOwner.TaskCheck, ownerId: checkId, kind: ArtifactKind.Screenshot, url: 'data:image/png;base64,AA==' },
+      { ownerType: ArtifactOwner.TaskMessage, ownerId: messageId, kind: ArtifactKind.Screenshot, url: 'data:image/png;base64,AA==' },
+    ])
 
     const removed = await store.removeIfIdle(shop)
 

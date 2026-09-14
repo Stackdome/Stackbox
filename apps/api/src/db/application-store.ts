@@ -90,6 +90,7 @@ export class ApplicationStore {
 
   async recordSync(applicationId: string, repositoryId: string, write: SyncWrite): Promise<void> {
     await this.db.transaction(async (tx) => {
+      await tx.select({ id: application.id }).from(application).where(eq(application.id, applicationId)).for('update')
       if ('error' in write) {
         await tx.update(application).set({ validationError: write.error }).where(eq(application.id, applicationId))
         return
@@ -113,6 +114,7 @@ export class ApplicationStore {
 
   async removeIfIdle(applicationId: string): Promise<boolean> {
     return this.db.transaction(async (tx) => {
+      await tx.select({ id: application.id }).from(application).where(eq(application.id, applicationId)).for('update')
       const [active] = await tx
         .select({ id: task.id })
         .from(task)
