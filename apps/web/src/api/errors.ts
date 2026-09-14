@@ -89,6 +89,21 @@ export function disconnectApplicationErrorMessage(error: unknown): string {
   return isErrorStatus(error, 409) ? "Cancel or finish this application's running tasks first" : "The application was not disconnected. Try again.";
 }
 
+// A refused Deploy says why in the api's own words: a release in flight, or an instance that stopped running.
+export function releaseErrorMessage(error: unknown): string {
+  const body = isAxiosError(error) ? asRecord(error.response?.data) : undefined;
+  if (isErrorStatus(error, 409) && typeof body?.message === "string") return body.message;
+  return "The release was not started. Try again.";
+}
+
+export const TEARDOWN_ERROR_MESSAGE = "The instance was not torn down. Try again.";
+
+export function spinUpErrorMessage(error: unknown): string {
+  if (isErrorStatus(error, 409)) return "Sync the application's Stackfile before spinning up an instance";
+  if (isErrorStatus(error, 404)) return "The repository has no branch or tag with this name";
+  return "The instance was not spun up. Try again.";
+}
+
 export function parseApiError(error: unknown): ParsedApiError {
   const primary = isAxiosError(error) ? primaryError(error.response?.data) : undefined;
   const details = asRecord(primary?.details);

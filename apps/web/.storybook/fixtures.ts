@@ -5,8 +5,11 @@ import {
   CheckOutcome,
   CoarseStatus,
   ConnectionStatus,
+  InstancePurpose,
+  InstanceStatus,
   MessageRole,
   PrState,
+  ReleaseStatus,
   ReportSource,
   RepoProvider,
   RunOutcome,
@@ -60,6 +63,7 @@ export const APPLICATIONS: ApplicationSummary[] = [
 
 const [BILLING, SHOP] = APPLICATIONS
 const hoursAgo = (hours: number) => new Date(Date.now() - hours * 3_600_000).toISOString()
+export const hoursFromNow = (hours: number) => new Date(Date.now() + hours * 3_600_000).toISOString()
 
 export function makeTaskSummary(overrides: Partial<TaskSummary> = {}): TaskSummary {
   return {
@@ -474,6 +478,32 @@ export const APPLICATION_DETAILS: ApplicationDetail[] = [
 ]
 
 export const PREVIEW_APPLICATION_SUMMARIES: ApplicationSummary[] = APPLICATION_DETAILS.map(({ id, name }) => ({ id, name }))
+
+export type InstanceDetail = Schemas['InstanceDetail']
+export type Release = Schemas['Release']
+
+export function makeRelease(overrides: Partial<Release> = {}): Release {
+  return { id: 'release-1', commit_sha: PREVIEW_HEAD_SHA, ref: 'main', status: ReleaseStatus.Live, run_number: null, created_at: hoursAgo(1), ...overrides }
+}
+
+export function makeInstanceDetail(overrides: Partial<InstanceDetail> = {}): InstanceDetail {
+  const releases = overrides.releases ?? [makeRelease()]
+  return {
+    id: '9b1c0d2e-3f40-4a51-8b62-7c83d94ea5f6',
+    application: { id: 'app-shop', name: 'shop' },
+    repository: refOf(SHOP_REPOSITORY),
+    purpose: InstancePurpose.Scratch,
+    status: InstanceStatus.Ready,
+    url: 'https://9b1c0d2e.instances.stackbox.test',
+    owner: { id: 'u1', name: 'Ada Lovelace' },
+    task: null,
+    latest_release: releases[0] ?? null,
+    expires_at: hoursFromNow(48),
+    created_at: hoursAgo(3),
+    ...overrides,
+    releases,
+  }
+}
 
 export const PREVIEW_CATALOG_SEED: CatalogSeed = {
   connections: [GITHUB_CONNECTION, GITLAB_CONNECTION],

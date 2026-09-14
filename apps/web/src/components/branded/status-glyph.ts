@@ -47,17 +47,20 @@ export const GLYPH: Partial<Record<StatusDomain, Record<string, LucideIcon>>> = 
     notdeployed: CircleDashed,
     deleting: Trash2,
   },
-  // One release attempt, not the stack's rolled-up health. The distinction that
-  // matters is DID IT LAND: `Superseded` and `Cancelled` are both "this one
-  // stopped mattering" and neither is a fault, so both take the stopped mark.
-  // pkg/models/stack_release.go:14
+  // One release, and the distinction that matters is DID IT LAND. A row never
+  // spins for a release: the releases rail carries that one moving thing.
   release: {
-    pending: CircleDashed,
-    inprogress: Loader2,
-    released: CircleCheck,
+    queued: CircleDashed,
+    building: CircleDashed,
+    live: CircleCheck,
     failed: CircleX,
-    superseded: CircleOff,
-    cancelled: CircleOff,
+  },
+  instance: {
+    provisioning: Loader2,
+    ready: CircleCheck,
+    degraded: TriangleAlert,
+    expired: CircleOff,
+    torn_down: Trash2,
   },
   // The same seven readings, in the addon's words. A managed database has one
   // extra: `Hibernated` and `Fenced` are both "up but not serving", and neither
@@ -105,6 +108,7 @@ export const GLYPH: Partial<Record<StatusDomain, Record<string, LucideIcon>>> = 
 /** States whose glyph turns. `motion-safe:` so reduced-motion gets a still mark
  *  rather than no mark: the shape still reports "in flight". */
 export const SPINS = new Set([
+  "provisioning",
   "deploying",
   "creating",
   "initializing",
