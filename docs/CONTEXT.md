@@ -25,6 +25,7 @@ Every phase, resolution, purpose, check kind and outcome, pull request state, co
 - `connection_status`
 - `instance_purpose`
 - `instance_status`
+- `instance_expiry_hours` (contract only, not a DB type: 24, 72, 168)
 - `release_status`
 - `report_source`
 - `task_kind`
