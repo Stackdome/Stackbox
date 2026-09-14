@@ -1,0 +1,54 @@
+import { ApplicationRole, UserRole } from '@stackbox/contract'
+import { describe, expect, it } from 'vitest'
+import { APP, ORG, aBinding } from '../test-support/builders'
+import { Action, type RoleBinding } from '../types'
+import { defaultPolicies } from './default-policies'
+import { isAllowed } from './policy-match'
+
+const policies = defaultPolicies(ORG)
+const admin = [aBinding({ subject: UserRole.OrgAdmin })]
+const member = [aBinding({ subject: UserRole.OrgMember })]
+const viewer = [...member, aBinding({ subject: ApplicationRole.Viewer, scope: APP })]
+const developer = [...member, aBinding({ subject: ApplicationRole.Developer, scope: APP })]
+
+function can(bindings: RoleBinding[], path: string, action: Action): boolean {
+  return isAllowed(bindings, policies, { orgId: ORG, resource: `/organizations/${ORG}${path}`, action })
+}
+
+describe('the default policies', () => {
+  it('let an OrgMember list and read git connections and repositories but change neither', () => {
+    expect([
+      can(member, '/git-connections', Action.List),
+      can(member, '/git-connections/C1', Action.Read),
+      can(member, '/repositories', Action.List),
+      can(member, '/git-connections', Action.Create),
+      can(member, '/git-connections/C1', Action.Write),
+      can(member, '/repositories', Action.Create),
+      can(member, '/repositories/R1', Action.Delete),
+    ]).toEqual([true, true, true, false, false, false, false])
+  })
+
+  it('let an OrgAdmin create, write and delete git connections, repositories and applications', () => {
+    expect([
+      can(admin, '/git-connections', Action.Create),
+      can(admin, '/git-connections/C1', Action.Write),
+      can(admin, '/repositories', Action.Create),
+      can(admin, '/repositories/R1', Action.Delete),
+      can(admin, '/applications', Action.Create),
+      can(admin, `/applications/${APP}`, Action.Write),
+      can(admin, `/applications/${APP}`, Action.Delete),
+    ]).toEqual([true, true, true, true, true, true, true])
+  })
+
+  it('deny a Viewer the creation of an application and any change to repositories', () => {
+    expect([can(viewer, '/applications', Action.Create), can(viewer, '/repositories', Action.Create), can(viewer, `/applications/${APP}`, Action.Read)]).toEqual([
+      false,
+      false,
+      true,
+    ])
+  })
+
+  it('let a Developer re-sync the application it is bound to but not delete it', () => {
+    expect([can(developer, `/applications/${APP}`, Action.Write), can(developer, `/applications/${APP}`, Action.Delete)]).toEqual([true, false])
+  })
+})
