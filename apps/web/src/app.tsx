@@ -1,5 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/app-layout'
+import { ApplicationsPage } from './pages/applications/applications-page'
+import { NewApplicationPage } from './pages/applications/new-application-page'
 import { PlaceholderPage } from './pages/placeholder/placeholder-page'
 import { RepositoriesPage } from './pages/repositories/repositories-page'
 import { TaskDetailPage } from './pages/tasks/task-detail-page'
@@ -22,7 +24,8 @@ export function App() {
                 <Route path={ROUTES.tasks} element={<TasksPage />} />
                 <Route path={ROUTES.newTask} element={<TasksPage newTaskOpen />} />
                 <Route path={ROUTES.task} element={<TaskDetailPage />} />
-                <Route path={ROUTES.applications} element={<PlaceholderPage />} />
+                <Route path={ROUTES.applications} element={<ApplicationsPage />} />
+                <Route path={ROUTES.newApplication} element={<NewApplicationPage />} />
                 <Route path={ROUTES.instances} element={<PlaceholderPage />} />
                 <Route path={ROUTES.repositories} element={<RepositoriesPage />} />
                 <Route path={ROUTES.settings} element={<PlaceholderPage />} />
