@@ -6,6 +6,7 @@ import {
   ConnectionStatus,
   ExecutionStatus,
   MessageRole,
+  PrState,
   ReleaseStatus,
   RepoProvider,
   ReportSource,
@@ -19,6 +20,7 @@ import type { TaskSnapshot } from '../../reconciler/task-state'
 import { TaskEventKind } from '../types'
 import type {
   Artifact,
+  CheckRow,
   Execution,
   GitConnection,
   Organization,
@@ -29,6 +31,7 @@ import type {
   Sandbox,
   Task,
   TaskCheck,
+  TaskDetailRow,
   TaskEvent,
   TaskListRow,
   TaskMessage,
@@ -252,5 +255,25 @@ export function aTaskListRow(overrides: { task?: Partial<Task> } & Partial<Omit<
     blockingQuestion: null,
     pullRequest: null,
     ...rest,
+  }
+}
+
+export function aCheckRow(overrides: Partial<CheckRow> = {}): CheckRow {
+  return { ...aCheck(), runNumber: null, artifacts: [], ...overrides }
+}
+
+export function aTaskDetailRow(overrides: Partial<TaskDetailRow> = {}): TaskDetailRow {
+  return {
+    summary: aTaskListRow(),
+    report: {
+      id: 'P1',
+      description: 'The save button does nothing.',
+      expectedBehaviour: 'Saving stores the form.',
+      reporter: 'Ada Lovelace',
+      source: ReportSource.Web,
+      screenshots: [anArtifact()],
+    },
+    pullRequests: [{ number: 142, isDraft: true, state: PrState.Open, headRef: 'stackbox/T1', baseRef: 'main', repositoryFullName: 'acme/shop' }],
+    ...overrides,
   }
 }

@@ -42,4 +42,15 @@ describe('TaskService', () => {
 
     await expect(service.cancel(orgId, finished.id)).rejects.toBeInstanceOf(ConflictException)
   })
+
+  it('answers the detail of a handed over task with its report and merged pull request', async () => {
+    const [row] = (await service.list(orgId, { q: 'Password reset' })).items
+
+    const detail = await service.get(orgId, row.id)
+
+    expect({ description: detail.report?.description, pullRequests: detail.pull_requests.map((pull) => [pull.number, pull.repository_full_name]) }).toEqual({
+      description: 'Password reset link expires immediately',
+      pullRequests: [[142, 'acme/shop']],
+    })
+  })
 })

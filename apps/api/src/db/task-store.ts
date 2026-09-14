@@ -1,10 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { TaskPhase } from '@stackbox/contract'
-import { and, desc, eq, inArray, isNull, max, type SQL } from 'drizzle-orm'
+import { ArtifactKind, ArtifactOwner, TaskPhase } from '@stackbox/contract'
+import { and, asc, desc, eq, inArray, isNull, max, type SQL, sum } from 'drizzle-orm'
 import { isTerminal } from '../tasks/calc/phase-transitions'
+import type { Artifact, CheckRow, RunRow, TaskDetailRow, TaskEvent, TaskMessage } from '../tasks/types'
 import { TaskEventKind, type TaskListRow } from '../tasks/types'
 import { DATABASE_CONNECTION, type Database } from './client'
-import { application, pullRequest, report, repository, run, task, taskEvent, taskMessage } from './schema'
+import { application, artifact, execution, pullRequest, report, repository, run, task, taskCheck, taskEvent, taskMessage } from './schema'
 
 @Injectable()
 export class TaskStore {
@@ -49,6 +50,102 @@ export class TaskStore {
       return true
     })
     return cancelled ? this.getRow(orgId, taskId) : null
+  }
+
+  async getDetailRow(orgId: string, taskId: string): Promise<TaskDetailRow | null> {
+    const summary = await this.getRow(orgId, taskId)
+    if (!summary) {
+      return null
+    }
+    const { reportId } = summary.task
+    const [reports, screenshots, pulls] = await Promise.all([
+      reportId === null ? Promise.resolve([] as (typeof report.$inferSelect)[]) : this.db.select().from(report).where(eq(report.id, reportId)),
+      reportId === null ? Promise.resolve([] as Artifact[]) : this.artifactsOwnedBy(ArtifactOwner.Report, [reportId]),
+      this.db
+        .select({ pull: pullRequest, repositoryFullName: repository.fullName })
+        .from(pullRequest)
+        .innerJoin(repository, eq(pullRequest.repositoryId, repository.id))
+        .where(eq(pullRequest.taskId, taskId))
+        .orderBy(asc(pullRequest.number)),
+    ])
+    const [written] = reports
+    return {
+      summary,
+      report: written
+        ? {
+          id: written.id,
+          description: written.description,
+          expectedBehaviour: written.expectedBehaviour,
+          reporter: written.reporter,
+          source: written.source,
+          screenshots: screenshots.filter((row) => row.kind === ArtifactKind.Screenshot),
+        }
+        : null,
+      pullRequests: pulls.map(({ pull, repositoryFullName }) => ({
+        number: pull.number,
+        isDraft: pull.isDraft,
+        state: pull.state,
+        headRef: pull.headRef,
+        baseRef: pull.baseRef,
+        repositoryFullName,
+      })),
+    }
+  }
+
+  eventsOf(taskId: string): Promise<TaskEvent[]> {
+    return this.db.select().from(taskEvent).where(eq(taskEvent.taskId, taskId)).orderBy(asc(taskEvent.at), asc(taskEvent.id))
+  }
+
+  async checksOf(taskId: string): Promise<CheckRow[]> {
+    const rows = await this.db
+      .select({ check: taskCheck, runNumber: run.number })
+      .from(taskCheck)
+      .leftJoin(run, eq(taskCheck.runId, run.id))
+      .where(eq(taskCheck.taskId, taskId))
+      .orderBy(asc(taskCheck.ranAt), asc(taskCheck.id))
+    const owned = await this.artifactsOwnedBy(ArtifactOwner.TaskCheck, rows.map((row) => row.check.id))
+    return rows.map((row) => ({ ...row.check, runNumber: row.runNumber, artifacts: owned.filter((item) => item.ownerId === row.check.id) }))
+  }
+
+  async runsOf(taskId: string): Promise<RunRow[]> {
+    const [runs, costs] = await Promise.all([
+      this.db.select().from(run).where(eq(run.taskId, taskId)).orderBy(asc(run.number)),
+      this.db
+        .select({ runId: execution.runId, cents: sum(execution.costCents).mapWith(Number) })
+        .from(execution)
+        .where(eq(execution.taskId, taskId))
+        .groupBy(execution.runId),
+    ])
+    return runs.map((row) => ({ ...row, costCents: costs.find((cost) => cost.runId === row.id)?.cents ?? 0 }))
+  }
+
+  messagesOf(taskId: string): Promise<TaskMessage[]> {
+    return this.db.select().from(taskMessage).where(eq(taskMessage.taskId, taskId)).orderBy(asc(taskMessage.createdAt), asc(taskMessage.id))
+  }
+
+  async artifactsOf(taskId: string): Promise<Artifact[]> {
+    const [owner] = await this.db.select({ reportId: task.reportId }).from(task).where(eq(task.id, taskId))
+    const [checks, messages] = await Promise.all([
+      this.db.select({ id: taskCheck.id }).from(taskCheck).where(eq(taskCheck.taskId, taskId)),
+      this.db.select({ id: taskMessage.id }).from(taskMessage).where(eq(taskMessage.taskId, taskId)),
+    ])
+    const lists = await Promise.all([
+      this.artifactsOwnedBy(ArtifactOwner.Report, owner?.reportId ? [owner.reportId] : []),
+      this.artifactsOwnedBy(ArtifactOwner.TaskCheck, checks.map((row) => row.id)),
+      this.artifactsOwnedBy(ArtifactOwner.TaskMessage, messages.map((row) => row.id)),
+    ])
+    return lists.flat()
+  }
+
+  private artifactsOwnedBy(ownerType: ArtifactOwner, ownerIds: string[]): Promise<Artifact[]> {
+    if (ownerIds.length === 0) {
+      return Promise.resolve([])
+    }
+    return this.db
+      .select()
+      .from(artifact)
+      .where(and(eq(artifact.ownerType, ownerType), inArray(artifact.ownerId, ownerIds)))
+      .orderBy(asc(artifact.createdAt))
   }
 
   private async rowsWhere(where: SQL | undefined): Promise<TaskListRow[]> {

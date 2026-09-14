@@ -1,11 +1,13 @@
-import { MessageRole, PrState, ReportSource, TaskPhase } from '@stackbox/contract'
+import { ArtifactKind, ArtifactOwner, CheckKind, CheckOutcome, ExecutionStatus, MessageRole, PrState, ReportSource, TaskPhase } from '@stackbox/contract'
 import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
+import { EnvironmentType } from '../ports'
+import { runKey, verifyKey } from '../tasks/calc/idempotency-key'
 import { aReport, aRun, aTask } from '../tasks/test-support/builders'
 import { TaskEventKind } from '../tasks/types'
 import type { Database } from './client'
-import { pullRequest, report, run, task, taskEvent, taskMessage } from './schema'
+import { artifact, execution, pullRequest, report, run, sandbox, task, taskCheck, taskEvent, taskMessage } from './schema'
 import { TaskStore } from './task-store'
 import { IDS, emptyTables, insertApplication, insertOrganization } from './test-support/rows'
 
@@ -91,5 +93,36 @@ describe('TaskStore', () => {
     const [after] = await db.select({ phase: task.phase }).from(task).where(eq(task.id, IDS.task))
 
     expect([result, after.phase]).toEqual([null, TaskPhase.HandOver])
+  })
+
+  it('sums the execution costs of each run', async () => {
+    await db.insert(task).values(aTask({ id: IDS.task, applicationId: IDS.application, reportId: null, phase: TaskPhase.Verifying }))
+    await db.insert(run).values([aRun({ id: IDS.run1, taskId: IDS.task, number: 1 }), aRun({ id: IDS.run2, taskId: IDS.task, number: 2 })])
+    await db.insert(sandbox).values({ id: IDS.sandbox, taskId: IDS.task, provider: EnvironmentType.OpenAiHosted })
+    await db.insert(execution).values([
+      { sandboxId: IDS.sandbox, taskId: IDS.task, runId: IDS.run1, idempotencyKey: runKey(IDS.task, 1), status: ExecutionStatus.Succeeded, costCents: 20 },
+      { sandboxId: IDS.sandbox, taskId: IDS.task, runId: IDS.run1, idempotencyKey: verifyKey(IDS.task, 1), status: ExecutionStatus.Succeeded, costCents: 30 },
+      { sandboxId: IDS.sandbox, taskId: IDS.task, runId: IDS.run2, idempotencyKey: runKey(IDS.task, 2), status: ExecutionStatus.Running, costCents: 15 },
+    ])
+
+    const runs = await store.runsOf(IDS.task)
+
+    expect(runs.map((row) => [row.number, row.costCents])).toEqual([[1, 50], [2, 15]])
+  })
+
+  it('lists the artifacts of the report, the checks and the messages of a task', async () => {
+    await db.insert(report).values(aReport({ id: IDS.report, applicationId: IDS.application }))
+    await db.insert(task).values(aTask({ id: IDS.task, applicationId: IDS.application, reportId: IDS.report }))
+    const [check] = await db.insert(taskCheck).values({ taskId: IDS.task, kind: CheckKind.ReportReproduced, outcome: CheckOutcome.Passed }).returning()
+    const [message] = await db.insert(taskMessage).values({ taskId: IDS.task, role: MessageRole.Agent, body: 'Here is the log.' }).returning()
+    await db.insert(artifact).values([
+      { ownerType: ArtifactOwner.Report, ownerId: IDS.report, kind: ArtifactKind.Screenshot, url: 'data:image/png;base64,AA==' },
+      { ownerType: ArtifactOwner.TaskCheck, ownerId: check.id, kind: ArtifactKind.TestLog, url: 'data:text/plain;base64,AA==' },
+      { ownerType: ArtifactOwner.TaskMessage, ownerId: message.id, kind: ArtifactKind.Har, url: 'data:application/json;base64,AA==' },
+    ])
+
+    const artifacts = await store.artifactsOf(IDS.task)
+
+    expect(artifacts.map((row) => row.kind)).toEqual([ArtifactKind.Screenshot, ArtifactKind.TestLog, ArtifactKind.Har])
   })
 })

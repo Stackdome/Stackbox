@@ -179,3 +179,13 @@ export type TaskListRow = {
   blockingQuestion: string | null
   pullRequest: { number: number; isDraft: boolean; state: PrState; repositoryFullName: string } | null
 }
+
+export type ReportDetail = Pick<Report, 'id' | 'description' | 'expectedBehaviour' | 'reporter' | 'source'> & { screenshots: Artifact[] }
+
+export type PullRequestDetail = Pick<PullRequest, 'number' | 'isDraft' | 'state' | 'headRef' | 'baseRef'> & { repositoryFullName: string }
+
+export type TaskDetailRow = { summary: TaskListRow; report: ReportDetail | null; pullRequests: PullRequestDetail[] }
+
+export type CheckRow = TaskCheck & { runNumber: number | null; artifacts: Artifact[] }
+
+export type RunRow = Run & { costCents: number }

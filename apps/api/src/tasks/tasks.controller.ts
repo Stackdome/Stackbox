@@ -3,6 +3,7 @@ import { type components, schemas } from '@stackbox/contract'
 import { AccessGuard, Action, RequirePermission } from '../access'
 import { JwtCookieGuard } from '../auth'
 import { ZodValidationPipe } from '../common/zod-validation.pipe'
+import type { TaskDetail } from './presenters/task-detail'
 import type { TaskSummary } from './presenters/task-summary'
 import { TaskService } from './task.service'
 
@@ -27,8 +28,38 @@ export class TasksController {
 
   @Get(':task_id')
   @RequirePermission(TASK_RESOURCE, Action.Read)
-  get(@Param('org_id') orgId: string, @Param('task_id') taskId: string): Promise<TaskSummary> {
+  get(@Param('org_id') orgId: string, @Param('task_id') taskId: string): Promise<TaskDetail> {
     return this.tasks.get(orgId, taskId)
+  }
+
+  @Get(':task_id/events')
+  @RequirePermission(TASK_RESOURCE, Action.Read)
+  events(@Param('task_id') taskId: string): Promise<components['schemas']['TaskEventList']> {
+    return this.tasks.events(taskId)
+  }
+
+  @Get(':task_id/checks')
+  @RequirePermission(TASK_RESOURCE, Action.Read)
+  checks(@Param('task_id') taskId: string): Promise<components['schemas']['TaskCheckList']> {
+    return this.tasks.checks(taskId)
+  }
+
+  @Get(':task_id/runs')
+  @RequirePermission(TASK_RESOURCE, Action.Read)
+  runs(@Param('task_id') taskId: string): Promise<components['schemas']['TaskRunList']> {
+    return this.tasks.runs(taskId)
+  }
+
+  @Get(':task_id/messages')
+  @RequirePermission(TASK_RESOURCE, Action.Read)
+  messages(@Param('task_id') taskId: string): Promise<components['schemas']['TaskMessageList']> {
+    return this.tasks.messages(taskId)
+  }
+
+  @Get(':task_id/artifacts')
+  @RequirePermission(TASK_RESOURCE, Action.Read)
+  artifacts(@Param('task_id') taskId: string): Promise<components['schemas']['ArtifactList']> {
+    return this.tasks.artifacts(taskId)
   }
 
   @Post(':task_id/cancel')
