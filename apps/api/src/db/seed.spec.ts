@@ -1,10 +1,10 @@
-import { ConnectionStatus, TaskEventKind, TaskPhase } from '@stackbox/contract'
-import { and, asc, count, eq, isNotNull, sum } from 'drizzle-orm'
+import { ConnectionStatus, InstancePurpose, InstanceStatus, ReleaseStatus, TaskEventKind, TaskPhase } from '@stackbox/contract'
+import { and, asc, count, eq, isNotNull, ne, sum } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
 import { DEMO_ORIGIN_SHA } from '../ports/fakes'
 import type { Database } from './client'
-import { application, artifact, execution, gitConnection, report, repository, service, task, taskEvent, userAccount } from './schema'
+import { application, applicationInstance, artifact, execution, gitConnection, release, report, repository, service, task, taskEvent, userAccount } from './schema'
 import { FIXTURE, seed } from './seed'
 
 const OPTIONS = { passwordHash: 'scrypt$c2FsdA==$a2V5', now: new Date('2026-09-14T10:00:00Z') }
@@ -125,5 +125,46 @@ describe('seed', () => {
       { login: 'acme', status: ConnectionStatus.Verified, repositories: 3 },
       { login: 'needs-reauth', status: ConnectionStatus.Error, repositories: 0 },
     ])
+  })
+
+  it('seeds seven instances in use, one spun up and torn down, and three tasks that point at their instances, however often it runs', async () => {
+    await seed(db, OPTIONS)
+    await seed(db, OPTIONS)
+
+    const inUse = await db.select({ id: applicationInstance.id }).from(applicationInstance).where(ne(applicationInstance.status, InstanceStatus.TornDown))
+    const spunUpAndTornDown = await db
+      .select({ id: applicationInstance.id })
+      .from(applicationInstance)
+      .where(and(eq(applicationInstance.status, InstanceStatus.TornDown), isNotNull(applicationInstance.createdBy)))
+    const linked = await db.select({ id: task.id }).from(task).where(isNotNull(task.instanceId))
+
+    expect([inUse.length, spunUpAndTornDown.length, linked.length]).toEqual([7, 1, 3])
+  })
+
+  it('gives the persistent instance no expiry and two live releases on main', async () => {
+    await seed(db, OPTIONS)
+
+    const releases = await db
+      .select({ expiresAt: applicationInstance.expiresAt, status: release.status, ref: release.ref })
+      .from(applicationInstance)
+      .innerJoin(release, eq(release.instanceId, applicationInstance.id))
+      .where(eq(applicationInstance.purpose, InstancePurpose.Persistent))
+
+    expect(releases).toEqual([
+      { expiresAt: null, status: ReleaseStatus.Live, ref: 'main' },
+      { expiresAt: null, status: ReleaseStatus.Live, ref: 'main' },
+    ])
+  })
+
+  it('numbers the building release of the provisioning task instance by run 2 and leaves its url for the sweep', async () => {
+    await seed(db, OPTIONS)
+
+    const [provisioning] = await db
+      .select({ url: applicationInstance.url, status: release.status, runId: release.runId })
+      .from(applicationInstance)
+      .innerJoin(release, eq(release.instanceId, applicationInstance.id))
+      .where(eq(applicationInstance.status, InstanceStatus.Provisioning))
+
+    expect([provisioning.url, provisioning.status, provisioning.runId !== null]).toEqual([null, ReleaseStatus.Building, true])
   })
 })

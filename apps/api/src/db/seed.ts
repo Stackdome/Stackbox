@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import {
   ApplicationRole,
   ArtifactKind,
@@ -193,6 +194,63 @@ const TASKS: FixtureTask[] = [
   },
 ]
 
+type FixtureRelease = { status: ReleaseStatus; minutesAgo: number; run: number | null }
+
+type FixtureInstance = {
+  application: ApplicationName
+  purpose: InstancePurpose
+  status: InstanceStatus
+  // A task instance names its task by description; every other instance is spun up by the admin.
+  task: string | null
+  // Negative once the expiry has passed; null for no expiry.
+  expiresInHours: number | null
+  createdHoursAgo: number
+  // Oldest first.
+  releases: FixtureRelease[]
+}
+
+// The scripted provider resolves only main, so a Deploy on a seeded instance must default to it.
+const SEED_RELEASE_REF = 'main'
+
+const URL_ID_LENGTH = 8
+
+const INSTANCES: FixtureInstance[] = [
+  {
+    application: 'billing', purpose: InstancePurpose.Task, status: InstanceStatus.Provisioning, task: 'Discount code is ignored in the cart total',
+    expiresInHours: 70, createdHoursAgo: 2, releases: [{ status: ReleaseStatus.Building, minutesAgo: 1, run: 2 }],
+  },
+  {
+    application: 'shop', purpose: InstancePurpose.Task, status: InstanceStatus.Ready, task: 'Checkout button does nothing on Safari',
+    expiresInHours: 70, createdHoursAgo: 2, releases: [{ status: ReleaseStatus.Live, minutesAgo: 110, run: 1 }],
+  },
+  {
+    application: 'shop', purpose: InstancePurpose.Task, status: InstanceStatus.Expired, task: 'Password reset link expires immediately',
+    expiresInHours: -2, createdHoursAgo: 48, releases: [{ status: ReleaseStatus.Live, minutesAgo: 2_870, run: 1 }],
+  },
+  {
+    application: 'shop', purpose: InstancePurpose.Preview, status: InstanceStatus.Ready, task: null,
+    expiresInHours: 20, createdHoursAgo: 4, releases: [{ status: ReleaseStatus.Live, minutesAgo: 230, run: null }],
+  },
+  {
+    application: 'billing', purpose: InstancePurpose.Scratch, status: InstanceStatus.Ready, task: null,
+    expiresInHours: 5, createdHoursAgo: 3, releases: [{ status: ReleaseStatus.Live, minutesAgo: 170, run: null }],
+  },
+  {
+    application: 'shop', purpose: InstancePurpose.Persistent, status: InstanceStatus.Ready, task: null,
+    expiresInHours: null, createdHoursAgo: 240,
+    releases: [{ status: ReleaseStatus.Live, minutesAgo: 14_000, run: null }, { status: ReleaseStatus.Live, minutesAgo: 60, run: null }],
+  },
+  {
+    application: 'billing', purpose: InstancePurpose.LoadTest, status: InstanceStatus.Degraded, task: null,
+    expiresInHours: 30, createdHoursAgo: 6,
+    releases: [{ status: ReleaseStatus.Live, minutesAgo: 350, run: null }, { status: ReleaseStatus.Failed, minutesAgo: 30, run: null }],
+  },
+  {
+    application: 'shop', purpose: InstancePurpose.Scratch, status: InstanceStatus.TornDown, task: null,
+    expiresInHours: -20, createdHoursAgo: 30, releases: [{ status: ReleaseStatus.Live, minutesAgo: 1_790, run: null }],
+  },
+]
+
 const LAST_RUN_OUTCOME: Partial<Record<TaskPhase, RunOutcome>> = {
   [TaskPhase.HandOver]: RunOutcome.Passed,
   [TaskPhase.Failed]: RunOutcome.Failed,
@@ -333,6 +391,8 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
       { orgId: org.id, userId: dev.id, subject: ApplicationRole.Developer, scope: applicationIds.get('shop') as string },
     ])
 
+    const taskIds = new Map<string, string>()
+    const runIdsByTask = new Map<string, Map<number, string>>()
     for (const fixture of TASKS) {
       const applicationId = applicationIds.get(fixture.application) as string
       const createdAt = hoursBefore(now, fixture.createdHoursAgo)
@@ -365,6 +425,7 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
         })
         .returning({ id: task.id })
       const taskId = created.id
+      taskIds.set(fixture.description, taskId)
 
       if (fixture.screenshot) {
         await tx.insert(artifact).values({ ownerType: ArtifactOwner.Report, ownerId: written.id, kind: ArtifactKind.Screenshot, url: SCREENSHOT_URL, meta: { name: 'safari-checkout.png' }, createdAt })
@@ -398,6 +459,7 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
               }),
             )
             .returning()
+      runIdsByTask.set(taskId, new Map(runRows.map((row) => [row.number, row.id])))
       for (const row of runRows) {
         events.push({ taskId, kind: TaskEventKind.RunStarted, payload: { number: row.number }, at: row.startedAt })
         if (row.endedAt) events.push({ taskId, kind: TaskEventKind.RunEnded, payload: { number: row.number, outcome: row.outcome }, at: row.endedAt })
@@ -490,6 +552,33 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
           ...fixture.pullRequest,
         })
       }
+    }
+
+    for (const fixture of INSTANCES) {
+      const id = randomUUID()
+      const taskId = fixture.task === null ? null : (taskIds.get(fixture.task) as string)
+      await tx.insert(applicationInstance).values({
+        id,
+        applicationId: applicationIds.get(fixture.application) as string,
+        purpose: fixture.purpose,
+        taskId,
+        createdBy: taskId === null ? ada.id : null,
+        url: fixture.status === InstanceStatus.Provisioning ? null : `https://${id.slice(0, URL_ID_LENGTH)}.instances.stackbox.test`,
+        status: fixture.status,
+        expiresAt: fixture.expiresInHours === null ? null : hoursBefore(now, -fixture.expiresInHours),
+        createdAt: hoursBefore(now, fixture.createdHoursAgo),
+      })
+      await tx.insert(release).values(
+        fixture.releases.map((entry, index) => ({
+          instanceId: id,
+          runId: taskId === null || entry.run === null ? null : (runIdsByTask.get(taskId)?.get(entry.run) ?? null),
+          commitSha: index === fixture.releases.length - 1 ? DEMO_ORIGIN_SHA : BILLING_SYNCED_SHA,
+          ref: SEED_RELEASE_REF,
+          status: entry.status,
+          createdAt: minutesAfter(now, -entry.minutesAgo),
+        })),
+      )
+      if (taskId !== null) await tx.update(task).set({ instanceId: id }).where(eq(task.id, taskId))
     }
   })
 }
