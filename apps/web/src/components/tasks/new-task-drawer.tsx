@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useReducer } from "react";
 import { Link } from "react-router-dom";
 import type { Application } from "@/api/mappers/application";
-import { type NewTaskDraft, emptyDraft } from "@/api/mappers/new-task";
+import type { NewTaskDraft } from "@/api/mappers/new-task";
 import type { ArtifactView } from "@/api/mappers/task-detail";
 import { Disclosure, EmptyState, FieldError, FieldShell } from "@/components/branded";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { ROUTES } from "@/lib/routes";
 import { ScreenshotDrop } from "./screenshot-drop";
 import { problemsOf } from "./new-task-draft";
+import { drawerReducer, initialDrawerState } from "./new-task-drawer-state";
+
+const APPLICATION_TRIGGER_ID = "new-task-application";
+const DESCRIPTION_FIELD_ID = "new-task-description";
+const CLOSE_BUTTON_ID = "new-task-close";
 
 export interface NewTaskDrawerProps {
   open: boolean;
@@ -36,48 +41,52 @@ export function NewTaskDrawer({
   initialDraft,
   defaultAdvancedOpen = false,
 }: NewTaskDrawerProps) {
-  const [draft, setDraft] = useState<NewTaskDraft>({ ...emptyDraft(lockedApplicationId), ...initialDraft });
-  const [attempted, setAttempted] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [screenshotError, setScreenshotError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [failure, setFailure] = useState<string | null>(null);
-  const problems = attempted ? problemsOf(draft) : {};
-  const update = (patch: Partial<NewTaskDraft>) => setDraft((current) => ({ ...current, ...patch }));
+  const [state, dispatch] = useReducer(drawerReducer, undefined, () => initialDrawerState(lockedApplicationId, initialDraft));
+  const { draft } = state;
+  const uploading = state.upload.status === "uploading";
+  const screenshotError = state.upload.status === "failed" ? state.upload.message : null;
+  const submitting = state.submit.status === "submitting";
+  const failure = state.submit.status === "failed" ? state.submit.message : null;
+  const problems = state.submit.status === "idle" ? {} : problemsOf(draft);
+  const update = (patch: Partial<NewTaskDraft>) => dispatch({ type: "field changed", patch });
 
   async function attach(file: File) {
     if (!file.type.startsWith("image/")) {
-      setScreenshotError("Drop an image file");
+      dispatch({ type: "upload failed", message: "Drop an image file" });
       return;
     }
-    setScreenshotError(null);
-    setUploading(true);
+    dispatch({ type: "screenshot dropped" });
     try {
-      update({ screenshot: await onUpload(file) });
+      const artifact = await onUpload(file);
+      dispatch({ type: "upload succeeded", artifact });
     } catch {
-      setScreenshotError("The screenshot did not upload. Try again.");
-    } finally {
-      setUploading(false);
+      dispatch({ type: "upload failed", message: "The screenshot did not upload. Try again." });
     }
   }
 
   async function submit() {
-    setAttempted(true);
+    dispatch({ type: "submit attempted" });
     if (Object.keys(problemsOf(draft)).length > 0) return;
-    setSubmitting(true);
-    setFailure(null);
+    dispatch({ type: "submit started" });
     try {
       await onSubmit(draft);
+      dispatch({ type: "submit succeeded" });
     } catch {
-      setFailure("The task was not created. Try again.");
-    } finally {
-      setSubmitting(false);
+      dispatch({ type: "submit failed", message: "The task was not created. Try again." });
     }
   }
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent size="form">
+      <DrawerContent
+        size="form"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          const targetId =
+            applications.length === 0 ? CLOSE_BUTTON_ID : lockedApplicationId !== undefined ? DESCRIPTION_FIELD_ID : APPLICATION_TRIGGER_ID;
+          (event.currentTarget as HTMLElement).querySelector<HTMLElement>(`#${targetId}`)?.focus();
+        }}
+      >
         <DrawerHeader title="New task" description="Describe the bug; the agent reproduces it, fixes it and opens a pull request." />
         {applications.length === 0 ? (
           <>
@@ -95,7 +104,7 @@ export function NewTaskDrawer({
             <DrawerFooter>
               <DrawerActions>
                 <DrawerClose asChild>
-                  <Button variant="outline">Close</Button>
+                  <Button id={CLOSE_BUTTON_ID} variant="outline">Close</Button>
                 </DrawerClose>
               </DrawerActions>
             </DrawerFooter>
@@ -103,9 +112,9 @@ export function NewTaskDrawer({
         ) : (
           <>
             <DrawerBody>
-              <FieldShell label="Application" htmlFor="new-task-application" required error={problems.application}>
+              <FieldShell label="Application" htmlFor={APPLICATION_TRIGGER_ID} required error={problems.application}>
                 <Select value={draft.applicationId} onValueChange={(applicationId) => update({ applicationId })} disabled={lockedApplicationId !== undefined}>
-                  <SelectTrigger id="new-task-application" className="w-full">
+                  <SelectTrigger id={APPLICATION_TRIGGER_ID} className="w-full">
                     <SelectValue placeholder="shop" />
                   </SelectTrigger>
                   <SelectContent>
@@ -117,9 +126,9 @@ export function NewTaskDrawer({
                   </SelectContent>
                 </Select>
               </FieldShell>
-              <FieldShell label="Description" htmlFor="new-task-description" required error={problems.description}>
+              <FieldShell label="Description" htmlFor={DESCRIPTION_FIELD_ID} required error={problems.description}>
                 <Textarea
-                  id="new-task-description"
+                  id={DESCRIPTION_FIELD_ID}
                   value={draft.description}
                   aria-invalid={problems.description !== undefined}
                   onChange={(event) => update({ description: event.target.value })}
@@ -140,7 +149,7 @@ export function NewTaskDrawer({
                   uploading={uploading}
                   error={screenshotError}
                   onFile={(file) => void attach(file)}
-                  onRemove={() => update({ screenshot: null })}
+                  onRemove={() => dispatch({ type: "screenshot removed" })}
                 />
               </FieldShell>
               <FieldShell label="Reporter">

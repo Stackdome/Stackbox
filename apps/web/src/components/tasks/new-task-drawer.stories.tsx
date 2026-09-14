@@ -25,8 +25,13 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-/** State 1: opened from the Tasks list, no application picked. */
-export const Blank: Story = {}
+/** State 1: opened from the Tasks list, no application picked. Opening the drawer focuses the Application field. */
+export const Blank: Story = {
+  play: async () => {
+    const drawer = within(document.body)
+    await expect(drawer.getByRole('combobox', { name: 'Application' })).toHaveFocus()
+  },
+}
 
 /** State 2: opened from an application, picker locked, a screenshot already attached. */
 export const FilledFromApplication: Story = {
