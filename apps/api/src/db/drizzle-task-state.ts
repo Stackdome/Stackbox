@@ -94,7 +94,7 @@ export class DrizzleTaskState implements TaskState {
   async saveTask(next: Task, expectedPhase: TaskPhase): Promise<void> {
     await this.db.transaction(async (tx) => {
       if (next.instanceId !== null) {
-        // task.instance_id is a foreign key; the instances module that owns this row arrives in slice 6.
+        // onConflictDoNothing: a row the instances module already owns must not be overwritten here.
         await tx
           .insert(applicationInstance)
           .values({ id: next.instanceId, applicationId: next.applicationId, purpose: InstancePurpose.Task, taskId: next.id })
