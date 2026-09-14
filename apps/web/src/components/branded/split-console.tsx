@@ -51,7 +51,7 @@ export function SplitConsole({ sources, lines, sourcesTitle = "Sources", allLabe
                 selectedSource ? "hover:bg-[var(--wash-hover)]" : "bg-[var(--wash-selected)]",
               )}
             >
-              <span className="h-[7px] w-[7px] flex-none rounded-full border-[1.5px] border-fg-muted" />
+              <span className="h-2 w-2 flex-none rounded-full border-[1.5px] border-fg-muted" />
               <span className="whitespace-nowrap text-meta text-fg-2">{allLabel}</span>
               <span className="ml-auto text-meta text-fg-muted">{lines.length}</span>
             </button>
@@ -79,7 +79,7 @@ export function SplitConsole({ sources, lines, sourcesTitle = "Sources", allLabe
             {sources.length > 0 && <span className="whitespace-nowrap text-meta text-fg-2">· {selectedSource ? selectedSource.label : allLabel}</span>}
             {streaming && (
               <span className="ml-auto inline-flex items-center gap-1.5 text-meta text-success">
-                <span className="h-1.5 w-1.5 rounded-full bg-success motion-safe:animate-pulse" /> live
+                <span className="h-2 w-2 rounded-full bg-success" /> live
               </span>
             )}
           </div>
