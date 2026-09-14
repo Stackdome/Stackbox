@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
+import { EMPTY_PREVIEW, rows } from './selectors'
 
-const EMPTY_PREVIEW = 'http://localhost:5274'
-const rows = '[data-slot="data-list-row"]'
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==',
   'base64',

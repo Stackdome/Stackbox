@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
-
-const sidebarContent = '[data-sidebar="content"]'
+import { badge, sidebarContent } from './selectors'
 
 test('the preview opens on Tasks inside the shell', async ({ page }) => {
   await page.goto('/')
@@ -29,12 +28,12 @@ test('the Organization group is labelled for an admin', async ({ page }) => {
 test('the Tasks badge reads the number of tasks that need you', async ({ page }) => {
   await page.goto('/tasks')
 
-  await expect(page.locator('[data-sidebar="menu-badge"]')).toHaveText('2')
+  await expect(page.locator(badge)).toHaveText('2')
 })
 
 test('collapsing the rail turns the badge into a dot', async ({ page }) => {
   await page.goto('/tasks')
-  await expect(page.locator('[data-sidebar="menu-badge"]')).toHaveText('2')
+  await expect(page.locator(badge)).toHaveText('2')
 
   await page.getByRole('button', { name: 'Toggle Sidebar' }).click()
 

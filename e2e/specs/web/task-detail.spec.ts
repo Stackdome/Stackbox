@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
-
-const badge = '[data-sidebar="menu-badge"]'
+import { badge } from './selectors'
 
 test('replying in the Needs you banner resumes the task and drops the Tasks badge by one', async ({ page }) => {
   await page.goto('/tasks/task-1')
@@ -44,8 +43,7 @@ test('a check screenshot opens the artifact viewer at the 760 work width', async
 
   await page.getByRole('tabpanel').getByRole('button', { name: 'Open screenshot' }).first().click()
 
-  // The dialog opens with a 200ms zoom-in animation; boundingBox is a single
-  // snapshot, so it must be polled until the transform settles.
+  // boundingBox is a single snapshot; the 200ms zoom-in animation requires polling until it settles.
   const viewer = page.getByTestId('artifact-viewer')
   await expect.poll(async () => Math.round((await viewer.boundingBox())?.width ?? 0)).toBe(760)
 })
