@@ -11,7 +11,7 @@ type Document = {
   components: { schemas: Record<string, Schema> }
 }
 
-const GENERATED_ENUM_COUNT = 47
+const GENERATED_ENUM_COUNT = 27
 
 const SPEC_ENUMS = [
   'RepoProvider', 'ConnectionStatus', 'InstancePurpose', 'InstanceStatus', 'ReleaseStatus',
@@ -42,7 +42,20 @@ const TASK_SUMMARY_FIELDS = [
 
 const TASK_DETAIL_ONLY_FIELDS = ['target_branch', 'budget_cents', 'pull_requests']
 
-const PATH_COUNT = 62
+const PATH_COUNT = 44
+
+const INSTANCE_PATHS = [
+  '/api/v1/organizations/{org_id}/instances',
+  '/api/v1/organizations/{org_id}/instances/{instance_id}',
+  '/api/v1/organizations/{org_id}/instances/{instance_id}/releases',
+  '/api/v1/organizations/{org_id}/instances/{instance_id}/teardown',
+  '/api/v1/organizations/{org_id}/instances/{instance_id}/expiry',
+]
+
+const INSTANCE_DETAIL_FIELDS = [
+  'id', 'application', 'repository', 'purpose', 'status', 'url', 'owner', 'task', 'latest_release', 'expires_at',
+  'created_at', 'releases',
+]
 
 const APPLICATION_ENUMS = ['StackfileSync', 'ServiceKind']
 
@@ -91,7 +104,7 @@ describe('the committed contract', () => {
     expect(references.filter((name) => !(name in schemas))).toEqual([])
   })
 
-  it('exports exactly 47 enums from the barrel', () => {
+  it('exports exactly 27 string enums from the barrel', () => {
     expect(Object.values(contract).filter(isEnum)).toHaveLength(GENERATED_ENUM_COUNT)
   })
 
@@ -126,7 +139,7 @@ describe('the committed contract', () => {
     expect(source).toContain("message: Tasks of kind onboarding are not supported yet")
   })
 
-  it('declares exactly 62 paths', () => {
+  it('declares exactly 44 paths', () => {
     expect(paths).toHaveLength(PATH_COUNT)
   })
 
@@ -155,5 +168,23 @@ describe('the committed contract', () => {
     const parse = (stackfile_path: string) =>
       contract.schemas.StackfileDetect.safeParse({ repository_id: '00000000-0000-4000-8000-000000000000', stackfile_path }).success
     expect([parse('../stackfile.yaml'), parse('/stackfile.yaml'), parse('admin/stackfile.yaml')]).toEqual([false, false, true])
+  })
+
+  it('carries no legacy instance path', () => {
+    expect(paths.filter((path) => path.includes('/instances') && !INSTANCE_PATHS.includes(path))).toEqual([])
+  })
+
+  it('declares the instance and release paths under the organization', () => {
+    expect(INSTANCE_PATHS.filter((path) => !paths.includes(path))).toEqual([])
+  })
+
+  it('requires every field the Instance detail screen draws on InstanceDetail', () => {
+    const detail = schemas.InstanceDetail as Schema & { required?: string[] }
+    expect(detail?.required).toEqual(INSTANCE_DETAIL_FIELDS)
+  })
+
+  it('offers expiry presets of 24, 72 and 168 hours with one varname each', () => {
+    const presets = schemas.InstanceExpiryHours as { enum?: number[]; 'x-enum-varnames'?: string[] }
+    expect([presets?.enum, presets?.['x-enum-varnames']]).toEqual([[24, 72, 168], ['Day', 'ThreeDays', 'Week']])
   })
 })
