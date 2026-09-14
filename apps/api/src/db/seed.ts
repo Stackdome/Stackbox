@@ -166,6 +166,9 @@ const EXECUTION_STATUS: Record<RunOutcome, ExecutionStatus> = {
   [RunOutcome.Abandoned]: ExecutionStatus.Cancelled,
 }
 
+const SEED_LEASE_OWNER = 'seed-fixture'
+const SEED_LEASE_MS = 100 * 365 * 24 * 60 * 60 * 1000
+
 const STEP_MINUTES = 10
 const RUN_COST_CENTS = 40
 const REPRO_COST_CENTS = 20
@@ -261,6 +264,8 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
       const steps: Step[] = fixture.path.map((phase, index) => ({ phase, at: minutesAfter(createdAt, index * STEP_MINUTES) }))
       const phase = fixture.path[fixture.path.length - 1]
       const lastAt = steps[steps.length - 1].at
+      // A running last run has no candidateSha and no execution the scripted AgentRuntime port ever started.
+      const hasUnissuedRun = fixture.runs > 0 && (LAST_RUN_OUTCOME[phase] ?? RunOutcome.Running) === RunOutcome.Running
 
       const [written] = await tx
         .insert(report)
@@ -279,6 +284,9 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
           budgetCents: fixture.budgetCents,
           createdAt,
           completedAt: fixture.completedHoursAgo === null ? null : hoursBefore(now, fixture.completedHoursAgo),
+          // The reconciler must never act on fabricated external references; the lease keeps it away.
+          leaseOwner: hasUnissuedRun ? SEED_LEASE_OWNER : null,
+          leaseExpiresAt: hasUnissuedRun ? new Date(now.getTime() + SEED_LEASE_MS) : null,
         })
         .returning({ id: task.id })
       const taskId = created.id
@@ -307,7 +315,7 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
                   taskId,
                   number,
                   outcome,
-                  // A running seeded run has pushed nothing, so the reconciler never deploys it without an instance.
+                  // A running seeded run has pushed nothing; the task-level lease above keeps the reconciler off it.
                   candidateSha: outcome === RunOutcome.Running ? null : `seed-${number}`,
                   startedAt: entryAt(steps, TaskPhase.Implementing, number) ?? createdAt,
                   endedAt: outcome === RunOutcome.Running ? null : (exitAt(steps, TaskPhase.Verifying, number) ?? lastAt),

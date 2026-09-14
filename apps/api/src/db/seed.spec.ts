@@ -1,5 +1,5 @@
 import { TaskEventKind, TaskPhase } from '@stackbox/contract'
-import { and, eq, sum } from 'drizzle-orm'
+import { and, eq, isNotNull, sum } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
 import type { Database } from './client'
@@ -65,5 +65,16 @@ describe('seed', () => {
       .groupBy(task.budgetCents)
 
     expect(budgeted).toEqual({ budget: 1, spent: 5 })
+  })
+
+  it('leaves fixture tasks with fabricated references leased so the reconciler skips them', async () => {
+    await seed(db, OPTIONS)
+
+    const leased = await db.select({ phase: task.phase, leaseOwner: task.leaseOwner }).from(task).where(isNotNull(task.leaseExpiresAt))
+
+    expect(leased.map((row) => row.phase).sort()).toEqual(
+      [TaskPhase.NeedsInput, TaskPhase.NeedsInput, TaskPhase.Reproducing, TaskPhase.Deploying].sort(),
+    )
+    expect(leased.every((row) => row.leaseOwner === 'seed-fixture')).toBe(true)
   })
 })
