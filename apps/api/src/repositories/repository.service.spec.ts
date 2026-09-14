@@ -111,6 +111,22 @@ describe('RepositoryService', () => {
     })
   })
 
+  it('answers connection_exists, not a raw failure, when two connects race for the same provider account', async () => {
+    const service = serviceOver(aGitListing(SHOP))
+
+    const results = await Promise.allSettled([
+      service.connect(IDS.org, { provider: RepoProvider.Github, account_login: 'acme' }),
+      service.connect(IDS.org, { provider: RepoProvider.Github, account_login: 'acme' }),
+    ])
+
+    const fulfilled = results.filter((result) => result.status === 'fulfilled')
+    const rejected = results.filter((result): result is PromiseRejectedResult => result.status === 'rejected')
+    expect([fulfilled.length, rejected[0]?.reason instanceof ConflictException && rejected[0].reason.getResponse()]).toEqual([
+      1,
+      { code: 'connection_exists', message: 'This provider account is already connected' },
+    ])
+  })
+
   it('marks a connection error once the provider stops listing its repositories', async () => {
     await insertGitConnection(db, IDS.org)
 

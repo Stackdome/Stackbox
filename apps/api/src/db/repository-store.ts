@@ -8,6 +8,13 @@ import { application, gitConnection, repository } from './schema'
 
 type Usage = { repositoryId: string; id: string; name: string }
 
+const FOREIGN_KEY_VIOLATION = '23503'
+
+function isForeignKeyViolation(error: unknown): boolean {
+  const cause = error instanceof Error && error.cause ? error.cause : error
+  return typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === FOREIGN_KEY_VIOLATION
+}
+
 function withUsage(row: Repository, usage: Usage[]): RepositoryWithUsage {
   return { ...row, usedBy: usage.filter((use) => use.repositoryId === row.id).map(({ id, name }) => ({ id, name })) }
 }
@@ -64,8 +71,14 @@ export class RepositoryStore {
       .returning()
   }
 
-  async remove(repositoryId: string): Promise<void> {
-    await this.db.delete(repository).where(eq(repository.id, repositoryId))
+  async remove(repositoryId: string): Promise<boolean> {
+    try {
+      await this.db.delete(repository).where(eq(repository.id, repositoryId))
+      return true
+    } catch (error: unknown) {
+      if (isForeignKeyViolation(error)) return false
+      throw error
+    }
   }
 
   private usageWhere(condition: SQL): Promise<Usage[]> {

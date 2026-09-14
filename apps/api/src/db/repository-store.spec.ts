@@ -76,11 +76,18 @@ describe('RepositoryStore', () => {
     expect([await store.findInOrg(IDS.org, IDS.otherRepository), await store.locate(IDS.org, IDS.otherRepository)]).toEqual([null, null])
   })
 
-  it('removes a repository', async () => {
+  it('removes a repository, answering true', async () => {
     await insertRepository(db, { orgId: IDS.org, id: IDS.repository, name: 'shop' })
 
-    await store.remove(IDS.repository)
-
+    expect(await store.remove(IDS.repository)).toBe(true)
     expect(await store.listByOrg(IDS.org)).toEqual([])
+  })
+
+  it('answers false instead of throwing when an application references the repository', async () => {
+    await insertRepository(db, { orgId: IDS.org, id: IDS.repository, name: 'shop' })
+    await insertApplicationOn(db, { orgId: IDS.org, repositoryId: IDS.repository, id: IDS.application, name: 'shop' })
+
+    expect(await store.remove(IDS.repository)).toBe(false)
+    expect(await store.findInOrg(IDS.org, IDS.repository)).not.toBeNull()
   })
 })

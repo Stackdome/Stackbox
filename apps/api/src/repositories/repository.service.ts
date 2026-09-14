@@ -30,6 +30,7 @@ export class RepositoryService {
     }
     await this.listOrRefuse(input.account_login)
     const id = await this.connections.create({ orgId, provider: input.provider, login: input.account_login })
+    if (id === null) throw new ConflictException(CONNECTION_EXISTS)
     return presentConnection(await this.connectionOrThrow(orgId, id))
   }
 
@@ -71,7 +72,9 @@ export class RepositoryService {
     if (found.usedBy.length > 0) {
       throw new ConflictException({ ...REPOSITORY_IN_USE, applications: found.usedBy })
     }
-    await this.repositories.remove(found.id)
+    if (await this.repositories.remove(found.id)) return
+    const usedBy = (await this.repositories.findInOrg(orgId, found.id))?.usedBy ?? []
+    throw new ConflictException({ ...REPOSITORY_IN_USE, applications: usedBy })
   }
 
   async locate(orgId: string, repositoryId: string): Promise<ProviderRepository> {

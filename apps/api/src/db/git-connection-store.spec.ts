@@ -50,8 +50,18 @@ describe('GitConnectionStore', () => {
     expect(answers).toEqual([true, false, false])
   })
 
+  it('answers null instead of throwing when two connects race for the same provider account', async () => {
+    const [a, b] = await Promise.all([
+      store.create({ orgId: IDS.org, provider: RepoProvider.Github, login: 'acme' }),
+      store.create({ orgId: IDS.org, provider: RepoProvider.Github, login: 'acme' }),
+    ])
+
+    expect([a, b].filter((id) => id !== null)).toHaveLength(1)
+  })
+
   it('records the verification status of a connection', async () => {
     const id = await store.create({ orgId: IDS.org, provider: RepoProvider.Github, login: 'acme' })
+    if (id === null) throw new Error('expected a fresh connection to be created')
 
     await store.setStatus(id, ConnectionStatus.Error)
 

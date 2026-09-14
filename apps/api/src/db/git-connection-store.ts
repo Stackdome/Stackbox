@@ -37,12 +37,13 @@ export class GitConnectionStore {
     return rows.length > 0
   }
 
-  async create(input: NewConnection): Promise<string> {
+  async create(input: NewConnection): Promise<string | null> {
     const [row] = await this.db
       .insert(gitConnection)
       .values({ orgId: input.orgId, provider: input.provider, installationRef: input.login, accountLogin: input.login })
+      .onConflictDoNothing({ target: [gitConnection.orgId, gitConnection.provider, gitConnection.installationRef] })
       .returning({ id: gitConnection.id })
-    return row.id
+    return row?.id ?? null
   }
 
   async setStatus(connectionId: string, status: ConnectionStatus): Promise<void> {
