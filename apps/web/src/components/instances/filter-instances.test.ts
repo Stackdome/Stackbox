@@ -2,7 +2,7 @@ import { CoarseStatus, InstancePurpose, InstanceStatus } from '@stackbox/contrac
 import { describe, expect, it } from 'vitest'
 import { makeInstanceDetail } from '../../../.storybook/fixtures'
 import { toInstance } from '@/api/mappers/instance'
-import { DEFAULT_INSTANCE_FILTER, filterInstances, isFiltered } from './filter-instances'
+import { DEFAULT_INSTANCE_FILTER, filterInstances, isFiltered, statusPicked } from './filter-instances'
 
 const SHOP_SCRATCH = toInstance(makeInstanceDetail({ id: 'aaaa0000', url: 'https://aaaa0000.instances.stackbox.test' }))
 const SHOP_TORN_DOWN = toInstance(makeInstanceDetail({ id: 'bbbb0000', status: InstanceStatus.TornDown }))
@@ -38,6 +38,13 @@ describe('filterInstances', () => {
     const search = (q: string) => ids(filterInstances(ALL_THREE, { ...DEFAULT_INSTANCE_FILTER, q }))
 
     expect([search('billing · task'), search('aaaa0000.instances'), search('discount'), search('ada')]).toEqual([['cccc0000'], ['aaaa0000'], ['cccc0000'], ['aaaa0000']])
+  })
+
+  it('turns Show torn down on when Torn down is picked, so the fetch and the filter agree, and leaves it alone for any other status', () => {
+    expect([statusPicked(DEFAULT_INSTANCE_FILTER, InstanceStatus.TornDown), statusPicked(DEFAULT_INSTANCE_FILTER, InstanceStatus.Ready)]).toEqual([
+      { ...DEFAULT_INSTANCE_FILTER, status: InstanceStatus.TornDown, showTornDown: true },
+      { ...DEFAULT_INSTANCE_FILTER, status: InstanceStatus.Ready },
+    ])
   })
 
   it('counts a search, an application, a purpose or a status as a filter, but not Show torn down', () => {

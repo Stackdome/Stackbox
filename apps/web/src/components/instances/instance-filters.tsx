@@ -4,7 +4,7 @@ import { SearchField } from "@/components/branded";
 import { SegmentedControl } from "@/components/ui/segmented-control";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ALL, type InstanceFilter } from "./filter-instances";
+import { ALL, type InstanceFilter, statusPicked } from "./filter-instances";
 
 const PURPOSE_FILTER_OPTIONS: { value: InstanceFilter["purpose"]; label: string }[] = [
   { value: ALL, label: "All" },
@@ -50,7 +50,7 @@ export function InstanceFilters({
       <SegmentedControl aria-label="Purpose" size="sm" options={PURPOSE_FILTER_OPTIONS} value={filter.purpose} onValueChange={(purpose) => set({ purpose })} />
       <Select
         value={filter.status}
-        onValueChange={(status) => set({ status: STATUS_FILTER_OPTIONS.find((option) => option.value === status)?.value ?? ALL })}
+        onValueChange={(status) => onChange(statusPicked(filter, STATUS_FILTER_OPTIONS.find((option) => option.value === status)?.value ?? ALL))}
       >
         <SelectTrigger aria-label="Status" className="w-36">
           <SelectValue />
