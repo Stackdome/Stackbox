@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { ConnectionStatus, InstanceExpiryHours, InstancePurpose, InstanceStatus, RepoProvider, ReleaseStatus, type components } from '@stackbox/contract'
+import { CoarseStatus, ConnectionStatus, InstanceExpiryHours, InstancePurpose, InstanceStatus, RepoProvider, ReleaseStatus, type components } from '@stackbox/contract'
 import { setupServer } from 'msw/node'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { INSTANCE_IDS, ORG_ID, PREVIEW_CATALOG_SEED } from '../../../.storybook/fixtures'
+import { INSTANCE_IDS, ORG_ID, PREVIEW_CATALOG_SEED, TASK_SUMMARIES } from '../../../.storybook/fixtures'
 import { buildCatalog, PreviewCatalog, type CatalogSeed } from './catalog'
 import { PreviewTaskBook } from './task-detail'
 import { taskHandlers } from './tasks'
@@ -219,5 +219,37 @@ describe('the preview catalog walking instances and releases', () => {
     vi.advanceTimersByTime(3_000)
 
     expect(catalog.instance(INSTANCE_IDS.persistent)?.releases[0].status).toBe(ReleaseStatus.Queued)
+  })
+
+  it("reads an instance's task live from the task book, not the seeded snapshot", () => {
+    const taskBook = new PreviewTaskBook(TASK_SUMMARIES, [])
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0, taskBook })
+    const fixture = taskBook.find('task-4')
+    if (!fixture) throw new Error('expected task-4 to be seeded')
+    taskBook.replace({ ...fixture, detail: { ...fixture.detail, coarse_status: CoarseStatus.ReadyForReview } })
+
+    expect(catalog.instance(INSTANCE_IDS.taskProvisioning)?.task).toEqual({
+      id: 'task-4',
+      description: 'Discount code is ignored in the cart total',
+      coarse_status: CoarseStatus.ReadyForReview,
+    })
+  })
+
+  it('refuses spinning up an instance on a ref the repository does not have', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    expect(catalog.spinUp({ application_id: 'app-shop', purpose: InstancePurpose.Scratch, ref: 'feature/unknown' }, OWNER)).toEqual({
+      status: 404,
+      body: { code: 'unknown_ref', message: 'The repository has no branch or tag with this name' },
+    })
+  })
+
+  it('refuses deploying a release on a ref the repository does not have', () => {
+    const { catalog } = buildCatalog(PREVIEW_CATALOG_SEED, { delayMs: 0 })
+
+    expect(catalog.deploy(INSTANCE_IDS.persistent, { ref: 'feature/unknown' })).toEqual({
+      status: 404,
+      body: { code: 'unknown_ref', message: 'The repository has no branch or tag with this name' },
+    })
   })
 })

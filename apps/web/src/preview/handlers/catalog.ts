@@ -55,6 +55,7 @@ const APPLICATION_NOT_SYNCED = { code: 'application_not_synced', message: "Sync 
 const RELEASE_IN_FLIGHT = { code: 'release_in_flight', message: 'Wait for the release in flight to finish first' }
 const INSTANCE_NOT_RUNNING = { code: 'instance_not_running', message: 'This instance has expired or been torn down' }
 const INSTANCE_HAS_NO_EXPIRY = { code: 'instance_has_no_expiry', message: 'A persistent instance never expires' }
+const UNKNOWN_REF = { code: 'unknown_ref', message: 'The repository has no branch or tag with this name' }
 
 const refusal = (status: number, body: Refusal['body']): Refusal => ({ status, body })
 
@@ -336,11 +337,12 @@ export class PreviewCatalog {
       .filter((detail) => query.applicationId === null || detail.application.id === query.applicationId)
       .filter((detail) => query.includeTornDown || detail.status !== InstanceStatus.TornDown)
       .sort((left, right) => right.created_at.localeCompare(left.created_at))
-      .map(listItemOf)
+      .map((detail) => listItemOf({ ...detail, task: this.taskOf(detail.task?.id ?? null) }))
   }
 
   instance(instanceId: string): Schemas['InstanceDetail'] | null {
-    return this.state.instances.find((detail) => detail.id === instanceId) ?? null
+    const detail = this.state.instances.find((candidate) => candidate.id === instanceId)
+    return detail ? { ...detail, task: this.taskOf(detail.task?.id ?? null) } : null
   }
 
   spinUp(input: Schemas['InstanceSpinUp'], owner: Schemas['InstanceOwner']): Schemas['InstanceDetail'] | Refusal {
@@ -348,8 +350,10 @@ export class PreviewCatalog {
     const application = this.application(input.application_id)
     if (!application) return refusal(404, UNKNOWN_APPLICATION)
     if (NOT_SYNCED.includes(application.sync)) return refusal(409, APPLICATION_NOT_SYNCED)
+    const ref = input.ref ?? application.repository.default_branch
+    if (ref !== application.repository.default_branch) return refusal(404, UNKNOWN_REF)
     const id = crypto.randomUUID()
-    const release = newRelease(input.ref ?? application.repository.default_branch)
+    const release = newRelease(ref)
     const created: Schemas['InstanceDetail'] = {
       id,
       application: { id: application.id, name: application.name },
@@ -378,7 +382,9 @@ export class PreviewCatalog {
     if (!detail) return null
     if (!RUNNING.includes(detail.status)) return refusal(409, INSTANCE_NOT_RUNNING)
     if (detail.releases.some((release) => IN_FLIGHT.includes(release.status))) return refusal(409, RELEASE_IN_FLIGHT)
-    const release = newRelease(input.ref ?? detail.releases[0]?.ref ?? detail.repository.default_branch)
+    const ref = input.ref ?? detail.releases[0]?.ref ?? detail.repository.default_branch
+    if (ref !== detail.repository.default_branch) return refusal(404, UNKNOWN_REF)
+    const release = newRelease(ref)
     this.replaceInstance({ ...detail, releases: [release, ...detail.releases], latest_release: release })
     this.walk(instanceId, release.id)
     return release
@@ -425,6 +431,13 @@ export class PreviewCatalog {
 
   private replaceInstance(next: Schemas['InstanceDetail']): void {
     this.commit({ ...this.state, instances: this.state.instances.map((detail) => (detail.id === next.id ? next : detail)) })
+  }
+
+  /** Rebuilt from the shared task book on every read, so a rename or a phase change never goes stale on the instance. */
+  private taskOf(taskId: string | null): Schemas['InstanceTask'] | null {
+    if (taskId === null) return null
+    const row = this.taskBook.rows().find((candidate) => candidate.id === taskId)
+    return row ? { id: row.id, description: row.report?.description ?? '', coarse_status: row.coarse_status } : null
   }
 
   private replaceApplication(next: Schemas['ApplicationDetail']): void {
