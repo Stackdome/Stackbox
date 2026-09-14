@@ -42,11 +42,15 @@ export class InstanceSweep implements OnApplicationBootstrap, OnModuleDestroy {
     this.running = true
     try {
       for (const release of await this.releases.inFlight()) {
-        await this.releases.advance(release).catch((error: unknown) => this.logger.error(`release ${release.id} did not advance`, String(error)))
+        await this.releases
+          .advance(release)
+          .catch((error: unknown) => this.logger.error(`release ${release.id} did not advance`, error instanceof Error ? error.stack : String(error)))
       }
       const now = this.clock.now()
       for (const instance of await this.instances.live()) {
-        await this.settle(instance, now).catch((error: unknown) => this.logger.error(`instance ${instance.id} did not settle`, String(error)))
+        await this.settle(instance, now).catch((error: unknown) =>
+          this.logger.error(`instance ${instance.id} did not settle`, error instanceof Error ? error.stack : String(error)),
+        )
       }
     } finally {
       this.running = false
@@ -56,8 +60,8 @@ export class InstanceSweep implements OnApplicationBootstrap, OnModuleDestroy {
   private async settle(instance: InstanceRecord, now: Date): Promise<void> {
     const next = nextStatus({ status: instance.status, expiresAt: instance.expiresAt, latestRelease: instance.releases[0] ?? null, now })
     if (next !== instance.status) {
-      await this.instances.setStatus(instance.id, next)
       if (next === InstanceStatus.Expired) await this.deploy.teardown({ id: instance.id })
+      await this.instances.setStatus(instance.id, next)
     }
     if (instance.url === null) {
       await this.instances.setUrl(instance.id, await this.deploy.instanceUrl({ id: instance.id }))

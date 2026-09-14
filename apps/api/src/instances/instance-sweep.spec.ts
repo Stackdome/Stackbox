@@ -3,7 +3,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
 import type { Database } from '../db/client'
 import { IDS, emptyTables, insertInstance } from '../db/test-support/rows'
-import { ADA, aSyncedShop, anInstanceWorld } from './test-support/world'
+import { InstanceSweep } from './instance-sweep'
+import { ADA, aSyncedShop, anInstanceWorld, anInstanceWorldWithDeploy, TeardownFailsOnce } from './test-support/world'
 
 const HOUR_MS = 3_600_000
 const WALK_MS = 3_000
@@ -49,6 +50,25 @@ describe('InstanceSweep', () => {
     clock.advance(WALK_MS)
     await sweep.tick()
     clock.advance(73 * HOUR_MS)
+
+    await sweep.tick()
+
+    expect([(await service.detail(IDS.org, created.id)).status, deploy.isTornDown({ id: created.id })]).toEqual([InstanceStatus.Expired, true])
+  })
+
+  it('keeps an instance running until its expiry teardown succeeds, then retries on the next tick', async () => {
+    const deploy = new TeardownFailsOnce(new Error('vendor teardown unavailable'))
+    deploy.settleReleasesAs(ReleaseStatus.Live)
+    const { clock, instances, releases, service } = anInstanceWorldWithDeploy(db, deploy)
+    const sweep = new InstanceSweep(instances, releases, deploy, clock, { tickEnabled: false })
+    const created = await service.spinUp(IDS.org, ADA, { application_id: IDS.application, purpose: InstancePurpose.Scratch })
+    clock.advance(WALK_MS)
+    await sweep.tick()
+    clock.advance(73 * HOUR_MS)
+
+    await sweep.tick()
+
+    expect([(await service.detail(IDS.org, created.id)).status, deploy.isTornDown({ id: created.id })]).toEqual([InstanceStatus.Ready, false])
 
     await sweep.tick()
 

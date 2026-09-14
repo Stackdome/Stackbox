@@ -87,3 +87,28 @@ export class DeployReleaseFailsOnce extends InMemoryDeployTarget {
     return randomUUID()
   }
 }
+
+export class TeardownFailsOnce extends InMemoryDeployTarget {
+  private failed = false
+
+  constructor(private readonly error: Error) {
+    super()
+  }
+
+  override async teardown(ref: InstanceRef): Promise<void> {
+    if (!this.failed) {
+      this.failed = true
+      throw this.error
+    }
+    return super.teardown(ref)
+  }
+
+  // Backs Postgres rows, whose instance and release ids are uuids.
+  protected override newInstanceId(): string {
+    return randomUUID()
+  }
+
+  protected override newReleaseId(): string {
+    return randomUUID()
+  }
+}
