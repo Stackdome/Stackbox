@@ -1,9 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { StageBadge, type FailureStage } from "./stage-badge";
-import type { components } from "@stackbox/contract";
 
-type Condition = components["schemas"]["Condition"];
+type Condition = { type?: string; status?: string; observed_generation?: number; last_transition_time?: string; reason?: string; message?: string };
 
 export interface FailureCardProps {
   resourceName: string;
