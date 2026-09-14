@@ -175,6 +175,7 @@ export function toTaskInstance(instance: Schemas['TaskInstance']): TaskInstanceV
 }
 
 export function needsPolling(detail: InstanceDetailView): boolean {
+  if (!isRunning(detail.status)) return false
   return detail.status === InstanceStatus.Provisioning || detail.releases.some((release) => isReleaseInFlight(release.status))
 }
 
