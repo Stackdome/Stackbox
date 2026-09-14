@@ -4,7 +4,8 @@ import { cancelTaskErrorMessage, disconnectApplicationErrorMessage } from "@/api
 import type { Task } from "@/api/mappers/task";
 import { useApplicationDetail } from "@/api/use-application-detail";
 import { ApplicationDetail } from "@/components/application-detail/application-detail";
-import { EmptyState, PageHeader, StatusText, useConfirm } from "@/components/branded";
+import { SyncStatus } from "@/components/applications/sync-status";
+import { EmptyState, PageHeader, useConfirm } from "@/components/branded";
 import { NewTaskDrawer } from "@/components/tasks/new-task-drawer";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -82,7 +83,7 @@ export function ApplicationDetailPage() {
     <>
       <PageHeader
         identity={<span className="font-mono text-meta text-fg-muted">{data.detail.slug}</span>}
-        status={<StatusText domain="stackfile_sync" state={data.detail.sync.status} />}
+        status={<SyncStatus sync={data.detail.sync} />}
         actions={<Button onClick={() => setNewTaskOpen(true)}>New task</Button>}
       />
       <ApplicationDetail

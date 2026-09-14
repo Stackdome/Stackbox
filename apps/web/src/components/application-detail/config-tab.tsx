@@ -73,7 +73,7 @@ export function ConfigTab({
           title="Disconnect application"
           description="Deletes its services, tasks and their evidence. The repository stays connected."
           action={
-            <Button variant="destructive" onClick={onDisconnect}>
+            <Button variant="destructive-ghost" shape="flat" onClick={onDisconnect}>
               Disconnect application
             </Button>
           }
