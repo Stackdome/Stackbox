@@ -1,3 +1,4 @@
+import { detailColumnsClass } from "./layout";
 import { useState } from "react";
 import type { ArtifactView } from "@/api/mappers/task-detail";
 import type { TaskDetailData } from "@/api/use-task-detail";
@@ -23,7 +24,7 @@ export function TaskDetail({ data, onReply }: { data: TaskDetailData; onReply: (
   ].filter(Boolean);
 
   return (
-    <div data-slot="task-detail" className="grid grid-cols-[minmax(0,760px)_320px] gap-8 px-6 py-5">
+    <div data-slot="task-detail" className={detailColumnsClass}>
       <div className="flex min-w-0 flex-col gap-6">
         <p className="text-meta text-fg-muted">{facts.join(" · ")}</p>
         {detail.blockingQuestion && <NeedsYouBanner question={detail.blockingQuestion} onSend={onReply} />}

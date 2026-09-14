@@ -1,3 +1,4 @@
+import { detailRailClass } from "./layout";
 import { CheckKind } from "@stackbox/contract";
 import type { ArtifactView, CheckView, TaskDetailView } from "@/api/mappers/task-detail";
 import { DetailList, DetailRow } from "@/components/branded";
@@ -23,7 +24,7 @@ export function TaskRail({
 }) {
   const evidence = checks.filter((check) => check.kind === CheckKind.FixVerified && check.passed).flatMap((check) => check.artifacts);
   return (
-    <aside className="flex w-[320px] flex-col gap-8">
+    <aside className={`${detailRailClass} flex flex-col gap-8`}>
       <RailSection title="Application Instance">
         <p className="text-body text-fg-2">{detail.instanceLabel}</p>
       </RailSection>

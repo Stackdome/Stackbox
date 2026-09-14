@@ -1,3 +1,4 @@
+import { detailColumnsClass } from "@/components/task-detail/layout";
 import { useEffect } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import { useTaskDetail } from "@/api/use-task-detail";
@@ -29,7 +30,7 @@ export function TaskDetailPage() {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-[minmax(0,760px)_320px] gap-8 px-6 py-5">
+      <div className={detailColumnsClass}>
         <Skeleton className="h-64" />
         <Skeleton className="h-64" />
       </div>
