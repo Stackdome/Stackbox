@@ -1,4 +1,4 @@
-import { CoarseStatus } from "@stackbox/contract";
+import { CoarseStatus, ConnectionStatus, StackfileSync } from "@stackbox/contract";
 
 /**
  * The single word→variant brain. Every status string the backend can emit is
@@ -63,7 +63,8 @@ export type StatusDomain =
   | "storage"
   | "build"
   | "preview"
-  | "git_integration"
+  | "git_connection"
+  | "stackfile_sync"
   | "task"
   | "generic";
 
@@ -208,17 +209,27 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "info";
       }
 
-    // The three readings a git provider row can have. Derived in
-    // `lib/git-integrations.ts` rather than sent by the API: the wire carries
-    // `credentials_configured` and an install status, and the row turns the two
-    // into one word.
-    case "git_integration":
+    // A connection either lists the account's repositories or needs the account connected again.
+    case "git_connection":
       switch (s) {
-        case "connected":
+        case ConnectionStatus.Verified:
           return "ready";
-        case "needs_setup":
+        case ConnectionStatus.Error:
+          return "error";
+        default:
+          return "info";
+      }
+
+    // Stale is the warn tier: the application still runs, but its Stackfile moved on without it.
+    case "stackfile_sync":
+      switch (s) {
+        case StackfileSync.Synced:
+          return "ready";
+        case StackfileSync.Stale:
           return "pending";
-        case "action_needed":
+        case StackfileSync.NotSynced:
+          return "neutral";
+        case StackfileSync.ValidationFailed:
           return "error";
         default:
           return "info";

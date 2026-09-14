@@ -4,6 +4,7 @@ import {
   ArtifactOwner,
   CheckKind,
   CheckOutcome,
+  ConnectionStatus,
   ExecutionStatus,
   InstancePurpose,
   InstanceStatus,
@@ -24,6 +25,7 @@ import { eq, inArray, or } from 'drizzle-orm'
 import { defaultPolicies } from '../access/calc/default-policies'
 import { ORG_SCOPE } from '../access/types'
 import { EnvironmentType } from '../ports'
+import { DEMO_ORIGIN_SHA, NEEDS_REAUTH_REF } from '../ports/fakes'
 import { reproKey, runKey } from '../tasks/calc/idempotency-key'
 import type { Database } from './client'
 import {
@@ -41,6 +43,7 @@ import {
   roleBinding,
   run,
   sandbox,
+  service,
   task,
   taskCheck,
   taskEvent,
@@ -57,8 +60,45 @@ export const FIXTURE = {
   budgetTaskDescription: 'Nightly invoice run exceeds its budget',
 } as const
 
-const APPLICATIONS = ['shop', 'billing'] as const
-type ApplicationName = (typeof APPLICATIONS)[number]
+type ApplicationName = 'shop' | 'billing'
+
+const BILLING_SYNCED_SHA = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
+
+const REPOSITORIES = [
+  { key: 'shop', externalId: 'gh-1001', fullName: 'acme/shop' },
+  { key: 'billing', externalId: 'gh-1002', fullName: 'acme/billing' },
+  { key: 'design-system', externalId: 'gh-1003', fullName: 'acme/design-system' },
+] as const
+type RepositoryKey = (typeof REPOSITORIES)[number]['key']
+
+type FixtureApplication = {
+  name: string
+  repository: RepositoryKey
+  stackfilePath: string | null
+  syncedAtSha: string | null
+  credentialsRef: Record<string, { kind: string; ref: string }>
+}
+
+const APPLICATIONS: FixtureApplication[] = [
+  { name: 'shop', repository: 'shop', stackfilePath: null, syncedAtSha: DEMO_ORIGIN_SHA, credentialsRef: {} },
+  {
+    name: 'billing',
+    repository: 'billing',
+    stackfilePath: null,
+    syncedAtSha: BILLING_SYNCED_SHA,
+    credentialsRef: {
+      stripe: { kind: 'token', ref: 'vault://acme/stripe' },
+      smtp: { kind: 'username_password', ref: 'vault://acme/smtp' },
+    },
+  },
+  { name: 'shop-admin', repository: 'shop', stackfilePath: 'admin/stackfile.yaml', syncedAtSha: null, credentialsRef: {} },
+]
+
+const DEMO_SERVICES = [
+  { name: 'api', path: 'apps/api', image: null },
+  { name: 'web', path: 'apps/web', image: null },
+  { name: 'postgres', path: null, image: 'postgres:17' },
+]
 
 type FixtureCheck = { kind: CheckKind; outcome: CheckOutcome; run: number | null }
 
@@ -223,6 +263,9 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
       await tx
         .delete(artifact)
         .where(or(inArray(artifact.ownerId, orgIds), inArray(artifact.ownerId, reports), inArray(artifact.ownerId, checks), inArray(artifact.ownerId, messages)))
+      // repository.connection_id restricts, which Postgres checks even inside the organization's cascade.
+      await tx.delete(application).where(inArray(application.orgId, orgIds))
+      await tx.delete(repository).where(inArray(repository.orgId, orgIds))
       await tx.delete(organization).where(inArray(organization.id, orgIds))
     }
 
@@ -235,18 +278,50 @@ export async function seed(db: Database, options: { passwordHash: string; now: D
         { orgId: org.id, email: FIXTURE.developerEmail, name: 'Dev Ito', passwordHash, orgRole: UserRole.OrgMember },
       ])
       .returning({ id: userAccount.id })
-    await tx.insert(gitConnection).values({ orgId: org.id, provider: RepoProvider.Github, installationRef: 'acme-installation', accountLogin: 'acme' })
+    const [acme] = await tx
+      .insert(gitConnection)
+      .values({ orgId: org.id, provider: RepoProvider.Github, installationRef: 'acme', accountLogin: 'acme' })
+      .returning({ id: gitConnection.id })
+    await tx.insert(gitConnection).values({
+      orgId: org.id,
+      provider: RepoProvider.Gitlab,
+      installationRef: NEEDS_REAUTH_REF,
+      accountLogin: NEEDS_REAUTH_REF,
+      status: ConnectionStatus.Error,
+    })
 
-    const repositoryIds = new Map<ApplicationName, string>()
-    const applicationIds = new Map<ApplicationName, string>()
-    for (const name of APPLICATIONS) {
+    const repositoryIds = new Map<RepositoryKey, string>()
+    for (const fixture of REPOSITORIES) {
       const [repo] = await tx
         .insert(repository)
-        .values({ orgId: org.id, provider: RepoProvider.Github, externalId: `acme-${name}`, fullName: `acme/${name}` })
+        .values({ orgId: org.id, connectionId: acme.id, provider: RepoProvider.Github, externalId: fixture.externalId, fullName: fixture.fullName })
         .returning({ id: repository.id })
-      const [app] = await tx.insert(application).values({ orgId: org.id, name, slug: name, repositoryId: repo.id }).returning({ id: application.id })
-      repositoryIds.set(name, repo.id)
-      applicationIds.set(name, app.id)
+      repositoryIds.set(fixture.key, repo.id)
+    }
+
+    const applicationIds = new Map<string, string>()
+    for (const fixture of APPLICATIONS) {
+      const repositoryId = repositoryIds.get(fixture.repository) as string
+      const synced = fixture.syncedAtSha !== null
+      const [app] = await tx
+        .insert(application)
+        .values({
+          orgId: org.id,
+          name: fixture.name,
+          slug: fixture.name,
+          repositoryId,
+          stackfilePath: fixture.stackfilePath,
+          syncedAtSha: fixture.syncedAtSha,
+          validatedAt: synced ? hoursBefore(now, 1) : null,
+          credentialsRef: fixture.credentialsRef,
+        })
+        .returning({ id: application.id })
+      applicationIds.set(fixture.name, app.id)
+      if (synced) {
+        await tx.insert(service).values(
+          DEMO_SERVICES.map((demo) => ({ applicationId: app.id, name: demo.name, path: demo.path, image: demo.image, repositoryId: demo.path === null ? null : repositoryId })),
+        )
+      }
     }
 
     await tx.insert(policy).values(defaultPolicies(org.id))

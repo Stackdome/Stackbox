@@ -47,4 +47,18 @@ describe('migrating an empty test database', () => {
     const created = result.rows.map((row) => row.table_name)
     expect(DOMAIN_TABLES.filter((table) => !created.includes(table))).toEqual([])
   })
+
+  it('requires every repository to name the git connection it came through', async () => {
+    const result = await client.query<{ is_nullable: string }>(
+      "select is_nullable from information_schema.columns where table_name = 'repository' and column_name = 'connection_id'",
+    )
+    expect(result.rows.map((row) => row.is_nullable)).toEqual(['NO'])
+  })
+
+  it('keeps the last Stackfile validation error on the application', async () => {
+    const result = await client.query<{ is_nullable: string }>(
+      "select is_nullable from information_schema.columns where table_name = 'application' and column_name = 'validation_error'",
+    )
+    expect(result.rows.map((row) => row.is_nullable)).toEqual(['YES'])
+  })
 })

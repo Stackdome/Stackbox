@@ -47,6 +47,7 @@ export function aRepository(overrides: Partial<Repository> = {}): Repository {
   return {
     id: 'R1',
     orgId: 'O1',
+    connectionId: 'C1',
     provider: RepoProvider.Github,
     externalId: '1001',
     fullName: 'acme/shop',

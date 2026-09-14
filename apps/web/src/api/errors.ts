@@ -2,7 +2,7 @@
 // a top-level message plus per-field validation errors (details.errors[]) and
 // the credential-required detail variant. Falls back to the flat reason string
 // when no structured details are present.
-import { getErrorMessage, getErrorStatus, isAxiosError, isForbiddenError } from "./client";
+import { getErrorMessage, getErrorStatus, isAxiosError, isBadRequestError, isErrorStatus, isForbiddenError } from "./client";
 
 export type ParsedFieldError = {
   field: string;
@@ -73,6 +73,20 @@ function extractCredential(details: Record<string, unknown> | undefined): Creden
 // A 403 on cancel names the missing permission; every other failure keeps the generic toast.
 export function cancelTaskErrorMessage(error: unknown): string {
   return isForbiddenError(error) ? "You do not have permission to cancel this task" : "The task was not cancelled";
+}
+
+export function connectProviderErrorMessage(error: unknown): string {
+  if (isErrorStatus(error, 409)) return "This account is already connected";
+  if (isBadRequestError(error)) return "The provider refused the connection. Check the login and try again.";
+  return "The provider was not connected. Try again.";
+}
+
+export function createApplicationErrorMessage(error: unknown): string {
+  return isErrorStatus(error, 409) ? "Another application already uses this slug" : "The application was not created. Try again.";
+}
+
+export function disconnectApplicationErrorMessage(error: unknown): string {
+  return isErrorStatus(error, 409) ? "Cancel or finish this application's running tasks first" : "The application was not disconnected. Try again.";
 }
 
 export function parseApiError(error: unknown): ParsedApiError {

@@ -25,6 +25,7 @@ export type Organization = { id: string; name: string; budgetCents: number; crea
 export type Repository = {
   id: string
   orgId: string
+  connectionId: string
   provider: RepoProvider
   externalId: string
   fullName: string

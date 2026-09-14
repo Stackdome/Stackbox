@@ -8,18 +8,35 @@ type ApplicationSummary = components['schemas']['ApplicationSummary']
 
 const FINISHED: CoarseStatus[] = [CoarseStatus.ReadyForReview, CoarseStatus.Failed, CoarseStatus.Cancelled]
 
-/** A fresh call starts from `seed` again; a cancel, reply or create lives only as long as this set of handlers. */
-export function taskHandlers(seed: TaskSummary[], applications: ApplicationSummary[], details: TaskDetailFixture[] = []): HttpHandler[] {
-  const book = new PreviewTaskBook(seed, details)
+/**
+ * A fresh call starts from `seed` again; a cancel, reply or create lives only
+ * as long as this set of handlers, unless a `PreviewTaskBook` is passed
+ * directly (shared with a `PreviewCatalog` built on the same book).
+ *
+ * `applications` is either the static list a standalone story renders, or a
+ * per-id lookup backed by a catalog so a task created on a catalog-created
+ * application resolves.
+ */
+export function taskHandlers(
+  seedOrBook: TaskSummary[] | PreviewTaskBook,
+  applications: ApplicationSummary[] | ((id: string) => ApplicationSummary | null),
+  details: TaskDetailFixture[] = [],
+): HttpHandler[] {
+  const book = seedOrBook instanceof PreviewTaskBook ? seedOrBook : new PreviewTaskBook(seedOrBook, details)
+  const applicationOf = typeof applications === 'function' ? applications : (id: string) => applications.find((candidate) => candidate.id === id) ?? null
+  // Shadowed by the catalog's own GET /applications when the two are combined; kept for standalone use.
+  const list = typeof applications === 'function' ? [] : applications
 
   return [
-    ...taskDetailHandlers(book, applications),
-    http.get('*/api/v1/organizations/:orgId/tasks', () => {
-      const rows = book.rows()
+    ...taskDetailHandlers(book, applicationOf),
+    http.get('*/api/v1/organizations/:orgId/tasks', ({ request }) => {
+      const applicationId = new URL(request.url).searchParams.get('application_id')
+      const all = book.rows()
+      const rows = all.filter((row) => applicationId === null || row.application.id === applicationId)
       return HttpResponse.json({
         items: rows,
         total: rows.length,
-        needs_you_count: rows.filter((row) => row.coarse_status === CoarseStatus.NeedsYou).length,
+        needs_you_count: all.filter((row) => row.coarse_status === CoarseStatus.NeedsYou).length,
       })
     }),
     http.post('*/api/v1/organizations/:orgId/tasks/:taskId/cancel', ({ params }) => {
@@ -35,7 +52,7 @@ export function taskHandlers(seed: TaskSummary[], applications: ApplicationSumma
       return HttpResponse.json(detail)
     }),
     http.get('*/api/v1/organizations/:orgId/applications', () =>
-      HttpResponse.json({ items: applications, total: applications.length }),
+      HttpResponse.json({ items: list, total: list.length }),
     ),
   ]
 }

@@ -22,7 +22,17 @@ export const IDS = {
   execution: '00000000-0000-4000-8000-000000000010',
   instance: '00000000-0000-4000-8000-000000000011',
   message: '00000000-0000-4000-8000-000000000012',
+  otherConnection: '00000000-0000-4000-8000-000000000013',
+  secondRepository: '00000000-0000-4000-8000-000000000014',
+  secondApplication: '00000000-0000-4000-8000-000000000015',
+  secondConnection: '00000000-0000-4000-8000-000000000016',
 } as const
+
+export const TEST_INSTALLATION_REF = 'acme-installation'
+
+function connectionIdOf(orgId: string): string {
+  return orgId === IDS.org ? IDS.connection : IDS.otherConnection
+}
 
 export async function emptyTables(db: Database): Promise<void> {
   await db.execute(sql`truncate organization, artifact cascade`)
@@ -32,20 +42,49 @@ export async function insertOrganization(db: Database, id: string, name = 'acme'
   await db.insert(organization).values({ id, name })
 }
 
+export async function insertGitConnection(
+  db: Database,
+  orgId: string,
+  overrides: { id?: string; installationRef?: string; accountLogin?: string } = {},
+): Promise<void> {
+  await db
+    .insert(gitConnection)
+    .values({
+      id: overrides.id ?? connectionIdOf(orgId),
+      orgId,
+      provider: RepoProvider.Github,
+      installationRef: overrides.installationRef ?? TEST_INSTALLATION_REF,
+      accountLogin: overrides.accountLogin ?? 'acme',
+    })
+    .onConflictDoNothing()
+}
+
+export async function insertRepository(
+  db: Database,
+  row: { orgId: string; id: string; name: string; externalId?: string; connectionId?: string },
+): Promise<void> {
+  await insertGitConnection(db, row.orgId)
+  await db.insert(repository).values({
+    id: row.id,
+    orgId: row.orgId,
+    connectionId: row.connectionId ?? connectionIdOf(row.orgId),
+    provider: RepoProvider.Github,
+    externalId: row.externalId ?? row.id,
+    fullName: `acme/${row.name}`,
+  })
+}
+
+export async function insertApplicationOn(
+  db: Database,
+  row: { orgId: string; repositoryId: string; id: string; name: string },
+): Promise<void> {
+  await db.insert(application).values({ id: row.id, orgId: row.orgId, name: row.name, slug: row.name, repositoryId: row.repositoryId })
+}
+
 export async function insertApplication(
   db: Database,
   row: { orgId: string; repositoryId: string; id: string; name: string },
 ): Promise<void> {
-  await db.insert(repository).values({
-    id: row.repositoryId,
-    orgId: row.orgId,
-    provider: RepoProvider.Github,
-    externalId: row.repositoryId,
-    fullName: `acme/${row.name}`,
-  })
-  await db.insert(application).values({ id: row.id, orgId: row.orgId, name: row.name, slug: row.name, repositoryId: row.repositoryId })
-}
-
-export async function insertGitConnection(db: Database, orgId: string): Promise<void> {
-  await db.insert(gitConnection).values({ id: IDS.connection, orgId, provider: RepoProvider.Github, installationRef: 'acme-installation' })
+  await insertRepository(db, { orgId: row.orgId, id: row.repositoryId, name: row.name })
+  await insertApplicationOn(db, row)
 }

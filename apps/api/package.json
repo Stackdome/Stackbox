@@ -19,6 +19,7 @@
     "@stackbox/contract": "workspace:*",
     "drizzle-orm": "^0.44.7",
     "jose": "^6.2.12",
+    "js-yaml": "^4.3.2",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@nestjs/testing": "^11.2.3",
     "@swc/core": "^1.16.2",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.5",
     "@types/pg": "^8.23.1",
     "drizzle-kit": "^0.31.10",

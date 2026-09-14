@@ -20,6 +20,13 @@ function aCreateRequest(user: AuthUser, body: unknown): ExecutionContext {
   return { getHandler: () => handler, switchToHttp: () => ({ getRequest: () => request }) } as unknown as ExecutionContext
 }
 
+function aPathRequest(user: AuthUser, applicationId: string): ExecutionContext {
+  const handler = () => undefined
+  RequirePermission('/organizations/:org_id/applications/:application_id', Action.Read, ApplicationSource.Path)(handler)
+  const request = { user, params: { org_id: user.orgId, application_id: applicationId }, body: {} }
+  return { getHandler: () => handler, switchToHttp: () => ({ getRequest: () => request }) } as unknown as ExecutionContext
+}
+
 describe('AccessGuard', () => {
   let db: Database
   let guard: AccessGuard
@@ -51,5 +58,20 @@ describe('AccessGuard', () => {
     const [shop] = await new ApplicationStore(db).listByOrg(admin.orgId)
 
     expect(await guard.canActivate(aCreateRequest(admin, { application_id: shop.id }))).toBe(true)
+  })
+
+  it('answers not found when the path names no application of the organization', async () => {
+    const outcomes = await Promise.allSettled([
+      guard.canActivate(aPathRequest(admin, 'not-a-uuid')),
+      guard.canActivate(aPathRequest(admin, '00000000-0000-4000-8000-0000000000ff')),
+    ])
+
+    expect(outcomes.map((outcome) => outcome.status === 'rejected' && outcome.reason instanceof NotFoundException)).toEqual([true, true])
+  })
+
+  it('lets the admin read an application of the organization named in the path', async () => {
+    const [shop] = await new ApplicationStore(db).listByOrg(admin.orgId)
+
+    expect(await guard.canActivate(aPathRequest(admin, shop.id))).toBe(true)
   })
 })

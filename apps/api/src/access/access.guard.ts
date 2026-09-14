@@ -31,10 +31,7 @@ export class AccessGuard implements CanActivate {
       throw new ForbiddenException({ message: 'unauthorized to perform operation' })
     }
     if (permission.resource.includes(':application_id')) {
-      params.application_id =
-        permission.application === ApplicationSource.Body
-          ? await this.applicationFromBody(params.org_id, request.body)
-          : await this.applicationOfTask(params.org_id, params.task_id)
+      params.application_id = await this.applicationIdFor(permission.application, params, request.body)
     }
     const allowed = await this.access.can(request.user, {
       orgId: params.org_id,
@@ -45,6 +42,24 @@ export class AccessGuard implements CanActivate {
       throw new ForbiddenException({ message: 'unauthorized to perform operation' })
     }
     return true
+  }
+
+  private applicationIdFor(source: ApplicationSource, params: Record<string, string>, body: unknown): Promise<string> {
+    switch (source) {
+      case ApplicationSource.Body:
+        return this.applicationFromBody(params.org_id, body)
+      case ApplicationSource.Path:
+        return this.applicationFromPath(params.org_id, params.application_id)
+      case ApplicationSource.Task:
+        return this.applicationOfTask(params.org_id, params.task_id)
+    }
+  }
+
+  private async applicationFromPath(orgId: string, applicationId: string | undefined): Promise<string> {
+    if (applicationId === undefined || !uuid.safeParse(applicationId).success || !(await this.applications.existsInOrg(orgId, applicationId))) {
+      throw new NotFoundException({ message: 'application not found' })
+    }
+    return applicationId
   }
 
   private async applicationFromBody(orgId: string, body: unknown): Promise<string> {

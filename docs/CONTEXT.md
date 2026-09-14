@@ -40,5 +40,7 @@ Every phase, resolution, purpose, check kind and outcome, pull request state, co
 - `pr_state`
 - `message_role`
 - `coarse_status` (derived, not a DB type)
+- `stackfile_sync` (derived, not a DB type)
+- `service_kind` (derived, not a DB type)
 - `org_role`
 - `application_role`

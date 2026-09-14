@@ -21,6 +21,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { releaseStaleBodyLock } from "@/lib/radix-body-lock";
+import { FieldError } from "./field-error";
 
 /**
  * §6a: the friction is proportional to the blast radius.
@@ -49,6 +50,8 @@ export interface ConfirmOptions {
   variant?: "default" | "destructive";
   /** Level 2 or 3. Omit for level 1. */
   gate?: ConfirmGate;
+  /** Runs inside the dialog once the gate is met: `null` closes it and resolves true, a string stays open and shows as the refusal. */
+  onConfirm?: () => Promise<string | null>;
 }
 
 export type ConfirmFn = (opts: ConfirmOptions) => Promise<boolean>;
@@ -89,6 +92,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   // survive into the next dialog.
   const [acknowledged, setAcknowledged] = useState(false);
   const [typedName, setTypedName] = useState("");
+  const [running, setRunning] = useState(false);
+  const [refusal, setRefusal] = useState<string | null>(null);
 
   const gate = pending?.opts.gate;
   const gateMet =
@@ -106,6 +111,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         setPending(next);
         setAcknowledged(false);
         setTypedName("");
+        setRunning(false);
+        setRefusal(null);
         setOpen(true);
       }, 0);
     });
@@ -126,7 +133,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
   return (
     <ConfirmContext.Provider value={confirm}>
       {children}
-      <AlertDialog open={open} onOpenChange={(o) => !o && settle(false)}>
+      <AlertDialog open={open} onOpenChange={(o) => !o && !running && settle(false)}>
         <AlertDialogContent>
           {/* A confirm with no gate has no content band at all: the body is
               just the header, and the footer still breaks at 32. */}
@@ -173,22 +180,36 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                 </div>
               </AlertDialogSection>
             )}
+
+            {refusal && <FieldError>{refusal}</FieldError>}
           </AlertDialogBody>
 
           <AlertDialogFooter>
             {/* Red button LAST, after Cancel (§6a). */}
-            <AlertDialogCancel>{pending?.opts.cancelLabel ?? "Cancel"}</AlertDialogCancel>
+            <AlertDialogCancel disabled={running}>{pending?.opts.cancelLabel ?? "Cancel"}</AlertDialogCancel>
             <AlertDialogAction
               variant={pending?.opts.variant}
               // Rendered DISABLED, not hidden: the cost has to be visible
               // before it is payable.
-              disabled={!gateMet}
+              disabled={!gateMet || running}
               onClick={(e) => {
-                if (!gateMet) {
+                const onConfirm = pending?.opts.onConfirm;
+                if (!gateMet || running) {
                   e.preventDefault();
                   return;
                 }
-                settle(true);
+                if (!onConfirm) {
+                  settle(true);
+                  return;
+                }
+                e.preventDefault();
+                setRunning(true);
+                setRefusal(null);
+                void onConfirm().then((message) => {
+                  setRunning(false);
+                  if (message === null) settle(true);
+                  else setRefusal(message);
+                });
               }}
             >
               {pending?.opts.confirmLabel ?? "Confirm"}

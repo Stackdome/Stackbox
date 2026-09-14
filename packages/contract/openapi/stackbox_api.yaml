@@ -410,374 +410,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /api/v1/organizations/{org_id}/git-integrations/github/manifest:
-    post:
-      summary: Start the GitHub App manifest flow for the organization
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-      responses:
-        '201':
-          description: Manifest flow started
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitHubAppManifestFlow'
-        '400':
-          description: The hub external URL is not configured
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '409':
-          description: A GitHub App is already installed
-        '500':
-          description: Internal server error
-  /api/v1/git-integrations/github/manifest/callback:
-    get:
-      summary: GitHub App manifest redirect target (unauthenticated, state-validated)
-      parameters:
-        - in: query
-          name: code
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: state
-          required: true
-          schema:
-            type: string
-      responses:
-        '302':
-          description: Redirects the browser to the GitHub App install page
-        '400':
-          description: Invalid or expired state
-        '500':
-          description: Internal server error
-  /api/v1/git-integrations/github/setup:
-    get:
-      summary: Platform GitHub App setup redirect target (unauthenticated, state-validated)
-      parameters:
-        - in: query
-          name: installation_id
-          required: true
-          schema:
-            type: integer
-            format: int64
-        - in: query
-          name: state
-          required: true
-          schema:
-            type: string
-      responses:
-        '302':
-          description: Redirects the browser back to the git integrations page
-        '400':
-          description: Invalid or expired state
-        '404':
-          description: The installation was not found on the platform app
-        '500':
-          description: Internal server error
-  /api/v1/webhooks/github:
-    post:
-      summary: GitHub webhook receiver (unauthenticated, HMAC-verified)
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: true
-      responses:
-        '202':
-          description: Delivery accepted
-        '403':
-          description: Signature verification failed
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/git-integrations/{id}/installations:
-    get:
-      summary: List GitHub App installations
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-        - in: query
-          name: refresh
-          schema:
-            type: boolean
-            default: false
-          description: Re-list installations from GitHub before returning (covers missed webhooks)
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitInstallationList'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Git integration not found
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/git-integrations/{id}/repositories:
-    get:
-      summary: List repositories visible to the GitHub App installation
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-        - in: query
-          name: page
-          schema:
-            type: integer
-        - in: query
-          name: installation_id
-          description: Our GitInstallation id (UUID). When omitted, repositories are aggregated across every installation of the integration.
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitRepositoryPage'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Git integration not found
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/git-integrations/{id}/repositories/{owner}/{repo}:
-    get:
-      summary: Get repository details through the GitHub App installation
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-        - in: path
-          name: owner
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: repo
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitRepository'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Not found
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/git-integrations/{id}/repositories/{owner}/{repo}/branches:
-    get:
-      summary: List repository branches through the GitHub App installation
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-        - in: path
-          name: owner
-          required: true
-          schema:
-            type: string
-        - in: path
-          name: repo
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitBranchList'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Not found
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/git-integrations:
-    post:
-      summary: Create a git integration for the organization
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GitIntegration'
-      responses:
-        '201':
-          description: Git integration created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitIntegration'
-        '400':
-          description: Invalid request payload
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '409':
-          description: An integration for this host already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-    get:
-      summary: List git integrations for the organization
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitIntegrationList'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/git-integrations/{id}:
-    get:
-      summary: Get a git integration
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitIntegration'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Git integration not found
-        '500':
-          description: Internal server error
-    put:
-      summary: Update a git integration (credential rotation)
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GitIntegration'
-      responses:
-        '200':
-          description: Git integration updated successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GitIntegration'
-        '400':
-          description: Invalid request payload
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Git integration not found
-        '500':
-          description: Internal server error
-    delete:
-      summary: Delete a git integration
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-      responses:
-        '204':
-          description: Git integration deleted successfully
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Git integration not found
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/git-integrations/{id}/verify:
-    post:
-      summary: Verify a git integration against a repository
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GitIntegrationVerifyRequest'
-      responses:
-        '204':
-          description: Integration verified successfully
-        '400':
-          description: Verification failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: Git integration not found
-        '500':
-          description: Internal server error
   /api/v1/organizations/{org_id}/admins:
     post:
       summary: Promote a user to organization admin
@@ -2427,10 +2059,209 @@ paths:
         '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '404': { description: Artifact not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/git-connections:
+    get:
+      x-stability: draft
+      summary: List the organization's git provider connections, oldest first
+      operationId: listGitConnections
+      security:
+        - Bearer: []
+      tags:
+        - Repositories
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      responses:
+        '200':
+          description: Connections fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitConnectionList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      x-stability: draft
+      summary: Connect a provider account after listing its repositories once
+      operationId: createGitConnection
+      security:
+        - Bearer: []
+      tags:
+        - Repositories
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitConnectionCreate'
+      responses:
+        '201':
+          description: Connection verified and stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitConnection'
+        '400':
+          description: The body is invalid or the provider refused to list the account's repositories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: connection_failed
+                message: The provider refused to list repositories for this account
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409':
+          description: The organization already connected this provider account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: connection_exists
+                message: This provider account is already connected
+  /api/v1/organizations/{org_id}/git-connections/{connection_id}/verify:
+    post:
+      x-stability: draft
+      summary: List the account's repositories again and record whether the provider answered
+      operationId: verifyGitConnection
+      security:
+        - Bearer: []
+      tags:
+        - Repositories
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connection status recorded, verified or error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GitConnection'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Connection not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/git-connections/{connection_id}/available-repositories:
+    get:
+      x-stability: draft
+      summary: List the provider's repositories the organization has not added yet
+      operationId: listAvailableRepositories
+      security:
+        - Bearer: []
+      tags:
+        - Repositories
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: connection_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available repositories fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableRepositoryList'
+        '400': { description: The provider refused to list the account's repositories, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Connection not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/repositories:
+    get:
+      x-stability: draft
+      summary: List the organization's repositories by full name with the applications each backs
+      operationId: listRepositories
+      security:
+        - Bearer: []
+      tags:
+        - Repositories
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      responses:
+        '200':
+          description: Repositories fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      x-stability: draft
+      summary: Add repositories the connection lists; one already added is skipped
+      operationId: addRepositories
+      security:
+        - Bearer: []
+      tags:
+        - Repositories
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepositoryAdd'
+      responses:
+        '201':
+          description: The rows added by this call
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryList'
+        '400': { description: The body is invalid or the provider refused to list the account's repositories, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404':
+          description: The connection is unknown or the provider does not list one of the external ids
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unknown_repository
+                message: Repository not found in this organization or provider
+  /api/v1/organizations/{org_id}/repositories/{repository_id}:
+    delete:
+      x-stability: draft
+      summary: Remove a repository no application backs
+      operationId: removeRepository
+      security:
+        - Bearer: []
+      tags:
+        - Repositories
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: repository_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Repository removed
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Repository not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409':
+          description: Applications still use the repository
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepositoryInUse'
   /api/v1/organizations/{org_id}/applications:
     get:
       x-stability: draft
-      summary: List the organization's applications by name
+      summary: List the organization's applications by name with their Stackfile sync
       operationId: listApplications
       security:
         - Bearer: []
@@ -2445,18 +2276,220 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApplicationList'
-        '401':
-          description: Auth token is invalid
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      x-stability: draft
+      summary: Create an application on one repository and sync its Stackfile once
+      operationId: createApplication
+      security:
+        - Bearer: []
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationCreate'
+      responses:
+        '201':
+          description: Application created; a missing or invalid Stackfile reads validation_failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetail'
+        '400': { description: The body is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404':
+          description: The repository is not one of the organization's
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '403':
-          description: Unauthorized to perform operation
+              example:
+                code: unknown_repository
+                message: Repository not found in this organization or provider
+        '409':
+          description: Another application already uses the slug
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: slug_taken
+                message: Another application already uses this slug
+  /api/v1/organizations/{org_id}/applications/detect:
+    post:
+      x-stability: draft
+      summary: Read a repository's Stackfile at its head and answer the services it declares, writing nothing
+      operationId: detectStackfile
+      security:
+        - Bearer: []
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StackfileDetect'
+      responses:
+        '200':
+          description: Detection answered, with an error when the Stackfile is missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StackfileDetection'
+        '400': { description: The body is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: The repository is not one of the organization's, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/applications/{application_id}:
+    get:
+      x-stability: draft
+      summary: Get one application as the Application detail screen draws it
+      operationId: getApplication
+      security:
+        - Bearer: []
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Application fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetail'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Application not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    patch:
+      x-stability: draft
+      summary: Rename an application or move its Stackfile path; a moved path syncs again
+      operationId: updateApplication
+      security:
+        - Bearer: []
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApplicationUpdate'
+      responses:
+        '200':
+          description: Application updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetail'
+        '400': { description: The body is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Application not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    delete:
+      x-stability: draft
+      summary: Disconnect an application with its tasks and their evidence
+      operationId: deleteApplication
+      security:
+        - Bearer: []
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Application deleted
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Application not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409':
+          description: A task of the application has not finished
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: application_has_active_tasks
+                message: Cancel or finish the application's running tasks first
+  /api/v1/organizations/{org_id}/applications/{application_id}/services:
+    get:
+      x-stability: draft
+      summary: List the services the last successful sync detected, by name
+      operationId: listApplicationServices
+      security:
+        - Bearer: []
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Services fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Application not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/applications/{application_id}/sync:
+    post:
+      x-stability: draft
+      summary: Read the Stackfile at the repository head and replace the detected services
+      operationId: syncApplication
+      security:
+        - Bearer: []
+      tags:
+        - Applications
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+        - name: application_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Sync recorded, synced or validation_failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationDetail'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404': { description: Application not found, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 components:
   securitySchemes:
     Bearer:
@@ -2998,175 +3031,6 @@ components:
           type: string
         last_build_failure_detail:
           $ref: '#/components/schemas/BuildFailureDetail'
-    GitHubAppManifestFlow:
-      type: object
-      properties:
-        manifest:
-          type: object
-          additionalProperties: true
-          description: 'GitHub App manifest to POST to github_url as the manifest form field. Absent when the hub runs a platform-wide GitHub App: github_url is then the app''s install page and the browser is redirected to it.'
-        github_url:
-          type: string
-        state:
-          type: string
-    GitInstallation:
-      type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        installation_id:
-          type: integer
-          format: int64
-        account_login:
-          type: string
-        account_type:
-          type: string
-        repository_selection:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-    GitInstallationList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GitInstallation'
-        total:
-          type: integer
-    GitRepository:
-      type: object
-      properties:
-        full_name:
-          type: string
-        clone_url:
-          type: string
-        default_branch:
-          type: string
-        private:
-          type: boolean
-        pushed_at:
-          type: string
-          format: date-time
-        owner:
-          type: string
-    GitRepositoryPage:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GitRepository'
-        page:
-          type: integer
-        total_count:
-          type: integer
-        has_next:
-          type: boolean
-    GitBranchList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            type: string
-        total:
-          type: integer
-    GitIntegration:
-      type: object
-      additionalProperties: false
-      required:
-        - host
-      properties:
-        id:
-          type: string
-          readOnly: true
-        type:
-          $ref: '#/components/schemas/GitIntegrationType'
-        host:
-          type: string
-          description: Git host this integration covers, e.g. gitlab.example.com
-        status:
-          type: string
-          readOnly: true
-          enum:
-            - active
-            - pending_install
-            - installed
-        auth:
-          $ref: '#/components/schemas/GitIntegrationAuth'
-        credentials_configured:
-          type: boolean
-          readOnly: true
-        install_url:
-          type: string
-          readOnly: true
-          description: GitHub install page for adding the app to more accounts (github_app only)
-        organisation_id:
-          type: string
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        updated_at:
-          type: string
-          format: date-time
-          readOnly: true
-    GitIntegrationType:
-      type: string
-      default: git_credentials
-      enum:
-        - git_credentials
-        - github_app
-      x-enum-varnames:
-        - GIT_INTEGRATION_TYPE_CREDENTIALS
-        - GIT_INTEGRATION_TYPE_GITHUB_APP
-    GitIntegrationAuth:
-      type: object
-      additionalProperties: false
-      description: Clone auth material; exactly one of token or basic. Never echoed in responses.
-      properties:
-        token:
-          type: string
-          format: password
-          writeOnly: true
-        basic:
-          $ref: '#/components/schemas/GitIntegrationBasicAuth'
-    GitIntegrationBasicAuth:
-      type: object
-      additionalProperties: false
-      required:
-        - username
-        - password
-      properties:
-        username:
-          type: string
-          writeOnly: true
-        password:
-          type: string
-          format: password
-          writeOnly: true
-    GitIntegrationList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/GitIntegration'
-        total:
-          type: integer
-    GitIntegrationVerifyRequest:
-      type: object
-      additionalProperties: false
-      required:
-        - repo_url
-      properties:
-        repo_url:
-          type: string
     ContainerFailureDetail:
       type: object
       properties:
@@ -4634,6 +4498,427 @@ components:
       x-enum-varnames:
         - Developer
         - Viewer
+    StackfileSync:
+      type: string
+      x-stability: draft
+      description: Derived on every read from synced_at_sha, the repository head and validation_error.
+      enum:
+        - synced
+        - stale
+        - not_synced
+        - validation_failed
+      x-enum-varnames:
+        - Synced
+        - Stale
+        - NotSynced
+        - ValidationFailed
+    ServiceKind:
+      type: string
+      x-stability: draft
+      description: source when the Stackfile gives the service a path, image otherwise.
+      enum:
+        - source
+        - image
+      x-enum-varnames:
+        - Source
+        - Image
+    GitConnection:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - provider
+        - account_login
+        - status
+        - repository_count
+        - created_at
+      properties:
+        id:
+          type: string
+        provider:
+          $ref: '#/components/schemas/RepoProvider'
+        account_login:
+          type: string
+        status:
+          $ref: '#/components/schemas/ConnectionStatus'
+        repository_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    GitConnectionList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GitConnection'
+    GitConnectionCreate:
+      type: object
+      x-stability: draft
+      required:
+        - provider
+        - account_login
+      properties:
+        provider:
+          $ref: '#/components/schemas/RepoProvider'
+        account_login:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '\S'
+    AvailableRepository:
+      type: object
+      x-stability: draft
+      required:
+        - external_id
+        - full_name
+        - default_branch
+      properties:
+        external_id:
+          type: string
+        full_name:
+          type: string
+        default_branch:
+          type: string
+    AvailableRepositoryList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailableRepository'
+    RepositoryRef:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - full_name
+        - default_branch
+      properties:
+        id:
+          type: string
+        full_name:
+          type: string
+        default_branch:
+          type: string
+    Repository:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - connection_id
+        - provider
+        - external_id
+        - full_name
+        - default_branch
+        - used_by
+        - created_at
+      properties:
+        id:
+          type: string
+        connection_id:
+          type: string
+        provider:
+          $ref: '#/components/schemas/RepoProvider'
+        external_id:
+          type: string
+        full_name:
+          type: string
+        default_branch:
+          type: string
+        used_by:
+          type: array
+          description: The applications this repository backs, by name.
+          items:
+            $ref: '#/components/schemas/ApplicationSummary'
+        created_at:
+          type: string
+          format: date-time
+    RepositoryList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Repository'
+    RepositoryAdd:
+      type: object
+      x-stability: draft
+      required:
+        - connection_id
+        - external_ids
+      properties:
+        connection_id:
+          type: string
+          format: uuid
+        external_ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+            minLength: 1
+    RepositoryInUse:
+      type: object
+      x-stability: draft
+      required:
+        - code
+        - message
+        - applications
+      properties:
+        code:
+          type: string
+          example: repository_in_use
+        message:
+          type: string
+        applications:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApplicationSummary'
+    ApplicationListItem:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - slug
+        - repository
+        - stackfile_path
+        - sync
+        - synced_at_sha
+        - service_names
+        - task_count
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        repository:
+          $ref: '#/components/schemas/RepositoryRef'
+        stackfile_path:
+          type: string
+          nullable: true
+          description: Null means stackfile.yaml at the repository root.
+        sync:
+          $ref: '#/components/schemas/StackfileSync'
+        synced_at_sha:
+          type: string
+          nullable: true
+        service_names:
+          type: array
+          items:
+            type: string
+        task_count:
+          type: integer
+    CredentialRef:
+      type: object
+      x-stability: draft
+      description: Where a credential lives; the secret itself never reaches the API.
+      required:
+        - name
+        - kind
+        - ref
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+        ref:
+          type: string
+    Service:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - path
+        - image
+        - kind
+        - repository
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+          nullable: true
+        image:
+          type: string
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/ServiceKind'
+        repository:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/RepositoryRef'
+    ServiceList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+    ApplicationDetail:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - slug
+        - repository
+        - stackfile_path
+        - sync
+        - synced_at_sha
+        - head_sha
+        - validated_at
+        - validation_error
+        - credentials
+        - services
+        - task_count
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        repository:
+          $ref: '#/components/schemas/RepositoryRef'
+        stackfile_path:
+          type: string
+          nullable: true
+        sync:
+          $ref: '#/components/schemas/StackfileSync'
+        synced_at_sha:
+          type: string
+          nullable: true
+        head_sha:
+          type: string
+        validated_at:
+          type: string
+          format: date-time
+          nullable: true
+        validation_error:
+          type: string
+          nullable: true
+        credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/CredentialRef'
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/Service'
+        task_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    StackfileDetect:
+      type: object
+      x-stability: draft
+      required:
+        - repository_id
+      properties:
+        repository_id:
+          type: string
+          format: uuid
+        stackfile_path:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '^(?!/)(?!.*(^|/)\.\.(/|$))[^\\]+$'
+    DetectedService:
+      type: object
+      x-stability: draft
+      required:
+        - name
+        - path
+        - image
+        - kind
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+          nullable: true
+        image:
+          type: string
+          nullable: true
+        kind:
+          $ref: '#/components/schemas/ServiceKind'
+    StackfileDetection:
+      type: object
+      x-stability: draft
+      required:
+        - sha
+        - services
+        - error
+      properties:
+        sha:
+          type: string
+        services:
+          type: array
+          items:
+            $ref: '#/components/schemas/DetectedService'
+        error:
+          type: string
+          nullable: true
+    ApplicationCreate:
+      type: object
+      x-stability: draft
+      required:
+        - name
+        - repository_id
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '\S'
+        slug:
+          type: string
+          pattern: '^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$'
+          description: Derived from the name when absent.
+        repository_id:
+          type: string
+          format: uuid
+        stackfile_path:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '^(?!/)(?!.*(^|/)\.\.(/|$))[^\\]+$'
+    ApplicationUpdate:
+      type: object
+      x-stability: draft
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '\S'
+        stackfile_path:
+          type: string
+          minLength: 1
+          maxLength: 500
+          pattern: '^(?!/)(?!.*(^|/)\.\.(/|$))[^\\]+$'
     ApplicationSummary:
       type: object
       x-stability: draft
@@ -4655,7 +4940,7 @@ components:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/ApplicationSummary'
+            $ref: '#/components/schemas/ApplicationListItem'
         total:
           type: integer
     TaskListQuery:

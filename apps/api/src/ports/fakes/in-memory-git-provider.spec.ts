@@ -37,4 +37,17 @@ describe('the in-memory git provider', () => {
     })
     expect(pullRequest).toEqual({ number: 1, headRef: 'stackbox/T1', baseRef: 'main', isDraft: true, state: PrState.Open })
   })
+
+  it('answers a seeded file by its path whatever ref is asked for', async () => {
+    const git = new InMemoryGitProvider()
+    git.seedRepository({ summary: repository, headSha: 'origin-sha', files: { 'stackfile.yaml': Buffer.from('services: {}') } })
+
+    const file = await git.readFile(connection, repository, 'any-ref', 'stackfile.yaml')
+
+    expect(file?.toString('utf8')).toBe('services: {}')
+  })
+
+  it('answers null for a path the repository does not carry', async () => {
+    expect(await aSeededGit().readFile(connection, repository, 'origin-sha', 'admin/stackfile.yaml')).toBeNull()
+  })
 })
