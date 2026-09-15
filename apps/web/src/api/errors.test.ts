@@ -10,6 +10,7 @@ import {
   joinErrorMessage,
   organizationChoicesOf,
   releaseErrorMessage,
+  SETTINGS_PERMISSION,
   settingsErrorMessage,
   signInErrorMessage,
   spinUpErrorMessage,
@@ -152,5 +153,9 @@ describe("settingsErrorMessage", () => {
       settingsErrorMessage(errorWithBody(409, { code: "last_admin", message: "Make another member an admin first" }), REMOVE_MEMBER_ERROR),
       settingsErrorMessage(errorWithStatus(500), REMOVE_MEMBER_ERROR),
     ]).toEqual(["Make another member an admin first", "The member was not removed. Try again."]);
+  });
+
+  it("names the missing permission on a 403 regardless of the fallback", () => {
+    expect(settingsErrorMessage(errorWithStatus(403), REMOVE_MEMBER_ERROR)).toBe(SETTINGS_PERMISSION);
   });
 });
