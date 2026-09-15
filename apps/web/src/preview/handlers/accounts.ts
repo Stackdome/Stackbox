@@ -15,12 +15,13 @@ export type AccountsSeed = {
   apiTokens: Schemas['ApiToken'][]
 }
 
-type AccountsState = AccountsSeed & { sessionUserId: string | null }
+type AccountsState = AccountsSeed & { sessionUserId: string | null; revokedApiTokenIds: string[] }
 
 const ORG = '*/api/v1/organizations/:orgId'
 const DAY_MS = 24 * 60 * 60 * 1000
 const INVITE_LIFETIME_DAYS = 7
 const SECRET_PREFIX_LENGTH = 8
+const MIN_PASSWORD_LENGTH = 8
 
 const INVALID_CREDENTIALS = { code: 'invalid_credentials', message: 'The email or password is not right' }
 const INVALID_REFRESH = { code: 'invalid_refresh', message: 'Sign in again' }
@@ -32,6 +33,8 @@ const INVITE_PENDING = { code: 'invite_pending', message: 'This email already ha
 const INVITE_NOT_PENDING = { code: 'invite_not_pending', message: 'This invite was already accepted, revoked or has expired' }
 const UNKNOWN_INVITE = { code: 'unknown_invite', message: 'This invite link does not match any invite' }
 const API_TOKEN_NOT_FOUND = { code: 'api_token_not_found', message: 'API token not found' }
+const INVALID_ORGANIZATION_UPDATE = { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' }
+const INVALID_INVITE_ACCEPT = { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' }
 
 // Sign in, refresh and the two invite routes answer without a session, as the api does.
 const PUBLIC_API = [/\/api\/v1\/auth\/(login|refresh)$/, /\/api\/v1\/invites\/[^/]+(\/accept)?$/]
@@ -57,7 +60,7 @@ export class PreviewAccounts {
     private readonly persistKey?: string,
   ) {
     const admin = seed.accounts.find((account) => account.member.role === UserRole.OrgAdmin)
-    const seeded = { ...seed, sessionUserId: admin?.member.id ?? null }
+    const seeded = { ...seed, sessionUserId: admin?.member.id ?? null, revokedApiTokenIds: [] }
     this.state = (persistKey ? readStored(persistKey) : null) ?? seeded
   }
 
@@ -81,7 +84,10 @@ export class PreviewAccounts {
     return this.state.organization
   }
 
-  updateOrganization(input: Schemas['OrganizationUpdate']): Schemas['Organization'] {
+  updateOrganization(input: Schemas['OrganizationUpdate']): Schemas['Organization'] | Refusal {
+    const blankName = input.name !== undefined && !input.name.trim()
+    const negativeBudget = input.budget_cents !== undefined && input.budget_cents < 0
+    if (blankName || negativeBudget) return refusal(400, INVALID_ORGANIZATION_UPDATE)
     const organization = { ...this.state.organization, ...(input.name !== undefined && { name: input.name.trim() }), ...(input.budget_cents !== undefined && { budget_cents: input.budget_cents }) }
     this.commit({ ...this.state, organization })
     return organization
@@ -143,6 +149,7 @@ export class PreviewAccounts {
   }
 
   accept(token: string, input: Schemas['InviteAccept']): Schemas['Session'] | Refusal | null {
+    if (!input.name.trim() || input.password.length < MIN_PASSWORD_LENGTH) return refusal(400, INVALID_INVITE_ACCEPT)
     const invite = this.inviteOfToken(token)
     if (!invite) return null
     if (invite.status !== InviteStatus.Pending) return refusal(409, INVITE_NOT_PENDING)
@@ -158,7 +165,7 @@ export class PreviewAccounts {
   }
 
   apiTokens(): Schemas['ApiToken'][] {
-    return this.state.apiTokens
+    return this.state.apiTokens.filter((token) => !this.state.revokedApiTokenIds.includes(token.id))
   }
 
   createApiToken(input: Schemas['ApiTokenCreate']): Schemas['ApiTokenCreated'] {
@@ -176,8 +183,9 @@ export class PreviewAccounts {
   }
 
   revokeApiToken(tokenId: string): boolean {
+    if (this.state.revokedApiTokenIds.includes(tokenId)) return true
     if (!this.state.apiTokens.some((token) => token.id === tokenId)) return false
-    this.commit({ ...this.state, apiTokens: this.state.apiTokens.filter((token) => token.id !== tokenId) })
+    this.commit({ ...this.state, revokedApiTokenIds: [...this.state.revokedApiTokenIds, tokenId] })
     return true
   }
 
@@ -249,7 +257,7 @@ export function accountHandlers(accounts: PreviewAccounts): HttpHandler[] {
     http.get('*/api/v1/users/current', () => HttpResponse.json(accounts.signedIn())),
 
     http.get(ORG, () => HttpResponse.json(accounts.organization())),
-    http.patch(ORG, async ({ request }) => HttpResponse.json(accounts.updateOrganization((await request.json()) as Schemas['OrganizationUpdate']))),
+    http.patch(ORG, async ({ request }) => answer(accounts.updateOrganization((await request.json()) as Schemas['OrganizationUpdate']))),
     http.get(`${ORG}/users`, () => HttpResponse.json({ items: accounts.members() })),
     http.patch(`${ORG}/users/:userId`, async ({ params, request }) => {
       const { role } = (await request.json()) as Schemas['MemberUpdate']

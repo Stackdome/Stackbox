@@ -72,6 +72,27 @@ describe('the preview accounts', () => {
       false,
     ])
   })
+
+  it('refuses an organization update with a blank name or a negative budget', () => {
+    const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
+
+    expect([accounts.updateOrganization({ name: '  ' }), accounts.updateOrganization({ budget_cents: -1 })]).toEqual([
+      { status: 400, body: { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' } },
+      { status: 400, body: { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' } },
+    ])
+  })
+
+  it('refuses to accept an invite with a short password or a blank name', () => {
+    const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
+
+    expect([
+      accounts.accept(PREVIEW_INVITE_TOKEN, { name: 'Grace Hopper', password: 'short' }),
+      accounts.accept(PREVIEW_INVITE_TOKEN, { name: '  ', password: 'a long enough password' }),
+    ]).toEqual([
+      { status: 400, body: { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' } },
+      { status: 400, body: { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' } },
+    ])
+  })
 })
 
 describe('the preview session gate', () => {
@@ -93,5 +114,15 @@ describe('the preview session gate', () => {
     const again = await fetch(`/api/v1/organizations/${ORG_ID}`)
 
     expect([organization.status, signIn.status, again.status]).toEqual([401, 200, 200])
+  })
+
+  it('revoking a token twice answers 204 both times, and the list omits it', async () => {
+    accounts.signIn({ email: 'ada@example.com', password: PREVIEW_PASSWORD })
+
+    const first = await fetch('/api/v1/api-tokens/token-1', { method: 'DELETE' })
+    const second = await fetch('/api/v1/api-tokens/token-1', { method: 'DELETE' })
+    const list = (await (await fetch('/api/v1/api-tokens')).json()) as { items: { id: string }[] }
+
+    expect([first.status, second.status, list.items.map((token) => token.id)]).toEqual([204, 204, []])
   })
 })
