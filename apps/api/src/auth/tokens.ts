@@ -1,7 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { UserRole } from '@stackbox/contract'
 import { SignJWT, jwtVerify } from 'jose'
-import type { AuthUser } from '../access/types'
 
 export const ACCESS_TOKEN_SECONDS = 15 * 60
 export const REFRESH_TOKEN_SECONDS = 7 * 24 * 60 * 60
@@ -10,6 +8,10 @@ const TokenKind = { Access: 'access', Refresh: 'refresh' } as const
 type TokenKind = (typeof TokenKind)[keyof typeof TokenKind]
 
 export type TokenPair = { token: string; refreshToken: string }
+
+export type TokenSubject = { id: string; tokenVersion: number }
+
+export type TokenClaims = { userId: string; version: number }
 
 export function requireJwtSecret(secret: string | undefined): string {
   if (!secret || secret.length < 32) {
@@ -28,43 +30,38 @@ export class Tokens {
     this.key = new TextEncoder().encode(secret)
   }
 
-  async issue(user: AuthUser): Promise<TokenPair> {
+  async issue(subject: TokenSubject): Promise<TokenPair> {
     const [token, refreshToken] = await Promise.all([
-      this.sign(user, TokenKind.Access, ACCESS_TOKEN_SECONDS),
-      this.sign(user, TokenKind.Refresh, REFRESH_TOKEN_SECONDS),
+      this.sign(subject, TokenKind.Access, ACCESS_TOKEN_SECONDS),
+      this.sign(subject, TokenKind.Refresh, REFRESH_TOKEN_SECONDS),
     ])
     return { token, refreshToken }
   }
 
-  verifyAccess(token: string): Promise<AuthUser> {
+  verifyAccess(token: string): Promise<TokenClaims> {
     return this.verify(token, TokenKind.Access)
   }
 
-  verifyRefresh(token: string): Promise<AuthUser> {
+  verifyRefresh(token: string): Promise<TokenClaims> {
     return this.verify(token, TokenKind.Refresh)
   }
 
-  private sign(user: AuthUser, kind: TokenKind, lifetimeSeconds: number): Promise<string> {
+  private sign(subject: TokenSubject, kind: TokenKind, lifetimeSeconds: number): Promise<string> {
     const issuedAt = Math.floor(this.now().getTime() / 1000)
-    return new SignJWT({ org: user.orgId, email: user.email, role: user.orgRole, kind })
+    return new SignJWT({ ver: subject.tokenVersion, kind })
       .setProtectedHeader({ alg: 'HS256' })
-      .setSubject(user.id)
+      .setSubject(subject.id)
       .setJti(randomUUID())
       .setIssuedAt(issuedAt)
       .setExpirationTime(issuedAt + lifetimeSeconds)
       .sign(this.key)
   }
 
-  private async verify(token: string, kind: TokenKind): Promise<AuthUser> {
+  private async verify(token: string, kind: TokenKind): Promise<TokenClaims> {
     const { payload } = await jwtVerify(token, this.key, { algorithms: ['HS256'], currentDate: this.now() })
-    if (payload.kind !== kind) {
+    if (payload.kind !== kind || typeof payload.sub !== 'string' || typeof payload.ver !== 'number') {
       throw new Error(`expected a ${kind} token`)
     }
-    return {
-      id: payload.sub as string,
-      orgId: payload.org as string,
-      email: payload.email as string,
-      orgRole: payload.role as UserRole,
-    }
+    return { userId: payload.sub, version: payload.ver }
   }
 }

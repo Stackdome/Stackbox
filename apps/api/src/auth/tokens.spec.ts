@@ -1,29 +1,29 @@
-import { UserRole } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import { ACCESS_TOKEN_SECONDS, Tokens, requireJwtSecret } from './tokens'
 
 const SECRET = 'a-test-secret-that-is-long-enough-for-hs256'
-const ADA = { id: 'U1', orgId: 'O1', email: 'ada@example.com', orgRole: UserRole.OrgAdmin }
+const ADA = { id: 'U1', tokenVersion: 3 }
 
 describe('tokens', () => {
-  it('reads the user back from an access token it issued', async () => {
+  it('reads the account id and the token version back from an access token it issued', async () => {
     const tokens = new Tokens(SECRET)
 
     const { token } = await tokens.issue(ADA)
 
-    expect(await tokens.verifyAccess(token)).toEqual(ADA)
+    expect(await tokens.verifyAccess(token)).toEqual({ userId: 'U1', version: 3 })
   })
 
-  it('refuses a refresh token where an access token is expected', async () => {
+  it('refuses a refresh token where an access token is expected, and an access token where a refresh token is', async () => {
     const tokens = new Tokens(SECRET)
 
-    const { refreshToken } = await tokens.issue(ADA)
+    const { token, refreshToken } = await tokens.issue(ADA)
 
-    await expect(tokens.verifyAccess(refreshToken)).rejects.toThrow()
+    const outcomes = await Promise.allSettled([tokens.verifyAccess(refreshToken), tokens.verifyRefresh(token)])
+    expect(outcomes.map((outcome) => outcome.status)).toEqual(['rejected', 'rejected'])
   })
 
   it('refuses an access token once fifteen minutes have passed', async () => {
-    let now = new Date('2026-09-14T10:00:00Z')
+    let now = new Date('2026-09-15T10:00:00Z')
     const tokens = new Tokens(SECRET, () => now)
     const { token } = await tokens.issue(ADA)
 

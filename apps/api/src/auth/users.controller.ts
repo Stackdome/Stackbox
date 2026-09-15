@@ -11,7 +11,7 @@ export class UsersController {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
   @Get('current')
-  current(@CurrentUser() user: AuthUser): Promise<components['schemas']['User']> {
+  current(@CurrentUser() user: AuthUser): Promise<components['schemas']['CurrentUser']> {
     return this.auth.currentUser(user.id)
   }
 }
