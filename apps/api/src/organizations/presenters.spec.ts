@@ -1,6 +1,6 @@
-import { UserRole } from '@stackbox/contract'
+import { InviteStatus, UserRole } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
-import { presentMember, presentOrganization } from './presenters'
+import { presentInvite, presentMember, presentOrganization } from './presenters'
 import { aUser } from './test-support/builders'
 
 describe('the organization presenters', () => {
@@ -20,6 +20,28 @@ describe('the organization presenters', () => {
       email: 'vik@example.com',
       role: UserRole.OrgMember,
       created_at: '2026-09-13T10:00:00.000Z',
+    })
+  })
+
+  it('presents an invite with its role and status, and nothing that could accept it', () => {
+    const presented = presentInvite({
+      id: 'I1',
+      orgId: 'O1',
+      email: 'grace@example.com',
+      role: UserRole.OrgMember,
+      status: InviteStatus.Expired,
+      expiresAt: new Date('2026-09-22T10:00:00Z'),
+      acceptedAt: null,
+      createdAt: new Date('2026-09-15T10:00:00Z'),
+    })
+
+    expect(presented).toEqual({
+      id: 'I1',
+      email: 'grace@example.com',
+      role: UserRole.OrgMember,
+      status: InviteStatus.Expired,
+      expires_at: '2026-09-22T10:00:00.000Z',
+      created_at: '2026-09-15T10:00:00.000Z',
     })
   })
 })
