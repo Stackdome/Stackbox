@@ -36,6 +36,12 @@ describe('ApiTokenStore', () => {
     expect((await store.listFor(IDS.user)).map((token) => token.id)).toEqual([IDS.secondApiToken, IDS.apiToken])
   })
 
+  it('keeps an expired token in the list so it can still be revoked', async () => {
+    await insertApiToken(db, { id: IDS.apiToken, userId: IDS.user, orgId: IDS.org, tokenHash: 'hash-1', expiresAt: new Date('2026-09-01T00:00:00Z') })
+
+    expect((await store.listFor(IDS.user)).map((token) => token.id)).toEqual([IDS.apiToken])
+  })
+
   it('inserts a token and finds it again by its hash, never answering the hash', async () => {
     const stored = await store.insert({ userId: IDS.user, orgId: IDS.org, name: 'ci', tokenHash: 'hash-1', prefix: 'sbx4Jq2p', expiresAt: null })
 

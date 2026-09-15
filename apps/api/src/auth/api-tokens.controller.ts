@@ -5,11 +5,12 @@ import { ZodValidationPipe } from '../common/zod-validation.pipe'
 import { ApiTokenService } from './api-token.service'
 import { CurrentUser } from './current-user.decorator'
 import { JwtCookieGuard } from './jwt-cookie.guard'
+import { SessionOnlyGuard } from './session-only.guard'
 
 type Schemas = components['schemas']
 
 @Controller('api-tokens')
-@UseGuards(JwtCookieGuard)
+@UseGuards(JwtCookieGuard, SessionOnlyGuard)
 export class ApiTokensController {
   constructor(@Inject(ApiTokenService) private readonly apiTokens: ApiTokenService) {}
 

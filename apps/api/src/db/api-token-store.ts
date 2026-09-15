@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { and, desc, eq, isNull } from 'drizzle-orm'
+import { and, desc, eq, isNull, sql } from 'drizzle-orm'
 import type { ApiTokenRecord, NewApiToken } from '../auth/types'
 import { DATABASE_CONNECTION, type Database } from './client'
 import { apiToken } from './schema'
@@ -34,10 +34,12 @@ export class ApiTokenStore {
   }
 
   async revoke(userId: string, tokenId: string, at: Date): Promise<boolean> {
-    const [owned] = await this.db.select({ id: apiToken.id }).from(apiToken).where(and(eq(apiToken.id, tokenId), eq(apiToken.userId, userId)))
-    if (!owned) return false
-    await this.db.update(apiToken).set({ revokedAt: at }).where(and(eq(apiToken.id, tokenId), isNull(apiToken.revokedAt)))
-    return true
+    const rows = await this.db
+      .update(apiToken)
+      .set({ revokedAt: sql`coalesce(${apiToken.revokedAt}, ${at})` })
+      .where(and(eq(apiToken.id, tokenId), eq(apiToken.userId, userId)))
+      .returning({ id: apiToken.id })
+    return rows.length > 0
   }
 
   async findByHash(tokenHash: string): Promise<ApiTokenRecord | null> {

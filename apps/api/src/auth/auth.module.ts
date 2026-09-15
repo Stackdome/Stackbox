@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { SessionCookies } from './cookies'
 import { JwtCookieGuard } from './jwt-cookie.guard'
+import { SessionOnlyGuard } from './session-only.guard'
 import { AUTH_SETTINGS, authSettingsFrom } from './settings'
 import { Tokens, requireJwtSecret } from './tokens'
 import { UsersController } from './users.controller'
@@ -17,6 +18,7 @@ import { UsersController } from './users.controller'
     AuthService,
     ApiTokenService,
     JwtCookieGuard,
+    SessionOnlyGuard,
     SessionCookies,
     { provide: AUTH_SETTINGS, useFactory: () => authSettingsFrom(process.env) },
     { provide: Tokens, useFactory: () => new Tokens(requireJwtSecret(process.env.JWT_SECRET)) },

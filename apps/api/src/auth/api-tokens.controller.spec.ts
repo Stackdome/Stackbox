@@ -1,9 +1,11 @@
-import type { INestApplication } from '@nestjs/common'
+import type { ExecutionContext, INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { ApiTokenService } from './api-token.service'
 import { ApiTokensController } from './api-tokens.controller'
+import type { RequestWithCredential } from './jwt-cookie.guard'
 import { JwtCookieGuard } from './jwt-cookie.guard'
+import { CredentialKind } from './token-from-headers'
 
 const REFUSE = () => Promise.reject(new Error('validation should reject this request first'))
 
@@ -38,5 +40,31 @@ describe('ApiTokensController', () => {
 
   it('answers 400 for an expiry that is not a preset', async () => {
     expect((await create({ name: 'ci', expires_in_days: 45 })).status).toBe(400)
+  })
+
+  it('refuses to create a token through a token', async () => {
+    const module = await Test.createTestingModule({
+      controllers: [ApiTokensController],
+      providers: [{ provide: ApiTokenService, useValue: { create: REFUSE } }],
+    })
+      .overrideGuard(JwtCookieGuard)
+      .useValue({
+        canActivate: (context: ExecutionContext) => {
+          context.switchToHttp().getRequest<RequestWithCredential>().credentialKind = CredentialKind.ApiToken
+          return true
+        },
+      })
+      .compile()
+    const tokenApp = module.createNestApplication()
+    await tokenApp.listen(0)
+
+    const response = await fetch(`${await tokenApp.getUrl()}/api-tokens`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'ci' }),
+    })
+
+    expect(response.status).toBe(401)
+    await tokenApp.close()
   })
 })
