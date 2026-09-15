@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common'
 import { PortsModule } from '../ports/ports.module'
+import { ApiTokenService } from './api-token.service'
+import { ApiTokensController } from './api-tokens.controller'
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
 import { SessionCookies } from './cookies'
@@ -10,9 +12,10 @@ import { UsersController } from './users.controller'
 
 @Module({
   imports: [PortsModule],
-  controllers: [AuthController, UsersController],
+  controllers: [AuthController, UsersController, ApiTokensController],
   providers: [
     AuthService,
+    ApiTokenService,
     JwtCookieGuard,
     SessionCookies,
     { provide: AUTH_SETTINGS, useFactory: () => authSettingsFrom(process.env) },

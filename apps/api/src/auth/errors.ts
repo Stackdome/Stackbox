@@ -7,3 +7,5 @@ export const TOO_MANY_ATTEMPTS = { code: 'too_many_attempts', message: 'Too many
 export const INVALID_REFRESH = { code: 'invalid_refresh', message: 'Sign in again' } as const
 
 export const INVALID_SESSION = { code: 'invalid_session', message: 'auth token is invalid' } as const
+
+export const API_TOKEN_NOT_FOUND = { code: 'api_token_not_found', message: 'API token not found' } as const
