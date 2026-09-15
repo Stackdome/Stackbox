@@ -7,6 +7,7 @@ import { AuthService } from './auth.service'
 import { type CookieResponse, REFRESH_COOKIE, SessionCookies, cookieFrom } from './cookies'
 import { CurrentUser } from './current-user.decorator'
 import { JwtCookieGuard } from './jwt-cookie.guard'
+import { SessionOnlyGuard } from './session-only.guard'
 
 type Schemas = components['schemas']
 
@@ -38,7 +39,7 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(204)
-  @UseGuards(JwtCookieGuard)
+  @UseGuards(JwtCookieGuard, SessionOnlyGuard)
   async logout(@CurrentUser() user: AuthUser, @Res({ passthrough: true }) response: CookieResponse): Promise<void> {
     await this.auth.logout(user)
     this.cookies.clear(response)

@@ -6,8 +6,9 @@ import type { AuthUser } from '../access/types'
 import { AuthController } from './auth.controller'
 import { AuthService, type Session } from './auth.service'
 import { SessionCookies } from './cookies'
-import { JwtCookieGuard } from './jwt-cookie.guard'
+import { JwtCookieGuard, type RequestWithCredential } from './jwt-cookie.guard'
 import { AUTH_SETTINGS, type AuthSettings } from './settings'
+import { CredentialKind } from './token-from-headers'
 
 const SESSION: Session = {
   tokens: { token: 'header.access.signature', refreshToken: 'header.refresh.signature' },
@@ -93,6 +94,32 @@ describe('AuthController', () => {
     const response = await post(await serve({ secureCookies: false }), '/auth/refresh')
 
     expect([response.status, await response.json(), cookieParts(response, 'auth_token').length > 0]).toEqual([200, { user: SESSION.user }, true])
+  })
+
+  it('refuses to log out through an api token', async () => {
+    const module = await Test.createTestingModule({
+      controllers: [AuthController],
+      providers: [
+        SessionCookies,
+        { provide: AUTH_SETTINGS, useValue: { secureCookies: false } },
+        { provide: AuthService, useValue: { logout: async () => undefined } },
+      ],
+    })
+      .overrideGuard(JwtCookieGuard)
+      .useValue({
+        canActivate: (context: ExecutionContext) => {
+          context.switchToHttp().getRequest<RequestWithCredential>().credentialKind = CredentialKind.ApiToken
+          return true
+        },
+      })
+      .compile()
+    const tokenApp = module.createNestApplication()
+    await tokenApp.listen(0)
+
+    const response = await post(await tokenApp.getUrl(), '/auth/logout')
+
+    expect(response.status).toBe(401)
+    await tokenApp.close()
   })
 
   it('clears both cookies on logout', async () => {
