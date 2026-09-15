@@ -14,7 +14,7 @@ const meta = {
   argTypes: {
     variant: {
       control: 'select',
-      options: ['default', 'destructive', 'destructive-ghost', 'outline', 'secondary', 'ghost', 'link', 'inverse'],
+      options: ['default', 'destructive', 'destructive-ghost', 'outline', 'secondary', 'ghost', 'link'],
       table: { defaultValue: { summary: 'default' }, category: 'Appearance' },
       description: 'Filled is rare: `default` is the one action per screen.',
     },
@@ -190,7 +190,6 @@ export const Outline: Story = { args: { variant: 'outline' } }
 export const Secondary: Story = { args: { variant: 'secondary' } }
 export const Ghost: Story = { args: { variant: 'ghost' } }
 export const Link: Story = { args: { variant: 'link' } }
-export const Inverse: Story = { args: { variant: 'inverse' } }
 export const Disabled: Story = {
   args: { disabled: true },
   play: async ({ canvas }) => {
@@ -208,7 +207,7 @@ export const Disabled: Story = {
 export const DisabledContract: Story = {
   render: () => (
     <div className="flex flex-wrap items-center gap-3">
-      {(['default', 'destructive', 'outline', 'secondary', 'ghost', 'inverse'] as const).map((v) => (
+      {(['default', 'destructive', 'outline', 'secondary', 'ghost'] as const).map((v) => (
         <Button key={v} variant={v} disabled>
           {v}
         </Button>
@@ -216,7 +215,7 @@ export const DisabledContract: Story = {
     </div>
   ),
   play: async ({ canvas }) => {
-    for (const v of ['default', 'destructive', 'outline', 'secondary', 'ghost', 'inverse']) {
+    for (const v of ['default', 'destructive', 'outline', 'secondary', 'ghost']) {
       const btn = canvas.getByRole('button', { name: v })
       const style = getComputedStyle(btn)
 
@@ -268,7 +267,6 @@ const GRID_VARIANTS = [
   'secondary',
   'ghost',
   'link',
-  'inverse',
 ] as const
 
 // Every exported variant, rest and disabled, in one view: the reference

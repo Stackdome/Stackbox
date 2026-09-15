@@ -71,12 +71,6 @@ const buttonVariants = cva(
         ghost:
           "bg-transparent text-foreground not-disabled:hover:bg-[var(--wash-hover)] not-disabled:active:bg-[var(--wash-pressed)] not-disabled:active:shadow-[var(--btn-press-soft)] [--press-shadow:var(--btn-press-soft)]",
         link: "text-foreground underline-offset-4 not-disabled:hover:underline",
-        // Inverse foreground CTA: used on auth pages to contrast with the cream/navy band.
-        // Foreground fill at rest; hover is a one-step opacity shift, same as
-        // `destructive` (rubric: black is the only action colour, orange is
-        // never a button fill).
-        inverse:
-          "bg-foreground text-background not-disabled:hover:opacity-90 not-disabled:active:opacity-100 not-disabled:active:shadow-[var(--btn-press-strong)] [--press-shadow:var(--btn-press-strong)] focus-ring",
       },
       // Three heights, and that is the whole ladder. Height follows DENSITY,
       // never importance: an important button gets filled, not taller.
