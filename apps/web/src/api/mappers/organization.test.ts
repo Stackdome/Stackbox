@@ -4,6 +4,7 @@ import { PREVIEW_ORGANIZATION, makeInvite, makeMember } from '../../../.storyboo
 import {
   generalDraftOf,
   generalDraftProblem,
+  inviteDraftProblem,
   inviteExpiryText,
   isGeneralDirty,
   joinDraftProblem,
@@ -73,6 +74,13 @@ describe('the organization mapper', () => {
     const created = toInviteCreated({ ...makeInvite(), link: '/invites/abc123' }, 'http://localhost:5273')
 
     expect(created.link).toBe('http://localhost:5273/invites/abc123')
+  })
+
+  it('names an invite email missing an @ or a domain, and accepts a valid one', () => {
+    expect([inviteDraftProblem({ email: 'grace@', role: UserRole.OrgMember }), inviteDraftProblem({ email: ' grace@example.com ', role: UserRole.OrgMember })]).toEqual([
+      'Enter an email address',
+      null,
+    ])
   })
 
   it('trims the email of an invite and reads a preview with its role label', () => {

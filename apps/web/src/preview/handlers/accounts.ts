@@ -37,6 +37,8 @@ const INVALID_ORGANIZATION_UPDATE = { code: 'invalid_organization_update', messa
 // The integer column backing `budget_cents` tops out at 2^31 - 1.
 const MAX_BUDGET_CENTS = 2147483647
 const INVALID_INVITE_ACCEPT = { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' }
+const VALIDATION_FAILED = { message: 'validation failed' }
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // Sign in, refresh and the two invite routes answer without a session, as the api does.
 const PUBLIC_API = [/\/api\/v1\/auth\/(login|refresh)$/, /\/api\/v1\/invites\/[^/]+(\/accept)?$/]
@@ -124,6 +126,7 @@ export class PreviewAccounts {
   }
 
   invite(input: Schemas['InviteCreate']): Schemas['InviteCreated'] | Refusal {
+    if (!EMAIL_SHAPE.test(input.email.trim())) return refusal(400, VALIDATION_FAILED)
     if (this.state.accounts.some((account) => sameEmail(account.member.email, input.email))) return refusal(409, MEMBER_EXISTS)
     if (this.state.invites.some((invite) => sameEmail(invite.email, input.email) && isPending(invite))) return refusal(409, INVITE_PENDING)
     const token = crypto.randomUUID()

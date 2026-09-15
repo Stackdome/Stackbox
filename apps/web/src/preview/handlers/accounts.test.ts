@@ -91,6 +91,12 @@ describe('the preview accounts', () => {
     })
   })
 
+  it('refuses to invite an email address missing a domain', () => {
+    const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
+
+    expect(accounts.invite({ email: 'grace@', role: UserRole.OrgMember })).toEqual({ status: 400, body: { message: 'validation failed' } })
+  })
+
   it('refuses to accept an invite with a short password or a blank name', () => {
     const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
 

@@ -36,6 +36,7 @@ export const INVITE_UNAVAILABLE_TEXT: Record<InviteStatus, string> = {
 
 const CENTS_PER_DOLLAR = 100
 const WHOLE_DOLLARS = /^\d+$/
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }
 // The integer column backing `budget_cents` tops out at 2^31 - 1; a dollar figure past that overflows Postgres.
 const MAX_BUDGET_CENTS = 2147483647
@@ -94,6 +95,13 @@ export function toInvitePreview(preview: Schemas['InvitePreview']): InvitePrevie
 
 export function toInviteCreate(draft: InviteDraft): Schemas['InviteCreate'] {
   return { email: draft.email.trim(), role: draft.role }
+}
+
+export const INVALID_EMAIL_MESSAGE = 'Enter an email address'
+
+export function inviteDraftProblem(draft: InviteDraft): string | null {
+  if (!EMAIL_SHAPE.test(draft.email.trim())) return INVALID_EMAIL_MESSAGE
+  return null
 }
 
 export function joinDraftProblem(draft: JoinDraft): string | null {
