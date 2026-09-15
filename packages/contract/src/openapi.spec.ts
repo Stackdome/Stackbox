@@ -240,4 +240,9 @@ describe('the committed contract', () => {
     const update = (body: Record<string, unknown>) => contract.schemas.OrganizationUpdate.safeParse(body).success
     expect([update({ name: '  ' }), update({ budget_cents: -1 }), update({ name: 'acme', budget_cents: 0 })]).toEqual([false, false, true])
   })
+
+  it('refuses a budget above the integer column maximum and accepts the maximum itself', () => {
+    const update = (body: Record<string, unknown>) => contract.schemas.OrganizationUpdate.safeParse(body).success
+    expect([update({ budget_cents: 2147483648 }), update({ budget_cents: 2147483647 })]).toEqual([false, true])
+  })
 })
