@@ -1,12 +1,17 @@
 import { AxiosError } from "axios";
 import { describe, expect, it } from "vitest";
 import {
+  REMOVE_MEMBER_ERROR,
   cancelTaskErrorMessage,
   connectProviderErrorMessage,
   createApplicationErrorMessage,
   disconnectApplicationErrorMessage,
   extendExpiryErrorMessage,
+  joinErrorMessage,
+  organizationChoicesOf,
   releaseErrorMessage,
+  settingsErrorMessage,
+  signInErrorMessage,
   spinUpErrorMessage,
   teardownErrorMessage,
 } from "./errors";
@@ -103,5 +108,49 @@ describe("spinUpErrorMessage", () => {
       "This application no longer exists",
       "The instance was not spun up. Try again.",
     ]);
+  });
+});
+
+describe("signInErrorMessage", () => {
+  it("says the email or password is not right on a 401, to wait on a 429 and to try again otherwise", () => {
+    expect([signInErrorMessage(errorWithStatus(401)), signInErrorMessage(errorWithStatus(429)), signInErrorMessage(errorWithStatus(500))]).toEqual([
+      "The email or password is not right",
+      "Too many sign in attempts. Try again in a few minutes.",
+      "Signing in did not work. Try again.",
+    ]);
+  });
+});
+
+describe("organizationChoicesOf", () => {
+  it("reads the organizations to choose from a 409 and nothing from any other refusal", () => {
+    const organizations = [
+      { id: "org-1", name: "acme" },
+      { id: "org-2", name: "globex" },
+    ];
+
+    expect([
+      organizationChoicesOf(errorWithBody(409, { code: "choose_organization", message: "Choose the organization to sign in to", details: { organizations } })),
+      organizationChoicesOf(errorWithStatus(401)),
+    ]).toEqual([organizations, null]);
+  });
+});
+
+describe("joinErrorMessage", () => {
+  it("names an invite that is no longer pending, a link that matches nothing and a form the api refused", () => {
+    expect([joinErrorMessage(errorWithStatus(409)), joinErrorMessage(errorWithStatus(404)), joinErrorMessage(errorWithStatus(400)), joinErrorMessage(errorWithStatus(500))]).toEqual([
+      "This invite was already accepted, revoked or has expired",
+      "This invite link does not match any invite",
+      "Enter your name and a password of at least 8 characters",
+      "Joining did not work. Try again.",
+    ]);
+  });
+});
+
+describe("settingsErrorMessage", () => {
+  it("says a 409 in the api's own words and falls back to the message it is given", () => {
+    expect([
+      settingsErrorMessage(errorWithBody(409, { code: "last_admin", message: "Make another member an admin first" }), REMOVE_MEMBER_ERROR),
+      settingsErrorMessage(errorWithStatus(500), REMOVE_MEMBER_ERROR),
+    ]).toEqual(["Make another member an admin first", "The member was not removed. Try again."]);
   });
 });

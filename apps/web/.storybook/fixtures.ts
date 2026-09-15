@@ -7,6 +7,7 @@ import {
   ConnectionStatus,
   InstancePurpose,
   InstanceStatus,
+  InviteStatus,
   MessageRole,
   PrState,
   ReleaseStatus,
@@ -595,6 +596,43 @@ export const INSTANCE_DETAILS: InstanceDetail[] = [
     created_at: hoursAgo(240),
   }),
 ]
+
+export type Organization = Schemas['Organization']
+export type Member = Schemas['Member']
+export type Invite = Schemas['Invite']
+export type ApiToken = Schemas['ApiToken']
+
+export const PREVIEW_ORGANIZATION: Organization = { id: ORG_ID, name: 'acme', budget_cents: 50_000, created_at: '2026-07-20T09:00:00Z' }
+
+export function makeMember(overrides: Partial<Member> = {}): Member {
+  return { id: 'u1', name: 'Ada Lovelace', email: 'ada@example.com', role: UserRole.OrgAdmin, created_at: '2026-07-20T09:00:00Z', ...overrides }
+}
+
+export const PREVIEW_MEMBERS: Member[] = [
+  makeMember(),
+  makeMember({ id: 'u3', name: 'Dev Ito', email: 'dev@example.com', role: UserRole.OrgMember, created_at: '2026-07-22T09:00:00Z' }),
+  makeMember({ id: 'u2', name: 'Vik Rao', email: 'vik@example.com', role: UserRole.OrgMember, created_at: '2026-07-21T09:00:00Z' }),
+]
+
+export function makeInvite(overrides: Partial<Invite> = {}): Invite {
+  return {
+    id: 'invite-1',
+    email: 'grace@example.com',
+    role: UserRole.OrgMember,
+    status: InviteStatus.Pending,
+    expires_at: hoursFromNow(120),
+    created_at: hoursAgo(48),
+    ...overrides,
+  }
+}
+
+export const PREVIEW_INVITES: Invite[] = [makeInvite()]
+
+export function makeApiToken(overrides: Partial<ApiToken> = {}): ApiToken {
+  return { id: 'token-1', name: 'CI deploys', prefix: 'sbx4Jq2p', expires_at: hoursFromNow(24 * 60), last_used_at: hoursAgo(3), created_at: hoursAgo(24 * 30), ...overrides }
+}
+
+export const PREVIEW_API_TOKENS: ApiToken[] = [makeApiToken()]
 
 export const PREVIEW_CATALOG_SEED: CatalogSeed = {
   connections: [GITHUB_CONNECTION, GITLAB_CONNECTION],

@@ -1,4 +1,4 @@
-import { ConnectionStatus, InstanceStatus, ReleaseStatus, StackfileSync } from '@stackbox/contract'
+import { ConnectionStatus, InstanceStatus, InviteStatus, ReleaseStatus, StackfileSync } from '@stackbox/contract'
 import { describe, expect, it } from 'vitest'
 import { statusVariant } from './status-variant'
 
@@ -17,5 +17,9 @@ describe('statusVariant', () => {
 
   it('reads a release queued as neutral, building as info, live as ready and failed as an error', () => {
     expect(Object.values(ReleaseStatus).map((status) => statusVariant('release', status))).toEqual(['neutral', 'info', 'ready', 'error'])
+  })
+
+  it('reads an invite pending in the warn tier, accepted as ready, and revoked or expired as neutral', () => {
+    expect(Object.values(InviteStatus).map((status) => statusVariant('invite', status))).toEqual(['pending', 'ready', 'neutral', 'neutral'])
   })
 })

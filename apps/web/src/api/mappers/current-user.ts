@@ -23,3 +23,9 @@ export function toCurrentUser(user: Schemas['CurrentUser']): CurrentUserView {
     organizationName: user.organization.name,
   }
 }
+
+export type SignInDraft = { email: string; password: string; organizationId: string | null }
+
+export function toLoginRequest(draft: SignInDraft): Schemas['LoginRequest'] {
+  return { email: draft.email.trim(), password: draft.password, ...(draft.organizationId !== null && { organization_id: draft.organizationId }) }
+}

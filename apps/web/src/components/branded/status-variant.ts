@@ -1,4 +1,4 @@
-import { CoarseStatus, ConnectionStatus, InstanceStatus, ReleaseStatus, StackfileSync } from "@stackbox/contract";
+import { CoarseStatus, ConnectionStatus, InstanceStatus, InviteStatus, ReleaseStatus, StackfileSync } from "@stackbox/contract";
 
 /**
  * The single word→variant brain. Every status string the backend can emit is
@@ -65,6 +65,7 @@ export type StatusDomain =
   | "preview"
   | "git_connection"
   | "instance"
+  | "invite"
   | "stackfile_sync"
   | "task"
   | "generic";
@@ -159,6 +160,20 @@ export function statusVariant(domain: StatusDomain, state?: string | null): Stat
           return "pending";
         case InstanceStatus.Expired:
         case InstanceStatus.TornDown:
+          return "neutral";
+        default:
+          return "info";
+      }
+
+    // A pending invite waits on someone; once accepted, revoked or expired it asks nothing of anyone.
+    case "invite":
+      switch (s) {
+        case InviteStatus.Pending:
+          return "pending";
+        case InviteStatus.Accepted:
+          return "ready";
+        case InviteStatus.Revoked:
+        case InviteStatus.Expired:
           return "neutral";
         default:
           return "info";
