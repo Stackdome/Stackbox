@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserRole } from '@stackbox/contract'
 import { setupServer } from 'msw/node'
@@ -94,5 +94,26 @@ describe('the Settings page', () => {
     expect(((await drawer.findByLabelText('Invite link')) as HTMLInputElement).value).toMatch(/\/invites\/[0-9a-f-]{36}$/)
     // hidden: true — the modal drawer is still open, so the region behind it is correctly aria-hidden from assistive tech; this checks the write landed, not accessibility exposure.
     expect(await within(screen.getByRole('region', { name: 'Pending invites', hidden: true })).findByText('hopper@example.com')).toBeInTheDocument()
+  })
+
+  it('creates a token, shows its secret once, lists it by prefix, and revokes it after asking', async () => {
+    renderSettings(ROUTES.settingsTokens)
+    const tokens = await screen.findByRole('region', { name: 'API tokens' })
+    expect(await within(tokens).findByText('CI deploys')).toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'New token' }))
+    const drawer = within(await screen.findByRole('dialog', { name: 'New API token' }))
+    await userEvent.type(drawer.getByLabelText(/^Name/), 'deploy bot')
+    await userEvent.click(drawer.getByRole('button', { name: 'Create' }))
+    const secret = ((await drawer.findByLabelText('Token')) as HTMLInputElement).value
+    await userEvent.click(drawer.getByRole('button', { name: 'Done' }))
+
+    expect(await within(tokens).findByText('deploy bot')).toBeInTheDocument()
+    expect(screen.queryByDisplayValue(secret)).toBeNull()
+
+    await userEvent.click(within(tokens).getByRole('button', { name: 'Revoke deploy bot' }))
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Revoke' }))
+
+    await waitFor(() => expect(within(tokens).queryByText('deploy bot')).toBeNull())
   })
 })

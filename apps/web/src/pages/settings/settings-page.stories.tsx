@@ -59,3 +59,15 @@ export const Members: Story = {
     await expect(await within(document.body).findByRole('dialog', { name: 'Invite a member' })).toBeVisible()
   },
 }
+
+/** API tokens: rows by name and prefix, New token in the header, no filled button on the tab. */
+export const ApiTokens: Story = {
+  args: { tab: SettingsTab.Tokens },
+  parameters: { router: { initialEntries: [ROUTES.settingsTokens] }, msw: accountsHandlers() },
+  play: async ({ canvas }) => {
+    const tokens = within(await canvas.findByRole('region', { name: 'API tokens' }))
+    await expect(await tokens.findByText('CI deploys')).toBeVisible()
+    await expect(tokens.getByText('sbx4Jq2p…')).toBeVisible()
+    await expect(canvas.getByRole('button', { name: 'New token' })).toBeVisible()
+  },
+}
