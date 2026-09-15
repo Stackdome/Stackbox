@@ -4,125 +4,13 @@ info:
   version: 0.0.1-alpha
   description: Deploy, debug, and operate applications through the Stackdome REST API on Stackdome Cloud or a self-hosted installation. This API is in alpha and may change before general availability.
 paths:
-  /api/v1/user-signup:
-    post:
-      summary: Create new user
-      description: Create a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/UserSignupRequest'
-      responses:
-        '201':
-          description: User created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserSignupResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '409':
-          description: User already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/config:
-    get:
-      summary: Get public application configuration
-      description: Returns feature flags the web client needs before authentication, such as whether GitHub OAuth is enabled.
-      responses:
-        '200':
-          description: Application configuration
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AppConfigResponse'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/users/{id}:
-    get:
-      security:
-        - Bearer: []
-      summary: Get a user
-      description: Get a user
-      parameters:
-        - $ref: '#/components/parameters/id'
-      responses:
-        '200':
-          description: User fetched successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Auth token is invalid
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Unauthorized to perform operation
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/users/current:
-    get:
-      security:
-        - Bearer: []
-      summary: Get the current authenticated user
-      responses:
-        '200':
-          description: User fetched successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Auth token is invalid
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Unauthorized to perform operation
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /api/v1/auth/login:
     post:
-      summary: User login
-      description: Authenticate user and generate an access token
+      x-stability: draft
+      summary: Sign in with an email and a password; sets the session cookies
+      operationId: login
+      tags:
+        - Auth
       requestBody:
         required: true
         content:
@@ -131,369 +19,275 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Successful login
+          description: Signed in. Sets the httpOnly auth_token and refresh_token cookies; the body carries no token.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LoginResponse'
+                $ref: '#/components/schemas/Session'
+        '400': { description: The body is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '401':
-          description: Invalid credentials
+          description: The email and password match no account. The same answer whether or not the email exists.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
+              example:
+                code: invalid_credentials
+                message: The email or password is not right
+        '409':
+          description: The email and password match accounts in several organizations and no organization_id was sent
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                code: choose_organization
+                message: Choose the organization to sign in to
+                details:
+                  organizations:
+                    - id: '00000000-0000-4000-8000-000000000001'
+                      name: acme
+        '429':
+          description: Five failed sign ins for this email inside a fifteen minute window
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: too_many_attempts
+                message: Too many sign in attempts. Try again later.
+                details:
+                  retry_after_seconds: 840
   /api/v1/auth/refresh:
     post:
-      summary: Refresh JWT token
-      description: Exchange a refresh token for a new access token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RefreshTokenRequest'
+      x-stability: draft
+      summary: Exchange the refresh_token cookie for a new pair of session cookies
+      operationId: refreshSession
+      tags:
+        - Auth
       responses:
         '200':
-          description: Token refreshed successfully
+          description: Session renewed. Sets both cookies again; the body carries no token.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RefreshTokenResponse'
+                $ref: '#/components/schemas/Session'
         '401':
-          description: Invalid or expired refresh token
+          description: The refresh cookie is missing, expired, or revoked by a sign out, a role change or a removal
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/auth/github:
-    get:
-      summary: Initiate GitHub OAuth flow
-      description: Redirects the user to GitHub for OAuth authorization
-      responses:
-        '302':
-          description: Redirect to GitHub OAuth authorization page
-        '500':
-          description: Internal server error
-  /api/v1/auth/github/callback:
-    get:
-      summary: GitHub OAuth callback
-      description: Handles the callback from GitHub after OAuth authorization
-      parameters:
-        - in: query
-          name: code
-          required: true
-          schema:
-            type: string
-        - in: query
-          name: state
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: OAuth login successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/LoginResponse'
-        '401':
-          description: OAuth authorization failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/api-tokens:
+              example:
+                code: invalid_refresh
+                message: Sign in again
+  /api/v1/auth/logout:
     post:
+      x-stability: draft
+      summary: Sign out on every device; clears both cookies
+      operationId: logout
       security:
         - Bearer: []
-      summary: Create a new API token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/APITokenCreateRequest'
-      responses:
-        '201':
-          description: API token created successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/APITokenCreateResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    get:
-      security:
-        - Bearer: []
-      summary: List all API tokens for the current user
-      responses:
-        '200':
-          description: API tokens listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/APITokenList'
-  /api/v1/api-tokens/scopes:
-    get:
-      security:
-        - Bearer: []
-      summary: List all available API token scopes
-      description: Returns the list of resources and their allowed actions that can be used when creating API tokens
-      responses:
-        '200':
-          description: Scopes listed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ScopeList'
-        '401':
-          description: Unauthorized
-  /api/v1/api-tokens/{id}:
-    get:
-      security:
-        - Bearer: []
-      summary: Get an API token by ID
-      parameters:
-        - $ref: '#/components/parameters/id'
-      responses:
-        '200':
-          description: API token fetched successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/APIToken'
-        '404':
-          description: API token not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    delete:
-      security:
-        - Bearer: []
-      summary: Revoke an API token
-      parameters:
-        - $ref: '#/components/parameters/id'
+      tags:
+        - Auth
       responses:
         '204':
-          description: API token revoked successfully
-        '404':
-          description: API token not found
+          description: Signed out. Every session of the account stops answering.
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/users/current:
+    get:
+      x-stability: draft
+      summary: Get the signed in user with their organization
+      operationId: getCurrentUser
+      security:
+        - Bearer: []
+      tags:
+        - Auth
+      responses:
+        '200':
+          description: Current user fetched successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/organizations/{id}:
+                $ref: '#/components/schemas/CurrentUser'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}:
     get:
+      x-stability: draft
+      summary: Get the organization
+      operationId: getOrganization
       security:
         - Bearer: []
-      summary: Get an organization
+      tags:
+        - Organizations
       parameters:
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/org_id'
       responses:
         '200':
           description: Organization fetched successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Organisation'
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Auth token is invalid
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Unauthorized to perform operation
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    put:
+                $ref: '#/components/schemas/Organization'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    patch:
+      x-stability: draft
+      summary: Rename the organization or change its monthly budget
+      operationId: updateOrganization
       security:
         - Bearer: []
-      summary: Update an organization
+      tags:
+        - Organizations
       parameters:
-        - $ref: '#/components/parameters/id'
+        - $ref: '#/components/parameters/org_id'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Organisation'
+              $ref: '#/components/schemas/OrganizationUpdate'
       responses:
         '200':
-          description: Organization updated successfully
+          description: Organization updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Organisation'
-        '401':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Auth token is invalid
-        '403':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-          description: Unauthorized to perform operation
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+                $ref: '#/components/schemas/Organization'
+        '400': { description: The name is blank or the budget is negative, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
   /api/v1/organizations/{org_id}/users:
     get:
-      summary: List all users in an organization
+      x-stability: draft
+      summary: List the organization's members, by name
+      operationId: listMembers
       security:
         - Bearer: []
+      tags:
+        - Organizations
       parameters:
         - $ref: '#/components/parameters/org_id'
-        - in: query
-          name: page
-          schema:
-            type: integer
-            default: 1
-          description: Page number
-        - in: query
-          name: page_size
-          schema:
-            type: integer
-            default: 20
-          description: Number of items per page
       responses:
         '200':
-          description: Successful operation
+          description: Members fetched successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UserList'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/organizations/{org_id}/admins:
-    post:
-      summary: Promote a user to organization admin
+                $ref: '#/components/schemas/MemberList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/organizations/{org_id}/users/{user_id}:
+    patch:
+      x-stability: draft
+      summary: Change a member's role; the member signs in again
+      operationId: updateMember
       security:
         - Bearer: []
+      tags:
+        - Organizations
       parameters:
         - $ref: '#/components/parameters/org_id'
+        - $ref: '#/components/parameters/user_id'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PromoteAdminRequest'
+              $ref: '#/components/schemas/MemberUpdate'
       responses:
         '200':
-          description: User promoted to admin successfully
-        '400':
-          description: Invalid request data
+          description: Role changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+        '400': { description: The body is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404':
+          description: The organization has no such member
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '500':
-          description: Internal server error
+              example:
+                code: member_not_found
+                message: member not found
+        '409':
+          description: The organization's last admin would lose the role, or the caller targets their own account
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-    get:
-      summary: List organization admins
+              examples:
+                lastAdmin:
+                  value:
+                    code: last_admin
+                    message: Make another member an admin first
+                ownAccount:
+                  value:
+                    code: own_account
+                    message: Ask another admin to change your own membership
+    delete:
+      x-stability: draft
+      summary: Remove a member; removing a removed member answers the same
+      operationId: removeMember
       security:
         - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserList'
-        '401':
-          description: Unauthorized
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /api/v1/organizations/{org_id}/admins/{user_id}/demote:
-    post:
-      summary: Demote an organization admin
-      description: Demotes an OrgAdmin.
-      security:
-        - Bearer: []
+      tags:
+        - Organizations
       parameters:
         - $ref: '#/components/parameters/org_id'
         - $ref: '#/components/parameters/user_id'
       responses:
         '204':
-          description: Admin demoted successfully
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
-        '403':
-          description: Forbidden
-        '404':
-          description: User not found
-        '500':
-          description: Internal server error
+          description: Member removed
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '409':
+          description: The member is the organization's last admin, or the caller's own account
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              examples:
+                lastAdmin:
+                  value:
+                    code: last_admin
+                    message: Make another member an admin first
+                ownAccount:
+                  value:
+                    code: own_account
+                    message: Ask another admin to change your own membership
   /api/v1/organizations/{org_id}/invites:
-    post:
-      summary: Create an invite to the organization
+    get:
+      x-stability: draft
+      summary: List the organization's invites, pending first, newest first
+      operationId: listInvites
       security:
         - Bearer: []
+      tags:
+        - Organizations
+      parameters:
+        - $ref: '#/components/parameters/org_id'
+      responses:
+        '200':
+          description: Invites fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      x-stability: draft
+      summary: Invite an email into the organization; the link is shown once
+      operationId: createInvite
+      security:
+        - Bearer: []
+      tags:
+        - Organizations
       parameters:
         - $ref: '#/components/parameters/org_id'
       requestBody:
@@ -501,132 +295,201 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/OrgInviteCreateRequest'
+              $ref: '#/components/schemas/InviteCreate'
       responses:
         '201':
-          description: Invite created successfully
+          description: Invite created, pending for seven days
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrgInviteCreateResponse'
-        '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
+                $ref: '#/components/schemas/InviteCreated'
+        '400': { description: The body is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
         '409':
-          description: Conflict - user exists or duplicate pending invite
+          description: The email is already a member, or already has a pending invite
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-    get:
-      summary: List invites for an organization
+              examples:
+                memberExists:
+                  value:
+                    code: member_exists
+                    message: This email is already a member of the organization
+                invitePending:
+                  value:
+                    code: invite_pending
+                    message: This email already has a pending invite
+  /api/v1/organizations/{org_id}/invites/{invite_id}:
+    delete:
+      x-stability: draft
+      summary: Revoke a pending invite; revoking it again answers the same
+      operationId: revokeInvite
       security:
         - Bearer: []
+      tags:
+        - Organizations
       parameters:
         - $ref: '#/components/parameters/org_id'
-        - name: status
-          in: query
-          required: false
+        - name: invite_id
+          in: path
+          required: true
           schema:
             type: string
-          description: Filter invites by status (pending, accepted, revoked, expired)
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrgInviteList'
-        '401':
-          description: Unauthorized
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/invites/{id}:
-    get:
-      summary: Get an invite by ID
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OrgInvite'
-        '401':
-          description: Unauthorized
-        '404':
-          description: Invite not found
-        '500':
-          description: Internal server error
-    delete:
-      summary: Revoke a pending invite
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
       responses:
         '204':
-          description: Invite revoked successfully
-        '400':
-          description: Can only revoke pending invites
-        '401':
-          description: Unauthorized
-        '404':
-          description: Invite not found
-        '500':
-          description: Internal server error
-  /api/v1/organizations/{org_id}/invites/{id}/resend:
-    post:
-      summary: Re-queue invite email for delivery
-      security:
-        - Bearer: []
-      parameters:
-        - $ref: '#/components/parameters/org_id'
-        - $ref: '#/components/parameters/id'
-      responses:
-        '200':
-          description: Invite email re-queued
-        '400':
-          description: Can only resend pending invites
-        '401':
-          description: Unauthorized
-        '404':
-          description: Invite not found
-        '500':
-          description: Internal server error
-  /api/v1/invites/{token}/info:
+          description: Invite revoked
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { description: Unauthorized to perform operation, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/invites/{token}:
     get:
-      summary: Get public invite info (unauthenticated)
+      x-stability: draft
+      summary: Read what an invite link offers, without signing in
+      operationId: getInvitePreview
+      tags:
+        - Invites
       parameters:
         - name: token
           in: path
           required: true
           schema:
             type: string
-          description: The invite token
       responses:
         '200':
-          description: Invite info
+          description: Invite found
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/OrgInviteInfo'
+                $ref: '#/components/schemas/InvitePreview'
         '404':
-          description: Invite not found
-        '410':
-          description: Invite expired or revoked
+          description: The token matches no invite
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unknown_invite
+                message: This invite link does not match any invite
+  /api/v1/invites/{token}/accept:
+    post:
+      x-stability: draft
+      summary: Join the invite's organization with the invite's role; sets the session cookies
+      operationId: acceptInvite
+      tags:
+        - Invites
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteAccept'
+      responses:
+        '200':
+          description: Account created and signed in. Sets both cookies; the body carries no token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400': { description: The name is blank or the password is under eight characters, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404':
+          description: The token matches no invite
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: unknown_invite
+                message: This invite link does not match any invite
+        '409':
+          description: The invite was accepted, revoked or has expired, or the email joined in the meantime
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                inviteNotPending:
+                  value:
+                    code: invite_not_pending
+                    message: This invite was already accepted, revoked or has expired
+                memberExists:
+                  value:
+                    code: member_exists
+                    message: This email is already a member of the organization
+  /api/v1/api-tokens:
+    get:
+      x-stability: draft
+      summary: List the signed in user's API tokens, newest first
+      operationId: listApiTokens
+      security:
+        - Bearer: []
+      tags:
+        - API tokens
+      responses:
+        '200':
+          description: API tokens fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTokenList'
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+    post:
+      x-stability: draft
+      summary: Create a personal API token that acts as its user; the secret is shown once
+      operationId: createApiToken
+      security:
+        - Bearer: []
+      tags:
+        - API tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiTokenCreate'
+      responses:
+        '201':
+          description: API token created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTokenCreated'
+        '400': { description: The body is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  /api/v1/api-tokens/{token_id}:
+    delete:
+      x-stability: draft
+      summary: Revoke one of your API tokens; revoking it again answers the same
+      operationId: revokeApiToken
+      security:
+        - Bearer: []
+      tags:
+        - API tokens
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: API token revoked
+        '401': { description: Auth token is invalid, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '404':
+          description: The token is not one of the signed in user's
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                code: api_token_not_found
+                message: API token not found
   /api/v1/organizations/{org_id}/tasks:
     get:
       x-stability: draft
@@ -1806,189 +1669,6 @@ components:
         type: string
       description: The name of the database
   schemas:
-    AppConfigResponse:
-      type: object
-      properties:
-        github_oauth:
-          type: boolean
-          description: True when GitHub OAuth login is configured on the server.
-        signup:
-          $ref: '#/components/schemas/SignupConfigResponse'
-    SignupConfigResponse:
-      type: object
-      required:
-        - turnstile
-      properties:
-        turnstile:
-          $ref: '#/components/schemas/TurnstileConfigResponse'
-    TurnstileConfigResponse:
-      type: object
-      required:
-        - enabled
-        - site_key
-        - action
-      properties:
-        enabled:
-          type: boolean
-          description: True when password signup requires a Turnstile challenge.
-        site_key:
-          type: string
-          description: Public Turnstile site key used to render the signup widget.
-        action:
-          type: string
-          description: Turnstile action submitted by the signup widget.
-    Organisation:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        is_platform:
-          type: boolean
-          readOnly: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-    UserSignupResponse:
-      type: object
-      properties:
-        user:
-          $ref: '#/components/schemas/User'
-        jwt_token:
-          type: string
-          description: JWT token for the authenticated user
-        refresh_token:
-          type: string
-          description: Refresh token for obtaining new access tokens
-    User:
-      type: object
-      properties:
-        id:
-          type: string
-          description: User's ID
-        name:
-          type: string
-          description: User's name
-        username:
-          type: string
-          description: User's username
-        email:
-          type: string
-          format: email
-          description: User's email address
-        organisation:
-          type: string
-          description: User's organisation
-        role:
-          $ref: '#/components/schemas/UserRole'
-        organisation_id:
-          type: string
-          description: OrganisationID
-    UserList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/User'
-        total:
-          type: integer
-          description: Total number of records
-        page:
-          type: integer
-          description: Current page number
-        page_size:
-          type: integer
-          description: Number of items per page
-        total_pages:
-          type: integer
-          description: Total number of pages
-    UserSignupRequest:
-      type: object
-      required:
-        - name
-        - email
-        - password
-      properties:
-        name:
-          type: string
-          description: User's name
-        email:
-          type: string
-          format: email
-          description: User's email address
-        password:
-          type: string
-          description: Users desired password
-        organisation:
-          $ref: '#/components/schemas/Organisation'
-        invite_token:
-          type: string
-          description: Optional invite token for joining an existing organization
-        turnstile_token:
-          type: string
-          description: Turnstile token required for protected public password signup
-    UserRole:
-      type: string
-      enum:
-        - OrgAdmin
-        - OrgMember
-    RefreshTokenRequest:
-      type: object
-      required:
-        - refreshToken
-      properties:
-        refreshToken:
-          type: string
-          description: The refresh token to exchange for a new access token
-    RefreshTokenResponse:
-      type: object
-      properties:
-        token:
-          type: string
-          description: New access token
-        refreshToken:
-          type: string
-          description: New refresh token (old one is revoked)
-    LoginRequest:
-      type: object
-      required:
-        - email
-        - password
-      properties:
-        email:
-          type: string
-          description: User's email
-        password:
-          type: string
-          format: password
-          description: User's password
-    LoginResponse:
-      type: object
-      properties:
-        token:
-          type: string
-          description: Access token for authenticated requests
-        refresh_token:
-          type: string
-          description: Refresh token for obtaining new access tokens
-        user:
-          $ref: '#/components/schemas/User'
-        expires_in:
-          type: integer
-          description: Token expiration time in seconds
-    PromoteAdminRequest:
-      type: object
-      required:
-        - user_id
-      properties:
-        user_id:
-          type: string
-          description: The ID of the user to promote to admin
     Error:
       allOf:
         - $ref: '#/components/schemas/ObjectReference'
@@ -2013,218 +1693,367 @@ components:
           type: string
         href:
           type: string
-    ScopeResource:
-      type: object
-      properties:
-        resource:
-          type: string
-          description: The resource name (e.g., instances, secrets, addons/postgres)
-        actions:
-          type: array
-          items:
-            type: string
-          description: The allowed actions for this resource (e.g., read, write, delete)
-    ScopeList:
-      type: object
-      properties:
-        full_access_scope:
-          type: string
-          description: The wildcard scope that grants full access (same permissions as the user)
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ScopeResource'
-        total:
-          type: integer
-    APITokenCreateRequest:
-      type: object
-      required:
-        - name
-        - scopes
-      properties:
-        name:
-          type: string
-          description: Display name for the token
-        scopes:
-          type: array
-          items:
-            type: string
-          description: Permission scopes for the token
-        resource_ids:
-          type: array
-          items:
-            type: string
-          description: Optional list of resource IDs to restrict the token to
-        expires_at:
-          type: string
-          format: date-time
-          description: Optional expiration time in RFC3339 format
-    APITokenCreateResponse:
-      type: object
-      properties:
-        token:
-          type: string
-          description: The raw API token (only returned on creation)
-        id:
-          type: string
-        name:
-          type: string
-        token_prefix:
-          type: string
-          description: Prefix of the token for identification
-        expires_at:
-          type: string
-          format: date-time
-    APIToken:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        user_id:
-          type: string
-        token_prefix:
-          type: string
-        scopes:
-          type: array
-          items:
-            type: string
-        resource_ids:
-          type: array
-          items:
-            type: string
-        org_id:
-          type: string
-        expires_at:
-          type: string
-          format: date-time
-        last_used_at:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        revoked_at:
-          type: string
-          format: date-time
-    APITokenList:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/APIToken'
+    UserRole:
+      type: string
+      enum:
+        - OrgAdmin
+        - OrgMember
     InviteStatus:
       type: string
+      x-stability: draft
+      description: Expired is derived from expires_at when an invite is read; it is never stored.
       enum:
         - pending
         - accepted
         - revoked
         - expired
       x-enum-varnames:
-        - INVITE_PENDING
-        - INVITE_ACCEPTED
-        - INVITE_REVOKED
-        - INVITE_EXPIRED
-    OrgInvite:
+        - Pending
+        - Accepted
+        - Revoked
+        - Expired
+    ApiTokenExpiryDays:
+      type: integer
+      x-stability: draft
+      description: Expiry presets in days. A token created with none never expires.
+      enum:
+        - 30
+        - 90
+        - 365
+      x-enum-varnames:
+        - Month
+        - Quarter
+        - Year
+    LoginRequest:
       type: object
-      properties:
-        id:
-          type: string
-          readOnly: true
-        email:
-          type: string
-        organisation_id:
-          type: string
-          readOnly: true
-        role:
-          type: string
-          enum:
-            - Developer
-            - Viewer
-        status:
-          $ref: '#/components/schemas/InviteStatus'
-        expires_at:
-          type: string
-          format: date-time
-        invited_by:
-          type: string
-        email_sent:
-          type: boolean
-        email_error:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-          readOnly: true
-        accepted_at:
-          type: string
-          format: date-time
-    OrgInviteCreateRequest:
-      type: object
+      x-stability: draft
       required:
         - email
-        - role
-        - expires_in_days
+        - password
       properties:
         email:
           type: string
-          format: email
-        role:
+          minLength: 1
+          maxLength: 320
+        password:
           type: string
-          enum:
-            - Developer
-            - Viewer
-        expires_in_days:
-          type: integer
-          minimum: 1
-          maximum: 30
-    OrgInviteCreateResponse:
+          format: password
+          minLength: 1
+          maxLength: 200
+        organization_id:
+          type: string
+          format: uuid
+          description: Picks the account when the email and password match accounts in several organizations.
+    OrganizationRef:
       type: object
+      x-stability: draft
+      required:
+        - id
+        - name
       properties:
         id:
           type: string
+        name:
+          type: string
+    CurrentUser:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - email
+        - role
+        - organization
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: The email when the account has no name.
         email:
           type: string
-        organisation_id:
-          type: string
         role:
+          $ref: '#/components/schemas/UserRole'
+        organization:
+          $ref: '#/components/schemas/OrganizationRef'
+    Session:
+      type: object
+      x-stability: draft
+      description: The session itself travels in httpOnly cookies, never in this body.
+      required:
+        - user
+      properties:
+        user:
+          $ref: '#/components/schemas/CurrentUser'
+    Organization:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - budget_cents
+        - created_at
+      properties:
+        id:
           type: string
-        status:
-          $ref: '#/components/schemas/InviteStatus'
-        expires_at:
+        name:
           type: string
-          format: date-time
-        invited_by:
-          type: string
-        email_sent:
-          type: boolean
-        invite_token:
-          type: string
-          description: Raw invite token (shown only once at creation)
+        budget_cents:
+          type: integer
+          description: Monthly budget in cents.
         created_at:
           type: string
           format: date-time
-    OrgInviteList:
+    OrganizationUpdate:
       type: object
+      x-stability: draft
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '\S'
+        budget_cents:
+          type: integer
+          minimum: 0
+    Member:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - email
+        - role
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: The email when the account has no name.
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        created_at:
+          type: string
+          format: date-time
+    MemberList:
+      type: object
+      x-stability: draft
+      required:
+        - items
       properties:
         items:
           type: array
           items:
-            $ref: '#/components/schemas/OrgInvite'
-        total:
-          type: integer
-    OrgInviteInfo:
+            $ref: '#/components/schemas/Member'
+    MemberUpdate:
       type: object
+      x-stability: draft
+      required:
+        - role
       properties:
-        org_name:
+        role:
+          $ref: '#/components/schemas/UserRole'
+    Invite:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - email
+        - role
+        - status
+        - expires_at
+        - created_at
+      properties:
+        id:
           type: string
-        inviter_name:
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/InviteStatus'
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    InviteList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Invite'
+    InviteCreate:
+      type: object
+      x-stability: draft
+      required:
+        - email
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 320
+        role:
+          $ref: '#/components/schemas/UserRole'
+    InviteCreated:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - email
+        - role
+        - status
+        - expires_at
+        - created_at
+        - link
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/InviteStatus'
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        link:
+          type: string
+          description: The web path of the accept page, carrying the raw token. Shown once; the api keeps only its hash.
+    InvitePreview:
+      type: object
+      x-stability: draft
+      required:
+        - organization_name
+        - email
+        - role
+        - status
+      properties:
+        organization_name:
+          type: string
+        email:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/InviteStatus'
+    InviteAccept:
+      type: object
+      x-stability: draft
+      required:
+        - name
+        - password
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '\S'
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 200
+    ApiToken:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - prefix
+        - expires_at
+        - last_used_at
+        - created_at
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          description: The first eight characters of the secret, for telling tokens apart.
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    ApiTokenList:
+      type: object
+      x-stability: draft
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiToken'
+    ApiTokenCreate:
+      type: object
+      x-stability: draft
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          pattern: '\S'
+        expires_in_days:
+          nullable: true
+          description: Absent or null, the token never expires.
+          allOf:
+            - $ref: '#/components/schemas/ApiTokenExpiryDays'
+    ApiTokenCreated:
+      type: object
+      x-stability: draft
+      required:
+        - id
+        - name
+        - prefix
+        - expires_at
+        - last_used_at
+        - created_at
+        - secret
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
           type: string
         expires_at:
           type: string
           format: date-time
+          nullable: true
+        last_used_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        secret:
+          type: string
+          description: Sent as the Bearer value. Shown once; the api keeps only its hash.
     RepoProvider:
       type: string
       x-stability: draft
