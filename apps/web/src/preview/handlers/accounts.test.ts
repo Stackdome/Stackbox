@@ -82,6 +82,15 @@ describe('the preview accounts', () => {
     ])
   })
 
+  it('refuses a budget above the integer columns maximum', () => {
+    const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
+
+    expect(accounts.updateOrganization({ budget_cents: 2147483648 })).toEqual({
+      status: 400,
+      body: { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' },
+    })
+  })
+
   it('refuses to accept an invite with a short password or a blank name', () => {
     const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
 

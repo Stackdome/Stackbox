@@ -34,6 +34,8 @@ const INVITE_NOT_PENDING = { code: 'invite_not_pending', message: 'This invite w
 const UNKNOWN_INVITE = { code: 'unknown_invite', message: 'This invite link does not match any invite' }
 const API_TOKEN_NOT_FOUND = { code: 'api_token_not_found', message: 'API token not found' }
 const INVALID_ORGANIZATION_UPDATE = { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' }
+// The integer column backing `budget_cents` tops out at 2^31 - 1.
+const MAX_BUDGET_CENTS = 2147483647
 const INVALID_INVITE_ACCEPT = { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' }
 
 // Sign in, refresh and the two invite routes answer without a session, as the api does.
@@ -87,7 +89,8 @@ export class PreviewAccounts {
   updateOrganization(input: Schemas['OrganizationUpdate']): Schemas['Organization'] | Refusal {
     const blankName = input.name !== undefined && !input.name.trim()
     const negativeBudget = input.budget_cents !== undefined && input.budget_cents < 0
-    if (blankName || negativeBudget) return refusal(400, INVALID_ORGANIZATION_UPDATE)
+    const budgetTooLarge = input.budget_cents !== undefined && input.budget_cents > MAX_BUDGET_CENTS
+    if (blankName || negativeBudget || budgetTooLarge) return refusal(400, INVALID_ORGANIZATION_UPDATE)
     const organization = { ...this.state.organization, ...(input.name !== undefined && { name: input.name.trim() }), ...(input.budget_cents !== undefined && { budget_cents: input.budget_cents }) }
     this.commit({ ...this.state, organization })
     return organization

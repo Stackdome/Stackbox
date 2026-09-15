@@ -37,6 +37,9 @@ export const INVITE_UNAVAILABLE_TEXT: Record<InviteStatus, string> = {
 const CENTS_PER_DOLLAR = 100
 const WHOLE_DOLLARS = /^\d+$/
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }
+// The integer column backing `budget_cents` tops out at 2^31 - 1; a dollar figure past that overflows Postgres.
+const MAX_BUDGET_CENTS = 2147483647
+const MAX_BUDGET_DOLLARS = Math.floor(MAX_BUDGET_CENTS / CENTS_PER_DOLLAR)
 
 export function toOrganization(organization: Schemas['Organization']): OrganizationView {
   return { id: organization.id, name: organization.name, budgetDollars: organization.budget_cents / CENTS_PER_DOLLAR, createdAt: organization.created_at }
@@ -49,6 +52,7 @@ export function generalDraftOf(organization: OrganizationView): GeneralDraft {
 export function generalDraftProblem(draft: GeneralDraft): string | null {
   if (draft.name.trim() === '') return 'Name the organization'
   if (!WHOLE_DOLLARS.test(draft.budget.trim())) return 'Enter the budget in whole dollars'
+  if (Number(draft.budget.trim()) > MAX_BUDGET_DOLLARS) return 'Enter a budget of at most $21,474,836'
   return null
 }
 

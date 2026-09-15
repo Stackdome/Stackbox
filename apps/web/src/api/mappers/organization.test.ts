@@ -49,6 +49,13 @@ describe('the organization mapper', () => {
     ]).toEqual(['Name the organization', 'Enter the budget in whole dollars', 'Enter the budget in whole dollars', null])
   })
 
+  it('refuses a budget above the integer columns maximum', () => {
+    expect([generalDraftProblem({ name: 'acme', budget: '21474836' }), generalDraftProblem({ name: 'acme', budget: '21474837' })]).toEqual([
+      null,
+      'Enter a budget of at most $21,474,836',
+    ])
+  })
+
   it('labels a member role and marks the signed in member as you', () => {
     expect([toMember(makeMember(), 'u1'), toMember(makeMember({ id: 'u2', role: UserRole.OrgMember }), 'u1').roleLabel]).toEqual([
       { id: 'u1', name: 'Ada Lovelace', email: 'ada@example.com', role: UserRole.OrgAdmin, roleLabel: 'Admin', isYou: true },
