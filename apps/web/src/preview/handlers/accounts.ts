@@ -33,8 +33,11 @@ const INVITE_PENDING = { code: 'invite_pending', message: 'This email already ha
 const INVITE_NOT_PENDING = { code: 'invite_not_pending', message: 'This invite was already accepted, revoked or has expired' }
 const UNKNOWN_INVITE = { code: 'unknown_invite', message: 'This invite link does not match any invite' }
 const API_TOKEN_NOT_FOUND = { code: 'api_token_not_found', message: 'API token not found' }
-const INVALID_ORGANIZATION_UPDATE = { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' }
-const INVALID_INVITE_ACCEPT = { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' }
+// The integer column backing `budget_cents` tops out at 2^31 - 1.
+const MAX_BUDGET_CENTS = 2147483647
+const VALIDATION_FAILED = { message: 'validation failed' }
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const FORBIDDEN = { code: 'forbidden', message: "You do not have permission to change this organization's settings" }
 
 // Sign in, refresh and the two invite routes answer without a session, as the api does.
 const PUBLIC_API = [/\/api\/v1\/auth\/(login|refresh)$/, /\/api\/v1\/invites\/[^/]+(\/accept)?$/]
@@ -85,9 +88,11 @@ export class PreviewAccounts {
   }
 
   updateOrganization(input: Schemas['OrganizationUpdate']): Schemas['Organization'] | Refusal {
+    if (!this.isOrgAdmin()) return refusal(403, FORBIDDEN)
     const blankName = input.name !== undefined && !input.name.trim()
     const negativeBudget = input.budget_cents !== undefined && input.budget_cents < 0
-    if (blankName || negativeBudget) return refusal(400, INVALID_ORGANIZATION_UPDATE)
+    const budgetTooLarge = input.budget_cents !== undefined && input.budget_cents > MAX_BUDGET_CENTS
+    if (blankName || negativeBudget || budgetTooLarge) return refusal(400, VALIDATION_FAILED)
     const organization = { ...this.state.organization, ...(input.name !== undefined && { name: input.name.trim() }), ...(input.budget_cents !== undefined && { budget_cents: input.budget_cents }) }
     this.commit({ ...this.state, organization })
     return organization
@@ -98,6 +103,7 @@ export class PreviewAccounts {
   }
 
   changeRole(userId: string, role: UserRole): Schemas['Member'] | Refusal | null {
+    if (!this.isOrgAdmin()) return refusal(403, FORBIDDEN)
     const target = this.state.accounts.find((account) => account.member.id === userId)
     if (!target) return null
     if (role !== UserRole.OrgAdmin && this.isLastAdmin(target.member)) return refusal(409, LAST_ADMIN)
@@ -108,6 +114,7 @@ export class PreviewAccounts {
   }
 
   removeMember(userId: string): Refusal | null {
+    if (!this.isOrgAdmin()) return refusal(403, FORBIDDEN)
     const target = this.state.accounts.find((account) => account.member.id === userId)
     if (!target) return null
     if (this.isLastAdmin(target.member)) return refusal(409, LAST_ADMIN)
@@ -121,6 +128,8 @@ export class PreviewAccounts {
   }
 
   invite(input: Schemas['InviteCreate']): Schemas['InviteCreated'] | Refusal {
+    if (!this.isOrgAdmin()) return refusal(403, FORBIDDEN)
+    if (!EMAIL_SHAPE.test(input.email.trim())) return refusal(400, VALIDATION_FAILED)
     if (this.state.accounts.some((account) => sameEmail(account.member.email, input.email))) return refusal(409, MEMBER_EXISTS)
     if (this.state.invites.some((invite) => sameEmail(invite.email, input.email) && isPending(invite))) return refusal(409, INVITE_PENDING)
     const token = crypto.randomUUID()
@@ -136,11 +145,13 @@ export class PreviewAccounts {
     return { ...created, link: `/invites/${token}` }
   }
 
-  revokeInvite(inviteId: string): void {
+  revokeInvite(inviteId: string): Refusal | null {
+    if (!this.isOrgAdmin()) return refusal(403, FORBIDDEN)
     this.commit({
       ...this.state,
       invites: this.state.invites.map((invite) => (invite.id === inviteId && isPending(invite) ? { ...invite, status: InviteStatus.Revoked } : invite)),
     })
+    return null
   }
 
   preview(token: string): Schemas['InvitePreview'] | null {
@@ -149,7 +160,7 @@ export class PreviewAccounts {
   }
 
   accept(token: string, input: Schemas['InviteAccept']): Schemas['Session'] | Refusal | null {
-    if (!input.name.trim() || input.password.length < MIN_PASSWORD_LENGTH) return refusal(400, INVALID_INVITE_ACCEPT)
+    if (!input.name.trim() || input.password.length < MIN_PASSWORD_LENGTH) return refusal(400, VALIDATION_FAILED)
     const invite = this.inviteOfToken(token)
     if (!invite) return null
     if (invite.status !== InviteStatus.Pending) return refusal(409, INVITE_NOT_PENDING)
@@ -192,6 +203,10 @@ export class PreviewAccounts {
   private inviteOfToken(token: string): Schemas['Invite'] | null {
     const inviteId = this.state.inviteTokens[token]
     return this.invites().find((invite) => invite.id === inviteId) ?? null
+  }
+
+  private isOrgAdmin(): boolean {
+    return this.signedIn()?.role === UserRole.OrgAdmin
   }
 
   private isLastAdmin(member: Schemas['Member']): boolean {
@@ -270,8 +285,8 @@ export function accountHandlers(accounts: PreviewAccounts): HttpHandler[] {
     http.get(`${ORG}/invites`, () => HttpResponse.json({ items: accounts.invites() })),
     http.post(`${ORG}/invites`, async ({ request }) => answer(accounts.invite((await request.json()) as Schemas['InviteCreate']), 201)),
     http.delete(`${ORG}/invites/:inviteId`, ({ params }) => {
-      accounts.revokeInvite(String(params.inviteId))
-      return noContent()
+      const refused = accounts.revokeInvite(String(params.inviteId))
+      return refused ? HttpResponse.json(refused.body, { status: refused.status }) : noContent()
     }),
 
     http.get('*/api/v1/invites/:token', ({ params }) => answer(accounts.preview(String(params.token)))),

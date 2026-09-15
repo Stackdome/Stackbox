@@ -1,6 +1,7 @@
 import { AxiosError } from "axios";
 import { describe, expect, it } from "vitest";
 import {
+  INVITE_ERROR,
   REMOVE_MEMBER_ERROR,
   cancelTaskErrorMessage,
   connectProviderErrorMessage,
@@ -157,5 +158,13 @@ describe("settingsErrorMessage", () => {
 
   it("names the missing permission on a 403 regardless of the fallback", () => {
     expect(settingsErrorMessage(errorWithStatus(403), REMOVE_MEMBER_ERROR)).toBe(SETTINGS_PERMISSION);
+  });
+
+  it("uses the caller's validation line on a 400 when given one, and the fallback otherwise", () => {
+    expect([
+      settingsErrorMessage(errorWithStatus(400), INVITE_ERROR, "Enter an email address"),
+      settingsErrorMessage(errorWithStatus(400), INVITE_ERROR),
+      settingsErrorMessage(errorWithStatus(500), INVITE_ERROR, "Enter an email address"),
+    ]).toEqual(["Enter an email address", INVITE_ERROR, INVITE_ERROR]);
   });
 });

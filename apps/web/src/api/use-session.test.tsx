@@ -1,12 +1,31 @@
 // @vitest-environment jsdom
-import { act, renderHook, waitFor } from '@testing-library/react'
+import '@testing-library/jest-dom/vitest'
+import { act, cleanup, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { InviteStatus } from '@stackbox/contract'
+import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { PREVIEW_ACCOUNTS_SEED, PREVIEW_INVITE_TOKEN, PREVIEW_PASSWORD } from '../../.storybook/fixtures'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { makeUser, PREVIEW_ACCOUNTS_SEED, PREVIEW_INVITE_TOKEN, PREVIEW_PASSWORD } from '../../.storybook/fixtures'
 import { getCurrentUser } from '@/lib/common'
 import { PreviewAccounts, accountHandlers, sessionGate } from '@/preview/handlers/accounts'
-import { useInvitePreview, useJoin, useSignIn } from './use-session'
+import { useInvitePreview, useJoin, useRedirectWhenSignedIn, useSignIn } from './use-session'
+
+function RedirectProbe({ to }: { to: string }) {
+  useRedirectWhenSignedIn(to)
+  return <p>Sign in form</p>
+}
+
+function renderRedirectProbe() {
+  render(
+    <MemoryRouter initialEntries={['/login']}>
+      <Routes>
+        <Route path="/login" element={<RedirectProbe to="/tasks" />} />
+        <Route path="/tasks" element={<p>Tasks landing</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
+}
 
 const server = setupServer()
 let accounts: PreviewAccounts
@@ -20,6 +39,7 @@ describe('the session hooks', () => {
     accounts.signOut()
     server.resetHandlers(sessionGate(accounts), ...accountHandlers(accounts))
   })
+  afterEach(() => cleanup())
 
   it('signs in and stores the signed in user', async () => {
     const { result } = renderHook(() => useSignIn())
@@ -45,5 +65,38 @@ describe('the session hooks', () => {
     await waitFor(() => expect(result.current.loading).toBe(false))
 
     expect([result.current.preview, result.current.error !== null]).toEqual([null, true])
+  })
+})
+
+describe('useRedirectWhenSignedIn', () => {
+  const redirectServer = setupServer()
+
+  beforeAll(() => redirectServer.listen({ onUnhandledRequest: 'error' }))
+  afterAll(() => redirectServer.close())
+  beforeEach(() => localStorage.clear())
+  afterEach(() => cleanup())
+
+  it('tries the refresh cookie before asking for the current user, and lands past Sign in once it answers', async () => {
+    let refreshCalls = 0
+    redirectServer.resetHandlers(
+      http.post('*/api/v1/auth/refresh', () => {
+        refreshCalls += 1
+        return new HttpResponse(null, { status: 204 })
+      }),
+      http.get('*/api/v1/users/current', () => HttpResponse.json(makeUser())),
+    )
+
+    renderRedirectProbe()
+
+    expect(await screen.findByText('Tasks landing')).toBeInTheDocument()
+    expect(refreshCalls).toBe(1)
+  })
+
+  it('stays on Sign in when the refresh cookie is gone', async () => {
+    redirectServer.resetHandlers(http.post('*/api/v1/auth/refresh', () => HttpResponse.json({ code: 'invalid_refresh', message: 'Sign in again' }, { status: 401 })))
+
+    renderRedirectProbe()
+
+    expect(await screen.findByText('Sign in form')).toBeInTheDocument()
   })
 })

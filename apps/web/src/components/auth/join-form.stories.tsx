@@ -42,3 +42,17 @@ export const ShortPasswordSaysSo: Story = {
     await expect(canvas.getByRole('alert')).toHaveTextContent('Use a password of at least 8 characters')
   },
 }
+
+/** Retyping either field clears the stale refusal instead of leaving it beside the new attempt. */
+export const RetypingClearsTheStaleRefusal: Story = {
+  play: async ({ canvas }) => {
+    await userEvent.type(canvas.getByLabelText(/^Name/), 'Grace Hopper')
+    await userEvent.type(canvas.getByLabelText(/^Password/), 'short')
+    await userEvent.click(canvas.getByRole('button', { name: 'Join acme' }))
+    await expect(canvas.getByRole('alert')).toHaveTextContent('Use a password of at least 8 characters')
+
+    await userEvent.type(canvas.getByLabelText(/^Name/), ' Hopper')
+
+    await expect(canvas.getByRole('alert')).toBeEmptyDOMElement()
+  },
+}

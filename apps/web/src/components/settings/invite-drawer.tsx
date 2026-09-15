@@ -1,7 +1,7 @@
 import { UserRole } from "@stackbox/contract";
 import { useState } from "react";
 import { INVITE_ERROR, settingsErrorMessage } from "@/api/errors";
-import { type InviteCreatedView, type InviteDraft, ROLES, ROLE_LABEL } from "@/api/mappers/organization";
+import { type InviteCreatedView, type InviteDraft, INVALID_EMAIL_MESSAGE, inviteDraftProblem, ROLES, ROLE_LABEL } from "@/api/mappers/organization";
 import { FieldError, FieldShell, FormSection } from "@/components/branded";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerActions, DrawerBody, DrawerClose, DrawerContent, DrawerFooter, DrawerHeader } from "@/components/ui/drawer";
@@ -27,6 +27,7 @@ export function InviteDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
   const [created, setCreated] = useState<InviteCreatedView | null>(null);
+  const emailProblem = draft.email.trim() === "" ? null : inviteDraftProblem(draft);
 
   async function submit() {
     setSubmitting(true);
@@ -34,7 +35,7 @@ export function InviteDrawer({
     try {
       setCreated(await onSubmit(draft));
     } catch (error) {
-      setFailure(settingsErrorMessage(error, INVITE_ERROR));
+      setFailure(settingsErrorMessage(error, INVITE_ERROR, INVALID_EMAIL_MESSAGE));
     } finally {
       setSubmitting(false);
     }
@@ -62,8 +63,15 @@ export function InviteDrawer({
           <>
             <DrawerBody>
               <FormSection label="Member">
-                <FieldShell label="Email" htmlFor={EMAIL_ID} required>
-                  <Input id={EMAIL_ID} type="email" placeholder="grace@example.com" value={draft.email} onChange={(event) => setDraft({ ...draft, email: event.target.value })} />
+                <FieldShell label="Email" htmlFor={EMAIL_ID} required error={emailProblem}>
+                  <Input
+                    id={EMAIL_ID}
+                    type="email"
+                    placeholder="grace@example.com"
+                    aria-invalid={emailProblem !== null}
+                    value={draft.email}
+                    onChange={(event) => setDraft({ ...draft, email: event.target.value })}
+                  />
                 </FieldShell>
                 <FieldShell label="Role">
                   <SegmentedControl aria-label="Role" fill options={ROLE_OPTIONS} value={draft.role} onValueChange={(role) => setDraft({ ...draft, role })} />
@@ -76,7 +84,7 @@ export function InviteDrawer({
                 <DrawerClose asChild>
                   <Button variant="outline">Cancel</Button>
                 </DrawerClose>
-                <Button onClick={() => void submit()} loading={submitting} disabled={draft.email.trim() === ""}>
+                <Button onClick={() => void submit()} loading={submitting} disabled={draft.email.trim() === "" || emailProblem !== null}>
                   Invite
                 </Button>
               </DrawerActions>

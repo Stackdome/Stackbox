@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { setAuthSession } from '@/lib/common'
 import { signIn } from './auth'
+import { refreshSession } from './auth-refresh'
 import { type SignInDraft, toLoginRequest } from './mappers/current-user'
 import { type InvitePreviewView, type JoinDraft, toInviteAccept, toInvitePreview } from './mappers/organization'
 import { acceptInvite, fetchInvitePreview } from './organizations'
@@ -13,12 +14,13 @@ export function useSignIn(): (draft: SignInDraft) => Promise<void> {
   }, [])
 }
 
-// A session that still answers skips Sign in.
+// A session that still answers, or a refresh cookie that still would, skips Sign in.
 export function useRedirectWhenSignedIn(to: string): void {
   const navigate = useNavigate()
   useEffect(() => {
     let current = true
-    fetchCurrentUser()
+    refreshSession()
+      .then(fetchCurrentUser)
       .then((user) => {
         if (!current) return
         setAuthSession(user)

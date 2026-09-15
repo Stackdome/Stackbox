@@ -4,6 +4,7 @@ import { PREVIEW_ORGANIZATION, makeInvite, makeMember } from '../../../.storyboo
 import {
   generalDraftOf,
   generalDraftProblem,
+  inviteDraftProblem,
   inviteExpiryText,
   isGeneralDirty,
   joinDraftProblem,
@@ -49,6 +50,20 @@ describe('the organization mapper', () => {
     ]).toEqual(['Name the organization', 'Enter the budget in whole dollars', 'Enter the budget in whole dollars', null])
   })
 
+  it('rounds a budget stored in odd cents to whole dollars, so it opens without a problem or as dirty', () => {
+    const organization = toOrganization({ ...PREVIEW_ORGANIZATION, budget_cents: 12345 })
+    const draft = generalDraftOf(organization)
+
+    expect([draft, generalDraftProblem(draft), isGeneralDirty(organization, draft)]).toEqual([{ name: 'acme', budget: '123' }, null, false])
+  })
+
+  it('refuses a budget above the integer columns maximum', () => {
+    expect([generalDraftProblem({ name: 'acme', budget: '21474836' }), generalDraftProblem({ name: 'acme', budget: '21474837' })]).toEqual([
+      null,
+      'Enter a budget of at most $21,474,836',
+    ])
+  })
+
   it('labels a member role and marks the signed in member as you', () => {
     expect([toMember(makeMember(), 'u1'), toMember(makeMember({ id: 'u2', role: UserRole.OrgMember }), 'u1').roleLabel]).toEqual([
       { id: 'u1', name: 'Ada Lovelace', email: 'ada@example.com', role: UserRole.OrgAdmin, roleLabel: 'Admin', isYou: true },
@@ -66,6 +81,13 @@ describe('the organization mapper', () => {
     const created = toInviteCreated({ ...makeInvite(), link: '/invites/abc123' }, 'http://localhost:5273')
 
     expect(created.link).toBe('http://localhost:5273/invites/abc123')
+  })
+
+  it('names an invite email missing an @ or a domain, and accepts a valid one', () => {
+    expect([inviteDraftProblem({ email: 'grace@', role: UserRole.OrgMember }), inviteDraftProblem({ email: ' grace@example.com ', role: UserRole.OrgMember })]).toEqual([
+      'Enter an email address',
+      null,
+    ])
   })
 
   it('trims the email of an invite and reads a preview with its role label', () => {

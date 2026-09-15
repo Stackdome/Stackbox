@@ -36,7 +36,8 @@ export type CatalogOptions = { delayMs?: number; persistKey?: string; taskBook?:
 
 type CatalogState = Omit<CatalogSeed, 'tasks' | 'instances'> & { instances: Schemas['InstanceDetail'][] }
 
-export type Refusal = { status: number; body: { code: string; message: string } }
+// `code` is absent on a refusal that mirrors the api's ZodValidationPipe body.
+export type Refusal = { status: number; body: { code?: string; message: string } }
 
 /** The signed-in preview user, who owns every instance spun up in the preview. */
 export const PREVIEW_OWNER: Schemas['InstanceOwner'] = { id: 'u1', name: 'Ada Lovelace' }

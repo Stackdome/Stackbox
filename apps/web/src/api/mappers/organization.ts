@@ -36,24 +36,29 @@ export const INVITE_UNAVAILABLE_TEXT: Record<InviteStatus, string> = {
 
 const CENTS_PER_DOLLAR = 100
 const WHOLE_DOLLARS = /^\d+$/
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const DATE_FORMAT: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }
+// The integer column backing `budget_cents` tops out at 2^31 - 1; a dollar figure past that overflows Postgres.
+const MAX_BUDGET_CENTS = 2147483647
+const MAX_BUDGET_DOLLARS = Math.floor(MAX_BUDGET_CENTS / CENTS_PER_DOLLAR)
 
 export function toOrganization(organization: Schemas['Organization']): OrganizationView {
   return { id: organization.id, name: organization.name, budgetDollars: organization.budget_cents / CENTS_PER_DOLLAR, createdAt: organization.created_at }
 }
 
 export function generalDraftOf(organization: OrganizationView): GeneralDraft {
-  return { name: organization.name, budget: String(organization.budgetDollars) }
+  return { name: organization.name, budget: String(Math.round(organization.budgetDollars)) }
 }
 
 export function generalDraftProblem(draft: GeneralDraft): string | null {
   if (draft.name.trim() === '') return 'Name the organization'
   if (!WHOLE_DOLLARS.test(draft.budget.trim())) return 'Enter the budget in whole dollars'
+  if (Number(draft.budget.trim()) > MAX_BUDGET_DOLLARS) return 'Enter a budget of at most $21,474,836'
   return null
 }
 
 export function isGeneralDirty(organization: OrganizationView, draft: GeneralDraft): boolean {
-  return draft.name.trim() !== organization.name || draft.budget.trim() !== String(organization.budgetDollars)
+  return draft.name.trim() !== organization.name || draft.budget.trim() !== String(Math.round(organization.budgetDollars))
 }
 
 export function toOrganizationUpdate(draft: GeneralDraft): Schemas['OrganizationUpdate'] {
@@ -90,6 +95,13 @@ export function toInvitePreview(preview: Schemas['InvitePreview']): InvitePrevie
 
 export function toInviteCreate(draft: InviteDraft): Schemas['InviteCreate'] {
   return { email: draft.email.trim(), role: draft.role }
+}
+
+export const INVALID_EMAIL_MESSAGE = 'Enter an email address'
+
+export function inviteDraftProblem(draft: InviteDraft): string | null {
+  if (!EMAIL_SHAPE.test(draft.email.trim())) return INVALID_EMAIL_MESSAGE
+  return null
 }
 
 export function joinDraftProblem(draft: JoinDraft): string | null {

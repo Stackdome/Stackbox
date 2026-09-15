@@ -145,10 +145,11 @@ export function joinErrorMessage(error: unknown): string {
 // Settings refusals (last admin, own account, member exists, invite pending) already say what to do in the api's words.
 export const SETTINGS_PERMISSION = "You do not have permission to change this organization's settings";
 
-export function settingsErrorMessage(error: unknown, fallback: string): string {
+export function settingsErrorMessage(error: unknown, fallback: string, badRequest?: string): string {
   if (isForbiddenError(error)) return SETTINGS_PERMISSION;
   const body = isAxiosError(error) ? asRecord(error.response?.data) : undefined;
   if (isErrorStatus(error, 409) && typeof body?.message === "string") return body.message;
+  if (badRequest !== undefined && isBadRequestError(error)) return badRequest;
   return fallback;
 }
 
