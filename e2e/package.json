@@ -12,7 +12,9 @@
     "@playwright/test": "^1.62.1",
     "@stackbox/contract": "workspace:*",
     "@types/node": "^22.10.5",
+    "@types/pg": "^8.23.1",
     "eslint": "^9.25.0",
+    "pg": "^8.23.0",
     "typescript": "~5.8.3"
   }
 }

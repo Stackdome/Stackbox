@@ -9,9 +9,10 @@ const derive = promisify(scrypt) as (password: string, salt: Buffer, length: num
 export const DUMMY_HASH = 'scrypt$UEhl9oDYqECK37tkPRGzdQ==$xlVr/bLbWIa+AYzmaxGH/q9UfSRgLIXq7g596fDCbFS+0ah17xNfOD0s2WLhOk4a/lVgriR+pVpkoHA/gFyJTQ=='
 
 // Counts scrypt derivations so tests can prove the dummy-hash path ran, without a mocking library.
-export const passwordMetrics = { verifyCalls: 0 }
+export const passwordMetrics = { verifyCalls: 0, hashCalls: 0 }
 
 export async function hashPassword(password: string): Promise<string> {
+  passwordMetrics.hashCalls += 1
   const salt = randomBytes(16)
   const key = await derive(password, salt, 64)
   return `scrypt$${salt.toString('base64')}$${key.toString('base64')}`

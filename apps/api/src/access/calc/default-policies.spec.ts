@@ -78,4 +78,27 @@ describe('the default policies', () => {
   it('deny a Viewer spinning up an instance even of the application it is bound to', () => {
     expect(can(viewer, `/applications/${APP}/instances`, Action.Create)).toBe(false)
   })
+
+  it('let an OrgMember read the organization and list its members, but change neither and invite no one', () => {
+    expect([
+      can(member, '', Action.Read),
+      can(member, '/users', Action.List),
+      can(member, '/invites', Action.List),
+      can(member, '', Action.Write),
+      can(member, '/users/U2', Action.Write),
+      can(member, '/users/U2', Action.Delete),
+      can(member, '/invites', Action.Create),
+      can(member, '/invites/I1', Action.Delete),
+    ]).toEqual([true, true, true, false, false, false, false, false])
+  })
+
+  it('let an OrgAdmin rename the organization, change and remove members, and send and revoke invites', () => {
+    expect([
+      can(admin, '', Action.Write),
+      can(admin, '/users/U2', Action.Write),
+      can(admin, '/users/U2', Action.Delete),
+      can(admin, '/invites', Action.Create),
+      can(admin, '/invites/I1', Action.Delete),
+    ]).toEqual([true, true, true, true, true])
+  })
 })

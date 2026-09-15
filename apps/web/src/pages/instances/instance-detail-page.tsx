@@ -25,7 +25,7 @@ export function InstanceDetailPage() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const confirm = useConfirm();
-  const { organisationId } = useCurrentUser();
+  const { organisationId, isOrgAdmin } = useCurrentUser();
   const { setCustomLabel } = useBreadcrumb();
   const { data, loading, refresh, deploy, teardown, extendExpiry } = useInstanceDetail(organisationId, instanceId);
   const { applications } = useApplications(organisationId);
@@ -85,7 +85,7 @@ export function InstanceDetailPage() {
 
   const now = Date.now();
   const expired = data.status === InstanceStatus.Expired;
-  const canExtend = isRunning(data.status) && data.purpose !== InstancePurpose.Persistent;
+  const canExtend = isOrgAdmin && isRunning(data.status) && data.purpose !== InstancePurpose.Persistent;
 
   return (
     <>
@@ -113,7 +113,7 @@ export function InstanceDetailPage() {
                 Spin up again
               </Button>
             )}
-            {data.status !== InstanceStatus.TornDown && (
+            {isOrgAdmin && data.status !== InstanceStatus.TornDown && (
               <Button variant="destructive-ghost" onClick={() => void askToTearDown()}>
                 Tear down
               </Button>
@@ -121,7 +121,7 @@ export function InstanceDetailPage() {
           </>
         }
       />
-      <InstanceDetail detail={data} now={now} deploying={deploying} onDeploy={() => void startDeploy()} />
+      <InstanceDetail detail={data} now={now} deploying={deploying} onDeploy={isOrgAdmin ? () => void startDeploy() : undefined} />
       {spinUpOpen && (
         <SpinUpDrawer
           open

@@ -1,55 +1,30 @@
 import type { components } from "@stackbox/contract";
 import { AUTH_SESSION_CHANGED } from "@/lib/auth-events";
 
-type User = components['schemas']['User']
+type CurrentUser = components["schemas"]["CurrentUser"];
+
+const CURRENT_USER_KEY = "currentUser";
 
 function notifyAuthSessionChanged() {
-  if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event(AUTH_SESSION_CHANGED));
-  }
+  window.dispatchEvent(new Event(AUTH_SESSION_CHANGED));
 }
 
-export function isUserLoggedIn(): boolean {
-  return Boolean(localStorage.getItem('authToken'));
-}
-
-export function getCurrentUser(): User | null {
-  const user = localStorage.getItem('currentUser');
-  if (!user) return null;
+// Only a CurrentUser carrying its organization is usable; anything else under the key reads as no one signed in.
+export function getCurrentUser(): CurrentUser | null {
   try {
-    return JSON.parse(user) as User;
+    const stored = JSON.parse(localStorage.getItem(CURRENT_USER_KEY) ?? "null") as Partial<CurrentUser> | null;
+    return stored?.organization ? (stored as CurrentUser) : null;
   } catch {
-    console.error("Failed to parse current user from localStorage");
     return null;
   }
 }
 
-export function getCurrentOrganizationId(): string | null {
-  const user = getCurrentUser();
-  return user?.organisation_id ?? null;
-}
-
-export function getRefreshToken(): string | null {
-  return localStorage.getItem('refreshToken');
-}
-
-export function setAuthSession(token: string, user: User, refreshToken?: string) {
-  localStorage.setItem('authToken', token);
-  localStorage.setItem('currentUser', JSON.stringify(user));
-  if (refreshToken) {
-    localStorage.setItem('refreshToken', refreshToken);
-  }
+export function setAuthSession(user: CurrentUser) {
+  localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
   notifyAuthSessionChanged();
 }
 
 export function clearAuthSession() {
-  localStorage.removeItem('authToken');
-  localStorage.removeItem('currentUser');
-  localStorage.removeItem('refreshToken');
+  localStorage.removeItem(CURRENT_USER_KEY);
   notifyAuthSessionChanged();
-}
-
-export function logoutAndRedirect(redirectTo: string = "/sign-in") {
-  clearAuthSession();
-  window.location.href = redirectTo;
 }

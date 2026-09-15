@@ -1,43 +1,27 @@
 import { makeApi, Zodios, type ZodiosOptions } from "@zodios/core";
 import { z } from "zod";
 
-const Organisation = z
+const LoginRequest = z
   .object({
-    id: z.string(),
-    name: z.string(),
-    is_platform: z.boolean(),
-    created_at: z.string().datetime({ offset: true }),
-    updated_at: z.string().datetime({ offset: true }),
-  })
-  .partial()
-  .passthrough();
-const UserSignupRequest = z
-  .object({
-    name: z.string(),
-    email: z.string().email(),
-    password: z.string(),
-    organisation: Organisation.optional(),
-    invite_token: z.string().optional(),
-    turnstile_token: z.string().optional(),
+    email: z.string().min(1).max(320),
+    password: z.string().min(1).max(200),
+    organization_id: z.string().uuid().optional(),
   })
   .passthrough();
 const UserRole = z.enum(["OrgAdmin", "OrgMember"]);
-const User = z
+const OrganizationRef = z
+  .object({ id: z.string(), name: z.string() })
+  .passthrough();
+const CurrentUser = z
   .object({
     id: z.string(),
     name: z.string(),
-    username: z.string(),
-    email: z.string().email(),
-    organisation: z.string(),
+    email: z.string(),
     role: UserRole,
-    organisation_id: z.string(),
+    organization: OrganizationRef,
   })
-  .partial()
   .passthrough();
-const UserSignupResponse = z
-  .object({ user: User, jwt_token: z.string(), refresh_token: z.string() })
-  .partial()
-  .passthrough();
+const Session = z.object({ user: CurrentUser }).passthrough();
 const ObjectReference = z
   .object({ id: z.string(), kind: z.string(), href: z.string() })
   .partial()
@@ -53,146 +37,104 @@ const Error = ObjectReference.and(
     .partial()
     .passthrough()
 );
-const TurnstileConfigResponse = z
-  .object({ enabled: z.boolean(), site_key: z.string(), action: z.string() })
-  .passthrough();
-const SignupConfigResponse = z
-  .object({ turnstile: TurnstileConfigResponse })
-  .passthrough();
-const AppConfigResponse = z
-  .object({ github_oauth: z.boolean(), signup: SignupConfigResponse })
-  .partial()
-  .passthrough();
-const LoginRequest = z
-  .object({ email: z.string(), password: z.string() })
-  .passthrough();
-const LoginResponse = z
-  .object({
-    token: z.string(),
-    refresh_token: z.string(),
-    user: User,
-    expires_in: z.number().int(),
-  })
-  .partial()
-  .passthrough();
-const RefreshTokenRequest = z
-  .object({ refreshToken: z.string() })
-  .passthrough();
-const RefreshTokenResponse = z
-  .object({ token: z.string(), refreshToken: z.string() })
-  .partial()
-  .passthrough();
-const APITokenCreateRequest = z
-  .object({
-    name: z.string(),
-    scopes: z.array(z.string()),
-    resource_ids: z.array(z.string()).optional(),
-    expires_at: z.string().datetime({ offset: true }).optional(),
-  })
-  .passthrough();
-const APITokenCreateResponse = z
-  .object({
-    token: z.string(),
-    id: z.string(),
-    name: z.string(),
-    token_prefix: z.string(),
-    expires_at: z.string().datetime({ offset: true }),
-  })
-  .partial()
-  .passthrough();
-const APIToken = z
+const Organization = z
   .object({
     id: z.string(),
     name: z.string(),
-    user_id: z.string(),
-    token_prefix: z.string(),
-    scopes: z.array(z.string()),
-    resource_ids: z.array(z.string()),
-    org_id: z.string(),
-    expires_at: z.string().datetime({ offset: true }),
-    last_used_at: z.string().datetime({ offset: true }),
+    budget_cents: z.number().int().lte(2147483647),
     created_at: z.string().datetime({ offset: true }),
-    revoked_at: z.string().datetime({ offset: true }),
   })
-  .partial()
   .passthrough();
-const APITokenList = z
-  .object({ items: z.array(APIToken) })
-  .partial()
-  .passthrough();
-const ScopeResource = z
-  .object({ resource: z.string(), actions: z.array(z.string()) })
-  .partial()
-  .passthrough();
-const ScopeList = z
+const OrganizationUpdate = z
   .object({
-    full_access_scope: z.string(),
-    items: z.array(ScopeResource),
-    total: z.number().int(),
+    name: z.string().min(1).max(100).regex(/\S/),
+    budget_cents: z.number().int().gte(0).lte(2147483647),
   })
   .partial()
   .passthrough();
-const UserList = z
+const Member = z
   .object({
-    items: z.array(User),
-    total: z.number().int(),
-    page: z.number().int(),
-    page_size: z.number().int(),
-    total_pages: z.number().int(),
-  })
-  .partial()
-  .passthrough();
-const PromoteAdminRequest = z.object({ user_id: z.string() }).passthrough();
-const OrgInviteCreateRequest = z
-  .object({
-    email: z.string().email(),
-    role: z.enum(["Developer", "Viewer"]),
-    expires_in_days: z.number().int().gte(1).lte(30),
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+    role: UserRole,
+    created_at: z.string().datetime({ offset: true }),
   })
   .passthrough();
+const MemberList = z.object({ items: z.array(Member) }).passthrough();
+const MemberUpdate = z.object({ role: UserRole }).passthrough();
 const InviteStatus = z.enum(["pending", "accepted", "revoked", "expired"]);
-const OrgInviteCreateResponse = z
+const Invite = z
   .object({
     id: z.string(),
     email: z.string(),
-    organisation_id: z.string(),
-    role: z.string(),
+    role: UserRole,
     status: InviteStatus,
     expires_at: z.string().datetime({ offset: true }),
-    invited_by: z.string(),
-    email_sent: z.boolean(),
-    invite_token: z.string(),
     created_at: z.string().datetime({ offset: true }),
   })
-  .partial()
   .passthrough();
-const OrgInvite = z
+const InviteList = z.object({ items: z.array(Invite) }).passthrough();
+const InviteCreate = z
+  .object({ email: z.string().max(320).email(), role: UserRole })
+  .passthrough();
+const InviteCreated = z
   .object({
     id: z.string(),
     email: z.string(),
-    organisation_id: z.string(),
-    role: z.enum(["Developer", "Viewer"]),
+    role: UserRole,
     status: InviteStatus,
     expires_at: z.string().datetime({ offset: true }),
-    invited_by: z.string(),
-    email_sent: z.boolean(),
-    email_error: z.string(),
     created_at: z.string().datetime({ offset: true }),
-    accepted_at: z.string().datetime({ offset: true }),
+    link: z.string(),
   })
-  .partial()
   .passthrough();
-const OrgInviteList = z
-  .object({ items: z.array(OrgInvite), total: z.number().int() })
-  .partial()
-  .passthrough();
-const OrgInviteInfo = z
+const InvitePreview = z
   .object({
-    org_name: z.string(),
-    inviter_name: z.string(),
-    expires_at: z.string().datetime({ offset: true }),
+    organization_name: z.string(),
+    email: z.string(),
+    role: UserRole,
+    status: InviteStatus,
   })
-  .partial()
+  .passthrough();
+const InviteAccept = z
+  .object({
+    name: z.string().min(1).max(100).regex(/\S/),
+    password: z.string().min(8).max(200),
+  })
+  .passthrough();
+const ApiToken = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    prefix: z.string(),
+    expires_at: z.string().datetime({ offset: true }).nullable(),
+    last_used_at: z.string().datetime({ offset: true }).nullable(),
+    created_at: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
+const ApiTokenList = z.object({ items: z.array(ApiToken) }).passthrough();
+const ApiTokenExpiryDays = z.union([
+  z.literal(30),
+  z.literal(90),
+  z.literal(365),
+]);
+const ApiTokenCreate = z
+  .object({
+    name: z.string().min(1).max(100).regex(/\S/),
+    expires_in_days: ApiTokenExpiryDays.nullish(),
+  })
+  .passthrough();
+const ApiTokenCreated = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    prefix: z.string(),
+    expires_at: z.string().datetime({ offset: true }).nullable(),
+    last_used_at: z.string().datetime({ offset: true }).nullable(),
+    created_at: z.string().datetime({ offset: true }),
+    secret: z.string(),
+  })
   .passthrough();
 const ApplicationSummary = z
   .object({ id: z.string(), name: z.string() })
@@ -676,34 +618,30 @@ const TaskListQuery = z
   .passthrough();
 
 export const schemas = {
-  Organisation,
-  UserSignupRequest,
+  LoginRequest,
   UserRole,
-  User,
-  UserSignupResponse,
+  OrganizationRef,
+  CurrentUser,
+  Session,
   ObjectReference,
   Error,
-  TurnstileConfigResponse,
-  SignupConfigResponse,
-  AppConfigResponse,
-  LoginRequest,
-  LoginResponse,
-  RefreshTokenRequest,
-  RefreshTokenResponse,
-  APITokenCreateRequest,
-  APITokenCreateResponse,
-  APIToken,
-  APITokenList,
-  ScopeResource,
-  ScopeList,
-  UserList,
-  PromoteAdminRequest,
-  OrgInviteCreateRequest,
+  Organization,
+  OrganizationUpdate,
+  Member,
+  MemberList,
+  MemberUpdate,
   InviteStatus,
-  OrgInviteCreateResponse,
-  OrgInvite,
-  OrgInviteList,
-  OrgInviteInfo,
+  Invite,
+  InviteList,
+  InviteCreate,
+  InviteCreated,
+  InvitePreview,
+  InviteAccept,
+  ApiToken,
+  ApiTokenList,
+  ApiTokenExpiryDays,
+  ApiTokenCreate,
+  ApiTokenCreated,
   ApplicationSummary,
   ReportSource,
   TaskReport,
@@ -785,62 +723,53 @@ export const schemas = {
 
 const endpoints = makeApi([
   {
-    method: "post",
+    method: "get",
     path: "/api/v1/api-tokens",
-    alias: "postApiv1apiTokens",
+    alias: "listApiTokens",
     requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: APITokenCreateRequest,
-      },
-    ],
-    response: APITokenCreateResponse,
+    response: ApiTokenList,
     errors: [
       {
-        status: 400,
-        description: `Invalid request data`,
+        status: 401,
+        description: `Auth token is invalid`,
         schema: Error,
       },
     ],
   },
   {
-    method: "get",
+    method: "post",
     path: "/api/v1/api-tokens",
-    alias: "getApiv1apiTokens",
-    requestFormat: "json",
-    response: APITokenList,
-  },
-  {
-    method: "get",
-    path: "/api/v1/api-tokens/:id",
-    alias: "getApiv1apiTokensId",
+    alias: "createApiToken",
     requestFormat: "json",
     parameters: [
       {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
+        name: "body",
+        type: "Body",
+        schema: ApiTokenCreate,
       },
     ],
-    response: APIToken,
+    response: ApiTokenCreated,
     errors: [
       {
-        status: 404,
-        description: `API token not found`,
+        status: 400,
+        description: `The body is invalid`,
+        schema: Error,
+      },
+      {
+        status: 401,
+        description: `Auth token is invalid`,
         schema: Error,
       },
     ],
   },
   {
     method: "delete",
-    path: "/api/v1/api-tokens/:id",
-    alias: "deleteApiv1apiTokensId",
+    path: "/api/v1/api-tokens/:token_id",
+    alias: "revokeApiToken",
     requestFormat: "json",
     parameters: [
       {
-        name: "id",
+        name: "token_id",
         type: "Path",
         schema: z.string(),
       },
@@ -848,75 +777,13 @@ const endpoints = makeApi([
     response: z.void(),
     errors: [
       {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
         status: 404,
-        description: `API token not found`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/api-tokens/scopes",
-    alias: "getApiv1apiTokensscopes",
-    description: `Returns the list of resources and their allowed actions that can be used when creating API tokens`,
-    requestFormat: "json",
-    response: ScopeList,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/auth/github",
-    alias: "getApiv1authgithub",
-    description: `Redirects the user to GitHub for OAuth authorization`,
-    requestFormat: "json",
-    response: z.void(),
-    errors: [
-      {
-        status: 302,
-        description: `Redirect to GitHub OAuth authorization page`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: z.void(),
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/auth/github/callback",
-    alias: "getApiv1authgithubcallback",
-    description: `Handles the callback from GitHub after OAuth authorization`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "code",
-        type: "Query",
-        schema: z.string(),
-      },
-      {
-        name: "state",
-        type: "Query",
-        schema: z.string(),
-      },
-    ],
-    response: LoginResponse,
-    errors: [
-      {
-        status: 401,
-        description: `OAuth authorization failed`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `The token is not one of the signed in user&#x27;s`,
         schema: Error,
       },
     ],
@@ -924,8 +791,7 @@ const endpoints = makeApi([
   {
     method: "post",
     path: "/api/v1/auth/login",
-    alias: "postApiv1authlogin",
-    description: `Authenticate user and generate an access token`,
+    alias: "login",
     requestFormat: "json",
     parameters: [
       {
@@ -934,16 +800,40 @@ const endpoints = makeApi([
         schema: LoginRequest,
       },
     ],
-    response: LoginResponse,
+    response: Session,
     errors: [
       {
-        status: 401,
-        description: `Invalid credentials`,
+        status: 400,
+        description: `The body is invalid`,
         schema: Error,
       },
       {
-        status: 500,
-        description: `Internal server error`,
+        status: 401,
+        description: `The email and password match no account. The same answer whether or not the email exists.`,
+        schema: Error,
+      },
+      {
+        status: 409,
+        description: `The email and password match accounts in several organizations and no organization_id was sent`,
+        schema: Error,
+      },
+      {
+        status: 429,
+        description: `Five failed sign ins for this email inside a fifteen minute window`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/v1/auth/logout",
+    alias: "logout",
+    requestFormat: "json",
+    response: z.void(),
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
         schema: Error,
       },
     ],
@@ -951,49 +841,21 @@ const endpoints = makeApi([
   {
     method: "post",
     path: "/api/v1/auth/refresh",
-    alias: "postApiv1authrefresh",
-    description: `Exchange a refresh token for a new access token`,
+    alias: "refreshSession",
     requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z.object({ refreshToken: z.string() }).passthrough(),
-      },
-    ],
-    response: RefreshTokenResponse,
+    response: Session,
     errors: [
       {
         status: 401,
-        description: `Invalid or expired refresh token`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
+        description: `The refresh cookie is missing, expired, or revoked by a sign out, a role change or a removal`,
         schema: Error,
       },
     ],
   },
   {
     method: "get",
-    path: "/api/v1/config",
-    alias: "getApiv1config",
-    description: `Returns feature flags the web client needs before authentication, such as whether GitHub OAuth is enabled.`,
-    requestFormat: "json",
-    response: AppConfigResponse,
-    errors: [
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/invites/:token/info",
-    alias: "getApiv1invitesTokeninfo",
+    path: "/api/v1/invites/:token",
+    alias: "getInvitePreview",
     requestFormat: "json",
     parameters: [
       {
@@ -1002,33 +864,64 @@ const endpoints = makeApi([
         schema: z.string(),
       },
     ],
-    response: OrgInviteInfo,
+    response: InvitePreview,
     errors: [
       {
         status: 404,
-        description: `Invite not found`,
-        schema: z.void(),
+        description: `The token matches no invite`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "post",
+    path: "/api/v1/invites/:token/accept",
+    alias: "acceptInvite",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: InviteAccept,
       },
       {
-        status: 410,
-        description: `Invite expired or revoked`,
-        schema: z.void(),
+        name: "token",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: Session,
+    errors: [
+      {
+        status: 400,
+        description: `The name is blank or the password is under eight characters`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `The token matches no invite`,
+        schema: Error,
+      },
+      {
+        status: 409,
+        description: `The invite was accepted, revoked or has expired, or the email joined in the meantime`,
+        schema: Error,
       },
     ],
   },
   {
     method: "get",
-    path: "/api/v1/organizations/:id",
-    alias: "getApiv1organizationsId",
+    path: "/api/v1/organizations/:org_id",
+    alias: "getOrganization",
     requestFormat: "json",
     parameters: [
       {
-        name: "id",
+        name: "org_id",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: Organisation,
+    response: Organization,
     errors: [
       {
         status: 401,
@@ -1040,32 +933,32 @@ const endpoints = makeApi([
         description: `Unauthorized to perform operation`,
         schema: Error,
       },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
     ],
   },
   {
-    method: "put",
-    path: "/api/v1/organizations/:id",
-    alias: "putApiv1organizationsId",
+    method: "patch",
+    path: "/api/v1/organizations/:org_id",
+    alias: "updateOrganization",
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: Organisation,
+        schema: OrganizationUpdate,
       },
       {
-        name: "id",
+        name: "org_id",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: Organisation,
+    response: Organization,
     errors: [
+      {
+        status: 400,
+        description: `The name is blank or the budget is negative`,
+        schema: Error,
+      },
       {
         status: 401,
         description: `Auth token is invalid`,
@@ -1074,125 +967,6 @@ const endpoints = makeApi([
       {
         status: 403,
         description: `Unauthorized to perform operation`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "post",
-    path: "/api/v1/organizations/:org_id/admins",
-    alias: "postApiv1organizationsOrg_idadmins",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z.object({ user_id: z.string() }).passthrough(),
-      },
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 400,
-        description: `Invalid request data`,
-        schema: Error,
-      },
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 403,
-        description: `Forbidden`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/admins",
-    alias: "getApiv1organizationsOrg_idadmins",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: UserList,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "post",
-    path: "/api/v1/organizations/:org_id/admins/:user_id/demote",
-    alias: "postApiv1organizationsOrg_idadminsUser_iddemote",
-    description: `Demotes an OrgAdmin.`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "user_id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 400,
-        description: `Bad request`,
-        schema: z.void(),
-      },
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 403,
-        description: `Forbidden`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `User not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
         schema: Error,
       },
     ],
@@ -2022,15 +1796,41 @@ const endpoints = makeApi([
     ],
   },
   {
+    method: "get",
+    path: "/api/v1/organizations/:org_id/invites",
+    alias: "listInvites",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: InviteList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+    ],
+  },
+  {
     method: "post",
     path: "/api/v1/organizations/:org_id/invites",
-    alias: "postApiv1organizationsOrg_idinvites",
+    alias: "createInvite",
     requestFormat: "json",
     parameters: [
       {
         name: "body",
         type: "Body",
-        schema: OrgInviteCreateRequest,
+        schema: InviteCreate,
       },
       {
         name: "org_id",
@@ -2038,101 +1838,34 @@ const endpoints = makeApi([
         schema: z.string(),
       },
     ],
-    response: OrgInviteCreateResponse,
+    response: InviteCreated,
     errors: [
       {
         status: 400,
-        description: `Invalid request data`,
+        description: `The body is invalid`,
         schema: Error,
       },
       {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
       },
       {
         status: 409,
-        description: `Conflict - user exists or duplicate pending invite`,
+        description: `The email is already a member, or already has a pending invite`,
         schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: z.void(),
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/invites",
-    alias: "getApiv1organizationsOrg_idinvites",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "status",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-    ],
-    response: OrgInviteList,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: z.void(),
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/organizations/:org_id/invites/:id",
-    alias: "getApiv1organizationsOrg_idinvitesId",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: OrgInvite,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `Invite not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: z.void(),
       },
     ],
   },
   {
     method: "delete",
-    path: "/api/v1/organizations/:org_id/invites/:id",
-    alias: "deleteApiv1organizationsOrg_idinvitesId",
+    path: "/api/v1/organizations/:org_id/invites/:invite_id",
+    alias: "revokeInvite",
     requestFormat: "json",
     parameters: [
       {
@@ -2141,7 +1874,7 @@ const endpoints = makeApi([
         schema: z.string(),
       },
       {
-        name: "id",
+        name: "invite_id",
         type: "Path",
         schema: z.string(),
       },
@@ -2149,65 +1882,14 @@ const endpoints = makeApi([
     response: z.void(),
     errors: [
       {
-        status: 400,
-        description: `Can only revoke pending invites`,
-        schema: z.void(),
-      },
-      {
         status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
+        description: `Auth token is invalid`,
+        schema: Error,
       },
       {
-        status: 404,
-        description: `Invite not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: z.void(),
-      },
-    ],
-  },
-  {
-    method: "post",
-    path: "/api/v1/organizations/:org_id/invites/:id/resend",
-    alias: "postApiv1organizationsOrg_idinvitesIdresend",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "org_id",
-        type: "Path",
-        schema: z.string(),
-      },
-      {
-        name: "id",
-        type: "Path",
-        schema: z.string(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 400,
-        description: `Can only resend pending invites`,
-        schema: z.void(),
-      },
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 404,
-        description: `Invite not found`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: z.void(),
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
       },
     ],
   },
@@ -2717,7 +2399,84 @@ const endpoints = makeApi([
   {
     method: "get",
     path: "/api/v1/organizations/:org_id/users",
-    alias: "getApiv1organizationsOrg_idusers",
+    alias: "listMembers",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: MemberList,
+    errors: [
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "patch",
+    path: "/api/v1/organizations/:org_id/users/:user_id",
+    alias: "updateMember",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: MemberUpdate,
+      },
+      {
+        name: "org_id",
+        type: "Path",
+        schema: z.string(),
+      },
+      {
+        name: "user_id",
+        type: "Path",
+        schema: z.string(),
+      },
+    ],
+    response: Member,
+    errors: [
+      {
+        status: 400,
+        description: `The body is invalid`,
+        schema: Error,
+      },
+      {
+        status: 401,
+        description: `Auth token is invalid`,
+        schema: Error,
+      },
+      {
+        status: 403,
+        description: `Unauthorized to perform operation`,
+        schema: Error,
+      },
+      {
+        status: 404,
+        description: `The organization has no such member`,
+        schema: Error,
+      },
+      {
+        status: 409,
+        description: `The organization&#x27;s last admin would lose the role, or the caller targets their own account`,
+        schema: Error,
+      },
+    ],
+  },
+  {
+    method: "delete",
+    path: "/api/v1/organizations/:org_id/users/:user_id",
+    alias: "removeMember",
     requestFormat: "json",
     parameters: [
       {
@@ -2726,81 +2485,12 @@ const endpoints = makeApi([
         schema: z.string(),
       },
       {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional().default(1),
-      },
-      {
-        name: "page_size",
-        type: "Query",
-        schema: z.number().int().optional().default(20),
-      },
-    ],
-    response: UserList,
-    errors: [
-      {
-        status: 401,
-        description: `Unauthorized`,
-        schema: z.void(),
-      },
-      {
-        status: 403,
-        description: `Forbidden`,
-        schema: z.void(),
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "post",
-    path: "/api/v1/user-signup",
-    alias: "postApiv1userSignup",
-    description: `Create a new user`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: UserSignupRequest,
-      },
-    ],
-    response: UserSignupResponse,
-    errors: [
-      {
-        status: 400,
-        description: `Invalid request data`,
-        schema: Error,
-      },
-      {
-        status: 409,
-        description: `User already exists`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
-        schema: Error,
-      },
-    ],
-  },
-  {
-    method: "get",
-    path: "/api/v1/users/:id",
-    alias: "getApiv1usersId",
-    description: `Get a user`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "id",
+        name: "user_id",
         type: "Path",
         schema: z.string(),
       },
     ],
-    response: User,
+    response: z.void(),
     errors: [
       {
         status: 401,
@@ -2813,8 +2503,8 @@ const endpoints = makeApi([
         schema: Error,
       },
       {
-        status: 500,
-        description: `Internal server error`,
+        status: 409,
+        description: `The member is the organization&#x27;s last admin, or the caller&#x27;s own account`,
         schema: Error,
       },
     ],
@@ -2822,23 +2512,13 @@ const endpoints = makeApi([
   {
     method: "get",
     path: "/api/v1/users/current",
-    alias: "getApiv1userscurrent",
+    alias: "getCurrentUser",
     requestFormat: "json",
-    response: User,
+    response: CurrentUser,
     errors: [
       {
         status: 401,
         description: `Auth token is invalid`,
-        schema: Error,
-      },
-      {
-        status: 403,
-        description: `Unauthorized to perform operation`,
-        schema: Error,
-      },
-      {
-        status: 500,
-        description: `Internal server error`,
         schema: Error,
       },
     ],

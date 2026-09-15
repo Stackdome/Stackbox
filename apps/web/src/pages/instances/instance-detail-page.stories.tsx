@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { UserRole } from '@stackbox/contract'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { withConfirm, withCurrentUser, withSheetHeader } from '../../../.storybook/decorators'
-import { INSTANCE_IDS, PREVIEW_CATALOG_SEED } from '../../../.storybook/fixtures'
+import { INSTANCE_IDS, makeUser, PREVIEW_CATALOG_SEED } from '../../../.storybook/fixtures'
 import { baselineHandlers } from '../../../.storybook/msw-handlers'
 import { catalogHandlers } from '@/preview/handlers/catalog'
 import { ROUTES, instancePath } from '@/lib/routes'
@@ -92,6 +93,21 @@ export const ExtendExpiryUpdatesTheExpiry: Story = {
     await userEvent.click(await within(canvasElement.ownerDocument.body).findByRole('menuitem', { name: '72h' }))
 
     await waitFor(() => expect(canvas.getByText('in 71h', { selector: '[data-slot="expiry-text"]' })).toBeVisible())
+  },
+}
+
+/** A member sees no owning actions: no Deploy, Extend expiry or Tear down. */
+export const MemberSeesNoOwningActions: Story = {
+  parameters: on(INSTANCE_IDS.scratch),
+  beforeEach: () => {
+    localStorage.setItem('currentUser', JSON.stringify(makeUser({ role: UserRole.OrgMember })))
+    return () => localStorage.setItem('currentUser', JSON.stringify(makeUser()))
+  },
+  play: async ({ canvas }) => {
+    const releases = await canvas.findByRole('region', { name: 'Releases' })
+    await expect(within(releases).queryByRole('button', { name: 'Deploy' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Extend expiry' })).toBeNull()
+    await expect(canvas.queryByRole('button', { name: 'Tear down' })).toBeNull()
   },
 }
 

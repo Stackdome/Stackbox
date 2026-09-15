@@ -120,6 +120,47 @@ export function spinUpErrorMessage(error: unknown): string {
   return "The instance was not spun up. Try again.";
 }
 
+export type OrganizationChoice = { id: string; name: string };
+
+export function signInErrorMessage(error: unknown): string {
+  if (isErrorStatus(error, 401)) return "The email or password is not right";
+  if (isErrorStatus(error, 429)) return "Too many sign in attempts. Try again in a few minutes.";
+  return "Signing in did not work. Try again.";
+}
+
+// A 409 on sign in means the email and password match accounts in several organizations.
+export function organizationChoicesOf(error: unknown): OrganizationChoice[] | null {
+  if (!isErrorStatus(error, 409) || !isAxiosError(error)) return null;
+  const details = asRecord(asRecord(error.response?.data)?.details);
+  return Array.isArray(details?.organizations) ? (details.organizations as OrganizationChoice[]) : null;
+}
+
+export function joinErrorMessage(error: unknown): string {
+  if (isErrorStatus(error, 409)) return "This invite was already accepted, revoked or has expired";
+  if (isErrorStatus(error, 404)) return "This invite link does not match any invite";
+  if (isBadRequestError(error)) return "Enter your name and a password of at least 8 characters";
+  return "Joining did not work. Try again.";
+}
+
+// Settings refusals (last admin, own account, member exists, invite pending) already say what to do in the api's words.
+export const SETTINGS_PERMISSION = "You do not have permission to change this organization's settings";
+
+export function settingsErrorMessage(error: unknown, fallback: string, badRequest?: string): string {
+  if (isForbiddenError(error)) return SETTINGS_PERMISSION;
+  const body = isAxiosError(error) ? asRecord(error.response?.data) : undefined;
+  if (isErrorStatus(error, 409) && typeof body?.message === "string") return body.message;
+  if (badRequest !== undefined && isBadRequestError(error)) return badRequest;
+  return fallback;
+}
+
+export const SAVE_ORGANIZATION_ERROR = "The organization was not saved. Try again.";
+export const INVITE_ERROR = "The invite was not sent. Try again.";
+export const ROLE_CHANGE_ERROR = "The role was not changed. Try again.";
+export const REMOVE_MEMBER_ERROR = "The member was not removed. Try again.";
+export const REVOKE_INVITE_ERROR = "The invite was not revoked. Try again.";
+export const CREATE_TOKEN_ERROR = "The token was not created. Try again.";
+export const REVOKE_TOKEN_ERROR = "The token was not revoked. Try again.";
+
 export function parseApiError(error: unknown): ParsedApiError {
   const primary = isAxiosError(error) ? primaryError(error.response?.data) : undefined;
   const details = asRecord(primary?.details);

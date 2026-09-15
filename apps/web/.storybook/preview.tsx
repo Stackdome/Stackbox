@@ -8,11 +8,7 @@ import { baselineHandlers } from './msw-handlers'
 import { applyTheme, THEMES, type Theme } from './theme'
 import { ThemeProvider, THEME_STORAGE_KEY } from '../src/contexts/theme-provider'
 
-// Seed before anything renders: the axios interceptor and org-id helpers read
-// these keys synchronously, and a missing authToken sends stories into the
-// refresh → /sign-in redirect path.
-localStorage.setItem('authToken', 'sb-token')
-localStorage.setItem('refreshToken', 'sb-refresh')
+// Seed before anything renders: the current user context reads the stored user synchronously.
 localStorage.setItem('currentUser', JSON.stringify(makeUser()))
 
 // Driven off the globals channel rather than a decorator: decorators wrap

@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { setupServer } from 'msw/node'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { UserRole } from '@stackbox/contract'
 import { INSTANCE_IDS, PREVIEW_CATALOG_SEED, makeUser } from '../../../.storybook/fixtures'
 import { ConfirmProvider } from '@/components/branded/confirm'
 import { CurrentUserProvider } from '@/contexts/current-user-context'
@@ -78,5 +79,18 @@ describe('the Instance detail page', () => {
     const releases = await screen.findByRole('region', { name: 'Releases' })
 
     expect(within(releases).getByRole('button', { name: 'Deploy' })).toBeDisabled()
+  })
+
+  it('hides Tear down, Extend expiry and Deploy from a member', async () => {
+    localStorage.setItem('currentUser', JSON.stringify(makeUser({ role: UserRole.OrgMember })))
+    renderDetail(INSTANCE_IDS.scratch)
+
+    const releases = await screen.findByRole('region', { name: 'Releases' })
+
+    expect([
+      within(releases).queryByRole('button', { name: 'Deploy' }),
+      screen.queryByRole('button', { name: 'Tear down' }),
+      screen.queryByRole('button', { name: 'Extend expiry' }),
+    ]).toEqual([null, null, null])
   })
 })

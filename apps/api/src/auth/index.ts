@@ -1,5 +1,7 @@
 export { AuthModule } from './auth.module'
-export { AuthService } from './auth.service'
+export { AuthService, type Session } from './auth.service'
+export { type CookieResponse, SessionCookies } from './cookies'
 export { CurrentUser } from './current-user.decorator'
 export { JwtCookieGuard } from './jwt-cookie.guard'
 export { hashPassword } from './password'
+export { SessionOnlyGuard } from './session-only.guard'

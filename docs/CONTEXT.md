@@ -9,11 +9,16 @@ Ubiquitous language for Stackbox, one line per term. This repo is single context
 - **Purpose**. Code: `InstancePurpose`. What an instance is for: task, preview, load test, scratch, persistent.
 - **Release**. Code: `Release`. One version deployed into an instance.
 - **Stackfile**. Code: `stackfilePath`. A file name, left unchanged.
+- **Member**. Code: `Member`. A person's account in an organization, with the role Admin (`UserRole.OrgAdmin`) or Member (`UserRole.OrgMember`). One email may be a member of several organizations.
+- **Invite**. Code: `Invite`. A link that lets one email join an organization with a role, shown once to the admin who sends it. Statuses: pending, accepted, revoked, expired (expired is read from the expiry, never stored).
+- **API token**. Code: `ApiToken`. A personal secret sent as `Authorization: Bearer`, acting as its user with that user's role. Its secret is shown once; the list shows its prefix.
+- **Sign in**, **Sign out**, **Join**. Routes: `/login` (the Sign in screen), `/invites/:token` (the Join screen). Sign out lives in the account block.
+- **Settings**. Route: `/settings`. Tabs: General (`/settings`), Members (`/settings/members`), API tokens (`/settings/tokens`). Admins only.
 - Unchanged elsewhere: Organization, Repository, Application, Service, Report, Task, Phase, Resolution, Run, Check, Artifact, Pull request.
 
 ## Banned on screen
 
-Environment, Deployment, Job, Workflow, Attempt, Preview environment, Project, and Stack as a noun for the running copy. Renames happen in `apps/web/src/api/mappers/` and in API presenters, never inside components.
+Environment, Deployment, Job, Workflow, Attempt, Preview environment, Project, Login (the screen is Sign in; the act is sign in and sign out), and Stack as a noun for the running copy. Renames happen in `apps/web/src/api/mappers/` and in API presenters, never inside components.
 
 Banned everywhere a person reads output: em dashes, competitor product names.
 
@@ -26,6 +31,8 @@ Every phase, resolution, purpose, check kind and outcome, pull request state, co
 - `instance_purpose`
 - `instance_status`
 - `instance_expiry_hours` (contract only, not a DB type: 24, 72, 168)
+- `invite_status`
+- `api_token_expiry_days` (contract only, not a DB type: 30, 90, 365)
 - `release_status`
 - `report_source`
 - `task_kind`

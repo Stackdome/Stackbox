@@ -8,6 +8,7 @@ import {
   ExecutionStatus,
   InstancePurpose,
   InstanceStatus,
+  InviteStatus,
   MessageRole,
   PrState,
   ReleaseStatus,
@@ -64,6 +65,7 @@ export const prState = pgEnum('pr_state', valuesOf(PrState))
 export const messageRole = pgEnum('message_role', valuesOf(MessageRole))
 export const orgRole = pgEnum('org_role', valuesOf(UserRole))
 export const applicationRole = pgEnum('application_role', valuesOf(ApplicationRole))
+export const inviteStatus = pgEnum('invite_status', valuesOf(InviteStatus))
 
 const id = () => uuid('id').primaryKey().defaultRandom()
 const createdAt = () => timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
@@ -86,6 +88,7 @@ export const userAccount = pgTable(
     name: text('name'),
     passwordHash: text('password_hash'),
     orgRole: orgRole('org_role').notNull().default(UserRole.OrgMember),
+    tokenVersion: integer('token_version').notNull().default(0),
     createdAt: createdAt(),
   },
   (t) => [unique('user_account_org_email_unique').on(t.orgId, t.email)],
@@ -161,7 +164,7 @@ export const applicationInstance = pgTable(
     applicationId: uuid('application_id').notNull().references(() => application.id, { onDelete: 'cascade' }),
     purpose: instancePurpose('purpose').notNull(),
     taskId: uuid('task_id').references((): AnyPgColumn => task.id),
-    createdBy: uuid('created_by').references(() => userAccount.id),
+    createdBy: uuid('created_by').references(() => userAccount.id, { onDelete: 'set null' }),
     url: text('url'),
     status: instanceStatus('status').notNull().default(InstanceStatus.Provisioning),
     expiresAt: optionalAt('expires_at'),
@@ -376,4 +379,38 @@ export const roleBinding = pgTable(
     scope: text('scope').notNull(),
   },
   (t) => [unique('role_binding_org_user_subject_scope_unique').on(t.orgId, t.userId, t.subject, t.scope)],
+)
+
+export const invite = pgTable(
+  'invite',
+  {
+    id: id(),
+    orgId: uuid('org_id').notNull().references(() => organization.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    role: orgRole('role').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    status: inviteStatus('status').notNull().default(InviteStatus.Pending),
+    createdBy: uuid('created_by').references(() => userAccount.id, { onDelete: 'set null' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    acceptedAt: optionalAt('accepted_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('invite_org_created_idx').on(t.orgId, t.createdAt)],
+)
+
+export const apiToken = pgTable(
+  'api_token',
+  {
+    id: id(),
+    userId: uuid('user_id').notNull().references(() => userAccount.id, { onDelete: 'cascade' }),
+    orgId: uuid('org_id').notNull().references(() => organization.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    tokenHash: text('token_hash').notNull().unique(),
+    prefix: text('prefix').notNull(),
+    expiresAt: optionalAt('expires_at'),
+    lastUsedAt: optionalAt('last_used_at'),
+    revokedAt: optionalAt('revoked_at'),
+    createdAt: createdAt(),
+  },
+  (t) => [index('api_token_user_created_idx').on(t.userId, t.createdAt)],
 )

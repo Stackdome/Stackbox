@@ -11,7 +11,7 @@ type Document = {
   components: { schemas: Record<string, Schema> }
 }
 
-const GENERATED_ENUM_COUNT = 27
+const GENERATED_ENUM_COUNT = 25
 
 const SPEC_ENUMS = [
   'RepoProvider', 'ConnectionStatus', 'InstancePurpose', 'InstanceStatus', 'ReleaseStatus',
@@ -42,7 +42,25 @@ const TASK_SUMMARY_FIELDS = [
 
 const TASK_DETAIL_ONLY_FIELDS = ['target_branch', 'budget_cents', 'pull_requests']
 
-const PATH_COUNT = 44
+const PATH_COUNT = 38
+
+const ACCOUNT_PATHS = [
+  '/api/v1/auth/login',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/logout',
+  '/api/v1/users/current',
+  '/api/v1/organizations/{org_id}',
+  '/api/v1/organizations/{org_id}/users',
+  '/api/v1/organizations/{org_id}/users/{user_id}',
+  '/api/v1/organizations/{org_id}/invites',
+  '/api/v1/organizations/{org_id}/invites/{invite_id}',
+  '/api/v1/invites/{token}',
+  '/api/v1/invites/{token}/accept',
+  '/api/v1/api-tokens',
+  '/api/v1/api-tokens/{token_id}',
+]
+
+const LEGACY_ACCOUNT_PATH = /user-signup|\/config$|\/auth\/github|\/admins|\/resend$|\/info$|\/api-tokens\/scopes|\/users\/\{id\}|\/organizations\/\{id\}/
 
 const INSTANCE_PATHS = [
   '/api/v1/organizations/{org_id}/instances',
@@ -104,7 +122,7 @@ describe('the committed contract', () => {
     expect(references.filter((name) => !(name in schemas))).toEqual([])
   })
 
-  it('exports exactly 27 string enums from the barrel', () => {
+  it('exports exactly 25 string enums from the barrel', () => {
     expect(Object.values(contract).filter(isEnum)).toHaveLength(GENERATED_ENUM_COUNT)
   })
 
@@ -139,7 +157,7 @@ describe('the committed contract', () => {
     expect(source).toContain("message: Tasks of kind onboarding are not supported yet")
   })
 
-  it('declares exactly 44 paths', () => {
+  it('declares exactly 38 paths', () => {
     expect(paths).toHaveLength(PATH_COUNT)
   })
 
@@ -186,5 +204,45 @@ describe('the committed contract', () => {
   it('offers expiry presets of 24, 72 and 168 hours with one varname each', () => {
     const presets = schemas.InstanceExpiryHours as { enum?: number[]; 'x-enum-varnames'?: string[] }
     expect([presets?.enum, presets?.['x-enum-varnames']]).toEqual([[24, 72, 168], ['Day', 'ThreeDays', 'Week']])
+  })
+
+  it('carries no legacy account path', () => {
+    expect(paths.filter((path) => LEGACY_ACCOUNT_PATH.test(path))).toEqual([])
+  })
+
+  it('declares the sign in, organization, member, invite and api token paths', () => {
+    expect(ACCOUNT_PATHS.filter((path) => !paths.includes(path))).toEqual([])
+  })
+
+  it('answers a session with the user alone, no token in the body', () => {
+    expect(Object.keys(schemas.Session?.properties ?? {})).toEqual(['user'])
+  })
+
+  it('names every invite status with one varname per value', () => {
+    const statuses = schemas.InviteStatus as { enum?: string[]; 'x-enum-varnames'?: string[] }
+    expect([statuses?.enum, statuses?.['x-enum-varnames']]).toEqual([
+      ['pending', 'accepted', 'revoked', 'expired'],
+      ['Pending', 'Accepted', 'Revoked', 'Expired'],
+    ])
+  })
+
+  it('offers api token expiry presets of 30, 90 and 365 days with one varname each', () => {
+    const presets = schemas.ApiTokenExpiryDays as { enum?: number[]; 'x-enum-varnames'?: string[] }
+    expect([presets?.enum, presets?.['x-enum-varnames']]).toEqual([[30, 90, 365], ['Month', 'Quarter', 'Year']])
+  })
+
+  it('refuses to accept an invite with a password under eight characters or a blank name', () => {
+    const accept = (name: string, password: string) => contract.schemas.InviteAccept.safeParse({ name, password }).success
+    expect([accept('Grace Hopper', 'short'), accept('   ', 'long enough'), accept('Grace Hopper', 'long enough')]).toEqual([false, false, true])
+  })
+
+  it('refuses an organization update with a blank name or a negative budget', () => {
+    const update = (body: Record<string, unknown>) => contract.schemas.OrganizationUpdate.safeParse(body).success
+    expect([update({ name: '  ' }), update({ budget_cents: -1 }), update({ name: 'acme', budget_cents: 0 })]).toEqual([false, false, true])
+  })
+
+  it('refuses a budget above the integer column maximum and accepts the maximum itself', () => {
+    const update = (body: Record<string, unknown>) => contract.schemas.OrganizationUpdate.safeParse(body).success
+    expect([update({ budget_cents: 2147483648 }), update({ budget_cents: 2147483647 })]).toEqual([false, true])
   })
 })
