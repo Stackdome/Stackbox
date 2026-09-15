@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import { UserRole } from '@stackbox/contract'
-import { expect } from 'storybook/test'
+import { expect, userEvent, within } from 'storybook/test'
 import { withConfirm, withCurrentUser, withSheetHeader } from '../../../.storybook/decorators'
 import { PREVIEW_ACCOUNTS_SEED, makeUser } from '../../../.storybook/fixtures'
 import { baselineHandlers } from '../../../.storybook/msw-handlers'
@@ -42,5 +42,20 @@ export const MemberSeesNoSettings: Story = {
   },
   play: async ({ canvas }) => {
     await expect(await canvas.findByText('Settings are for admins')).toBeVisible()
+  },
+}
+
+/** Members: 64px rows, the admin's own row blocked, Invite in the header, the pending invite below. */
+export const Members: Story = {
+  args: { tab: SettingsTab.Members },
+  parameters: { router: { initialEntries: [ROUTES.settingsMembers] }, msw: accountsHandlers() },
+  play: async ({ canvas, canvasElement }) => {
+    const members = within(await canvas.findByRole('region', { name: 'Members' }))
+    await expect(await members.findByText('Vik Rao')).toBeVisible()
+    await expect(members.queryByRole('button', { name: 'Remove Ada Lovelace' })).toBeNull()
+    await expect(canvasElement.querySelector('[data-slot="member-list"] [data-slot="data-list-row"]')?.getBoundingClientRect().height).toBe(64)
+    await expect(within(canvas.getByRole('region', { name: 'Pending invites' })).getByText('grace@example.com')).toBeVisible()
+    await userEvent.click(canvas.getByRole('button', { name: 'Invite' }))
+    await expect(await within(document.body).findByRole('dialog', { name: 'Invite a member' })).toBeVisible()
   },
 }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import '@testing-library/jest-dom/vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { UserRole } from '@stackbox/contract'
 import { setupServer } from 'msw/node'
@@ -68,5 +68,31 @@ describe('the Settings page', () => {
     renderSettings(ROUTES.settings)
 
     expect([await screen.findByText('Settings are for admins'), screen.queryByRole('tab', { name: 'General' })]).toEqual([expect.anything(), null])
+  })
+
+  it('lists the members with the signed in admin unremovable, and removes another member after asking', async () => {
+    renderSettings(ROUTES.settingsMembers)
+    const members = await screen.findByRole('region', { name: 'Members' })
+    expect(await within(members).findByText('Vik Rao')).toBeInTheDocument()
+
+    await userEvent.click(within(members).getByRole('button', { name: 'Remove Vik Rao' }))
+    await userEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Remove' }))
+
+    expect(await within(members).findByText('Dev Ito')).toBeInTheDocument()
+    expect([within(members).queryByText('Vik Rao'), within(members).queryByRole('button', { name: 'Remove Ada Lovelace' })]).toEqual([null, null])
+  })
+
+  it('invites an email from the drawer, shows the link once, and lists it as pending', async () => {
+    renderSettings(ROUTES.settingsMembers)
+    await screen.findByRole('region', { name: 'Members' })
+
+    await userEvent.click(screen.getByRole('button', { name: 'Invite' }))
+    const drawer = within(await screen.findByRole('dialog', { name: 'Invite a member' }))
+    await userEvent.type(drawer.getByLabelText(/^Email/), 'hopper@example.com')
+    await userEvent.click(drawer.getByRole('button', { name: 'Invite' }))
+
+    expect(((await drawer.findByLabelText('Invite link')) as HTMLInputElement).value).toMatch(/\/invites\/[0-9a-f-]{36}$/)
+    // hidden: true — the modal drawer is still open, so the region behind it is correctly aria-hidden from assistive tech; this checks the write landed, not accessibility exposure.
+    expect(await within(screen.getByRole('region', { name: 'Pending invites', hidden: true })).findByText('hopper@example.com')).toBeInTheDocument()
   })
 })

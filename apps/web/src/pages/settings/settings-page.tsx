@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { EmptyState } from "@/components/branded";
 import { GeneralTab } from "@/components/settings/general-tab";
+import { MembersTab } from "@/components/settings/members-tab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBreadcrumb } from "@/hooks/use-breadcrumb";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -44,6 +45,9 @@ export function SettingsPage({ tab }: { tab: SettingsTab }) {
       </TabsList>
       <TabsContent value={SettingsTab.General} className="pt-4">
         <GeneralTab />
+      </TabsContent>
+      <TabsContent value={SettingsTab.Members} className="pt-4">
+        <MembersTab />
       </TabsContent>
     </Tabs>
   );
