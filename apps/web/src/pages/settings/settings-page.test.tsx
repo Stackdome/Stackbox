@@ -92,7 +92,7 @@ describe('the Settings page', () => {
     await userEvent.click(drawer.getByRole('button', { name: 'Invite' }))
 
     expect(((await drawer.findByLabelText('Invite link')) as HTMLInputElement).value).toMatch(/\/invites\/[0-9a-f-]{36}$/)
-    // hidden: true — the modal drawer is still open, so the region behind it is correctly aria-hidden from assistive tech; this checks the write landed, not accessibility exposure.
+    // hidden: true, the modal drawer is still open, so the region behind it is correctly aria-hidden from assistive tech; this checks the write landed, not accessibility exposure.
     expect(await within(screen.getByRole('region', { name: 'Pending invites', hidden: true })).findByText('hopper@example.com')).toBeInTheDocument()
   })
 
