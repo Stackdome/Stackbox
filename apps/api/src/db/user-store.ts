@@ -59,6 +59,10 @@ export class UserStore {
       if (!target) return { kind: MemberOutcomeKind.Missing }
       const refusal = roleChangeRefusal({ callerId: change.callerId, target, role: change.role, members })
       if (refusal) return { kind: MemberOutcomeKind.Refused, refusal }
+      if (target.orgRole === change.role) {
+        const [member] = await tx.select().from(userAccount).where(eq(userAccount.id, target.id))
+        return { kind: MemberOutcomeKind.Changed, member }
+      }
       const [member] = await tx
         .update(userAccount)
         .set({ orgRole: change.role, tokenVersion: sql`${userAccount.tokenVersion} + 1` })

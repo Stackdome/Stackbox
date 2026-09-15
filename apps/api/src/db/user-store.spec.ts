@@ -89,6 +89,16 @@ describe('UserStore', () => {
     ])
   })
 
+  it('leaves the version alone when the role does not change', async () => {
+    const outcome = await store.changeRole({ orgId: IDS.org, callerId: IDS.user, userId: IDS.secondUser, role: UserRole.OrgMember })
+
+    expect([outcome.kind, outcome.kind === MemberOutcomeKind.Changed && outcome.member.orgRole, (await store.findById(IDS.secondUser))?.tokenVersion]).toEqual([
+      MemberOutcomeKind.Changed,
+      UserRole.OrgMember,
+      0,
+    ])
+  })
+
   it('answers missing for an account of another organization', async () => {
     await insertMember(db, { id: IDS.otherUser, orgId: IDS.otherOrg, name: 'Someone in globex' })
 
