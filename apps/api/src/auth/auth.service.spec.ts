@@ -165,6 +165,18 @@ describe('AuthService', () => {
     expect(service.trackedEmails).toBe(1)
   })
 
+  it('leaves no email held after a 409 with no prior failures, once another email signs in past the window', async () => {
+    await aTwinInGlobex()
+    await insertMember(db, { id: IDS.secondUser, orgId: IDS.org, name: 'Someone Else', email: 'someone-else@example.com', passwordHash })
+    const { clock, service } = anAuthWorld()
+    await service.login(ADA_LOGIN).catch(() => undefined)
+    clock.advance(15 * MINUTE_MS)
+
+    await service.login({ email: 'someone-else@example.com', password: PASSWORD })
+
+    expect(service.trackedEmails).toBe(0)
+  })
+
   it('refuses an organization the password matches no account in, as a wrong password', async () => {
     await aTwinInGlobex()
     const { service } = anAuthWorld()
@@ -183,10 +195,14 @@ describe('AuthService', () => {
     }
 
     const chosen = await service.login(ADA_LOGIN).catch((error: unknown) => error)
-    await service.login({ email: 'ada@example.com', password: WRONG }).catch(() => undefined)
+    const fifth = await service.login({ email: 'ada@example.com', password: WRONG }).catch((error: unknown) => error)
     const refused = await service.login(ADA_LOGIN).catch((error: unknown) => error)
 
-    expect([chosen instanceof ConflictException, refused instanceof HttpException && refused.getStatus()]).toEqual([true, HttpStatus.TOO_MANY_REQUESTS])
+    expect([chosen instanceof ConflictException, fifth instanceof UnauthorizedException, refused instanceof HttpException && refused.getStatus()]).toEqual([
+      true,
+      true,
+      HttpStatus.TOO_MANY_REQUESTS,
+    ])
   })
 
   it('forgets the failures of an email once it signs in', async () => {

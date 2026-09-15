@@ -31,5 +31,5 @@ export function withoutAttempt(attempts: Date[], attempt: Date): Date[] {
 
 export function isExpired(attempts: Date[], now: Date): boolean {
   const [first] = attempts
-  return first !== undefined && now.getTime() - first.getTime() >= LOGIN_WINDOW_MS
+  return first === undefined || now.getTime() - first.getTime() >= LOGIN_WINDOW_MS
 }

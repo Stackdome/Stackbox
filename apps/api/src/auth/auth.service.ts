@@ -28,7 +28,6 @@ export class AuthService {
   // ponytail: failed sign ins are counted in this process and keyed by email, not by address; a shared store when the api runs more than one replica.
   private readonly failedAttempts = new Map<string, Date[]>()
 
-  // Exposed for the rate limit's expiry test; not part of the public contract.
   get trackedEmails(): number {
     return this.failedAttempts.size
   }

@@ -48,7 +48,7 @@ describe('the login rate limit', () => {
     expect([isExpired(failuresAt(0, 1), minutesAfterT0(14)), isExpired(failuresAt(0, 1), minutesAfterT0(15))]).toEqual([false, true])
   })
 
-  it('is not expired with no attempts', () => {
-    expect(isExpired([], T0)).toBe(false)
+  it('is expired with no attempts', () => {
+    expect(isExpired([], T0)).toBe(true)
   })
 })
