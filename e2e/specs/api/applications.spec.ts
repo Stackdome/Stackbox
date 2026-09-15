@@ -1,6 +1,6 @@
-import { type APIRequestContext, expect, test } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { StackfileSync, type components } from '@stackbox/contract'
-import { bearer, type Session, signIn } from './support'
+import { orgPath, type Session, signIn } from './support'
 
 type Schemas = components['schemas']
 
@@ -8,29 +8,27 @@ const ADMIN = { email: 'ada@example.com', password: 'password' }
 const VIEWER = { email: 'vik@example.com', password: 'password' }
 const BILLING_SYNCED_SHA = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678'
 
-const orgPath = (session: Session, path: string) => `/api/v1/organizations/${session.user.organisation_id}${path}`
-
-async function applicationsOf(request: APIRequestContext, session: Session): Promise<Schemas['ApplicationListItem'][]> {
-  const list: Schemas['ApplicationList'] = await (await request.get(orgPath(session, '/applications'), { headers: bearer(session) })).json()
+async function applicationsOf(session: Session): Promise<Schemas['ApplicationListItem'][]> {
+  const list: Schemas['ApplicationList'] = await (await session.api.get(orgPath(session, '/applications'))).json()
   return list.items
 }
 
-async function applicationNamed(request: APIRequestContext, session: Session, name: string): Promise<Schemas['ApplicationListItem']> {
-  return (await applicationsOf(request, session)).filter((item) => item.name === name)[0]
+async function applicationNamed(session: Session, name: string): Promise<Schemas['ApplicationListItem']> {
+  return (await applicationsOf(session)).filter((item) => item.name === name)[0]
 }
 
-async function repositoryNamed(request: APIRequestContext, session: Session, fullName: string): Promise<Schemas['Repository']> {
-  const list: Schemas['RepositoryList'] = await (await request.get(orgPath(session, '/repositories'), { headers: bearer(session) })).json()
+async function repositoryNamed(session: Session, fullName: string): Promise<Schemas['Repository']> {
+  const list: Schemas['RepositoryList'] = await (await session.api.get(orgPath(session, '/repositories'))).json()
   return list.items.filter((item) => item.full_name === fullName)[0]
 }
 
 test.describe.configure({ mode: 'serial' })
 
-test('creating an application syncs its Stackfile and answers its three services', async ({ request }) => {
-  const admin = await signIn(request, ADMIN)
-  const designSystem = await repositoryNamed(request, admin, 'acme/design-system')
+test('creating an application syncs its Stackfile and answers its three services', async ({ playwright, baseURL }) => {
+  const admin = await signIn(playwright, baseURL, ADMIN)
+  const designSystem = await repositoryNamed(admin, 'acme/design-system')
 
-  const response = await request.post(orgPath(admin, '/applications'), { headers: bearer(admin), data: { name: 'design-system', repository_id: designSystem.id } })
+  const response = await admin.api.post(orgPath(admin, '/applications'), { data: { name: 'design-system', repository_id: designSystem.id } })
 
   const created: Schemas['ApplicationDetail'] = await response.json()
   expect({ status: response.status(), sync: created.sync, services: created.services.map((row) => row.name) }).toEqual({
@@ -40,11 +38,11 @@ test('creating an application syncs its Stackfile and answers its three services
   })
 })
 
-test('the seeded billing application reads stale against the provider head', async ({ request }) => {
-  const admin = await signIn(request, ADMIN)
-  const billing = await applicationNamed(request, admin, 'billing')
+test('the seeded billing application reads stale against the provider head', async ({ playwright, baseURL }) => {
+  const admin = await signIn(playwright, baseURL, ADMIN)
+  const billing = await applicationNamed(admin, 'billing')
 
-  const detail: Schemas['ApplicationDetail'] = await (await request.get(orgPath(admin, `/applications/${billing.id}`), { headers: bearer(admin) })).json()
+  const detail: Schemas['ApplicationDetail'] = await (await admin.api.get(orgPath(admin, `/applications/${billing.id}`))).json()
 
   expect({ sync: detail.sync, synced: detail.synced_at_sha, moved: detail.head_sha !== detail.synced_at_sha }).toEqual({
     sync: StackfileSync.Stale,
@@ -53,11 +51,11 @@ test('the seeded billing application reads stale against the provider head', asy
   })
 })
 
-test('re-syncing billing makes it synced at the head sha', async ({ request }) => {
-  const admin = await signIn(request, ADMIN)
-  const billing = await applicationNamed(request, admin, 'billing')
+test('re-syncing billing makes it synced at the head sha', async ({ playwright, baseURL }) => {
+  const admin = await signIn(playwright, baseURL, ADMIN)
+  const billing = await applicationNamed(admin, 'billing')
 
-  const response = await request.post(orgPath(admin, `/applications/${billing.id}/sync`), { headers: bearer(admin) })
+  const response = await admin.api.post(orgPath(admin, `/applications/${billing.id}/sync`))
 
   const synced: Schemas['ApplicationDetail'] = await response.json()
   expect({ status: response.status(), sync: synced.sync, atHead: synced.synced_at_sha === synced.head_sha }).toEqual({
@@ -67,18 +65,17 @@ test('re-syncing billing makes it synced at the head sha', async ({ request }) =
   })
 })
 
-test('detecting a Stackfile at a missing path answers the error and creates nothing', async ({ request }) => {
-  const admin = await signIn(request, ADMIN)
-  const shop = await repositoryNamed(request, admin, 'acme/shop')
-  const before = (await applicationsOf(request, admin)).length
+test('detecting a Stackfile at a missing path answers the error and creates nothing', async ({ playwright, baseURL }) => {
+  const admin = await signIn(playwright, baseURL, ADMIN)
+  const shop = await repositoryNamed(admin, 'acme/shop')
+  const before = (await applicationsOf(admin)).length
 
-  const response = await request.post(orgPath(admin, '/applications/detect'), {
-    headers: bearer(admin),
+  const response = await admin.api.post(orgPath(admin, '/applications/detect'), {
     data: { repository_id: shop.id, stackfile_path: 'missing/stackfile.yml' },
   })
 
   const detection: Schemas['StackfileDetection'] = await response.json()
-  expect({ status: response.status(), error: detection.error, services: detection.services, created: (await applicationsOf(request, admin)).length - before }).toEqual({
+  expect({ status: response.status(), error: detection.error, services: detection.services, created: (await applicationsOf(admin)).length - before }).toEqual({
     status: 200,
     error: 'Stackfile not found at missing/stackfile.yml',
     services: [],
@@ -86,30 +83,30 @@ test('detecting a Stackfile at a missing path answers the error and creates noth
   })
 })
 
-test('deleting an application with a task still running answers 409', async ({ request }) => {
-  const admin = await signIn(request, ADMIN)
-  const shop = await applicationNamed(request, admin, 'shop')
+test('deleting an application with a task still running answers 409', async ({ playwright, baseURL }) => {
+  const admin = await signIn(playwright, baseURL, ADMIN)
+  const shop = await applicationNamed(admin, 'shop')
 
-  const response = await request.delete(orgPath(admin, `/applications/${shop.id}`), { headers: bearer(admin) })
+  const response = await admin.api.delete(orgPath(admin, `/applications/${shop.id}`))
 
   expect({ status: response.status(), code: (await response.json()).code }).toEqual({ status: 409, code: 'application_has_active_tasks' })
 })
 
-test('deleting an application with no task answers 204 and the application is gone', async ({ request }) => {
-  const admin = await signIn(request, ADMIN)
-  const designSystem = await applicationNamed(request, admin, 'design-system')
+test('deleting an application with no task answers 204 and the application is gone', async ({ playwright, baseURL }) => {
+  const admin = await signIn(playwright, baseURL, ADMIN)
+  const designSystem = await applicationNamed(admin, 'design-system')
 
-  const response = await request.delete(orgPath(admin, `/applications/${designSystem.id}`), { headers: bearer(admin) })
+  const response = await admin.api.delete(orgPath(admin, `/applications/${designSystem.id}`))
 
-  const detail = await request.get(orgPath(admin, `/applications/${designSystem.id}`), { headers: bearer(admin) })
+  const detail = await admin.api.get(orgPath(admin, `/applications/${designSystem.id}`))
   expect([response.status(), detail.status()]).toEqual([204, 404])
 })
 
-test('a Viewer cannot create an application', async ({ request }) => {
-  const viewer = await signIn(request, VIEWER)
-  const designSystem = await repositoryNamed(request, viewer, 'acme/design-system')
+test('a Viewer cannot create an application', async ({ playwright, baseURL }) => {
+  const viewer = await signIn(playwright, baseURL, VIEWER)
+  const designSystem = await repositoryNamed(viewer, 'acme/design-system')
 
-  const response = await request.post(orgPath(viewer, '/applications'), { headers: bearer(viewer), data: { name: 'viewer-app', repository_id: designSystem.id } })
+  const response = await viewer.api.post(orgPath(viewer, '/applications'), { data: { name: 'viewer-app', repository_id: designSystem.id } })
 
   expect(response.status()).toBe(403)
 })
