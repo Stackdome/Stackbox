@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
 import type { AuthUser } from '../access/types'
-import { verifyPassword } from '../auth/password'
+import { passwordMetrics, verifyPassword } from '../auth/password'
 import { hashSecret } from '../common/secret'
 import type { Database } from '../db/client'
 import { InviteStore } from '../db/invite-store'
@@ -151,6 +151,15 @@ describe('InviteService', () => {
       await refusalOf(service.accept(tokenOf(expiring.link), JOIN)),
       await refusalOf(service.accept('no-such-token', JOIN)),
     ]).toEqual([INVITE_NOT_PENDING, INVITE_NOT_PENDING, UNKNOWN_INVITE])
+  })
+
+  it('does not hash the password for a token that matches no invite', async () => {
+    const { service } = anInviteWorld()
+    const before = passwordMetrics.hashCalls
+
+    await refusalOf(service.accept('no-such-token', JOIN))
+
+    expect(passwordMetrics.hashCalls).toBe(before)
   })
 
   it('refuses to accept an invite for an email that joined in the meantime', async () => {

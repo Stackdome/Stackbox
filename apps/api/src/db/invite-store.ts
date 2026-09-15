@@ -60,6 +60,7 @@ export class InviteStore {
       const [pending] = await tx.select(INVITE_COLUMNS).from(invite).where(eq(invite.tokenHash, acceptance.tokenHash)).for('update')
       if (!pending) return { kind: AcceptOutcomeKind.Unknown }
       if (!isAcceptable(pending, acceptance.now)) return { kind: AcceptOutcomeKind.NotPending }
+      // ponytail: user_account_org_email_unique is case-sensitive on email while isMember compares lower-cased; a (org_id, lower(email)) unique index lands when a mixed-case row can arrive.
       const [account] = await tx
         .insert(userAccount)
         .values({ orgId: pending.orgId, email: pending.email, name: acceptance.name, passwordHash: acceptance.passwordHash, orgRole: pending.role })

@@ -25,7 +25,7 @@ describe('the invite controllers', () => {
     app = undefined
   })
 
-  async function serve(invites: Partial<InviteService>): Promise<string> {
+  async function serve(invites: Partial<InviteService>, jwtGuard: { canActivate: () => boolean } = { canActivate: () => true }): Promise<string> {
     const module = await Test.createTestingModule({
       controllers: [InvitesController, InviteAcceptController],
       providers: [
@@ -36,7 +36,7 @@ describe('the invite controllers', () => {
       ],
     })
       .overrideGuard(JwtCookieGuard)
-      .useValue({ canActivate: () => true })
+      .useValue(jwtGuard)
       .overrideGuard(AccessGuard)
       .useValue({ canActivate: () => true })
       .compile()
@@ -78,5 +78,13 @@ describe('the invite controllers', () => {
       response.headers.getSetCookie().some((cookie) => cookie.startsWith('auth_token=header.access.signature') && cookie.includes('HttpOnly')),
       body.includes(SESSION.tokens.token),
     ]).toEqual([200, { user: SESSION.user }, true, false])
+  })
+
+  it('accepts an invite even when the session guard would refuse the request', async () => {
+    const baseUrl = await serve({ accept: async () => GRACE }, { canActivate: () => false })
+
+    const response = await post(baseUrl, '/invites/some-token/accept', { name: 'Grace Hopper', password: 'a long enough password' })
+
+    expect(response.status).toBe(200)
   })
 })

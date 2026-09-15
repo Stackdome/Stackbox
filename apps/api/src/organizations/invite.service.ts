@@ -53,8 +53,12 @@ export class InviteService {
   }
 
   async accept(token: string, input: Schemas['InviteAccept']): Promise<UserProfile> {
+    const tokenHash = hashSecret(token)
+    const found = await this.invites.findByHash(tokenHash)
+    if (!found) throw new NotFoundException(UNKNOWN_INVITE)
+    if (!isAcceptable(found, this.clock.now())) throw new ConflictException(INVITE_NOT_PENDING)
     const outcome = await this.invites.accept({
-      tokenHash: hashSecret(token),
+      tokenHash,
       name: input.name.trim(),
       passwordHash: await hashPassword(input.password),
       now: this.clock.now(),
