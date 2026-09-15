@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react";
-import { SAVE_ORGANIZATION_ERROR } from "@/api/errors";
+import { SAVE_ORGANIZATION_ERROR, settingsErrorMessage } from "@/api/errors";
 import { type GeneralDraft, type OrganizationView, generalDraftOf, generalDraftProblem, isGeneralDirty } from "@/api/mappers/organization";
 import { useOrganization } from "@/api/use-settings";
 import { EmptyState, FieldError, FieldShell } from "@/components/branded";
@@ -26,8 +26,8 @@ export function GeneralForm({ organization, onSave }: { organization: Organizati
     setFailure(null);
     try {
       await onSave(draft);
-    } catch {
-      setFailure(SAVE_ORGANIZATION_ERROR);
+    } catch (error) {
+      setFailure(settingsErrorMessage(error, SAVE_ORGANIZATION_ERROR));
     } finally {
       setSaving(false);
     }

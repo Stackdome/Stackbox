@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
+import { AxiosError } from 'axios'
 import { expect, userEvent } from 'storybook/test'
 import { PREVIEW_ORGANIZATION } from '../../../.storybook/fixtures'
 import { toOrganization } from '@/api/mappers/organization'
@@ -34,5 +35,23 @@ export const BlankNameCannotSave: Story = {
 
     await expect(canvas.getByText('Name the organization')).toBeVisible()
     await expect(canvas.getByRole('button', { name: 'Save' })).toBeDisabled()
+  },
+}
+
+/** A 403 names the missing permission instead of the generic retry message. */
+export const RefusalNamesTheMissingPermission: Story = {
+  args: {
+    onSave: async () => {
+      const error = new AxiosError('request failed')
+      error.response = { status: 403, statusText: '', headers: {}, config: {} as never, data: {} }
+      throw error
+    },
+  },
+  play: async ({ canvas }) => {
+    await userEvent.clear(canvas.getByLabelText(/^Monthly budget/))
+    await userEvent.type(canvas.getByLabelText(/^Monthly budget/), '600')
+    await userEvent.click(canvas.getByRole('button', { name: 'Save' }))
+
+    await expect(await canvas.findByText("You do not have permission to change this organization's settings")).toBeVisible()
   },
 }
