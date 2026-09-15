@@ -55,6 +55,12 @@ export const GLYPH: Partial<Record<StatusDomain, Record<string, LucideIcon>>> = 
     live: CircleCheck,
     failed: CircleX,
   },
+  invite: {
+    pending: CircleDashed,
+    accepted: CircleCheck,
+    revoked: CircleOff,
+    expired: CircleOff,
+  },
   instance: {
     provisioning: Loader2,
     ready: CircleCheck,

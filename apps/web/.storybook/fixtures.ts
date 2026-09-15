@@ -7,6 +7,7 @@ import {
   ConnectionStatus,
   InstancePurpose,
   InstanceStatus,
+  InviteStatus,
   MessageRole,
   PrState,
   ReleaseStatus,
@@ -22,33 +23,20 @@ import {
   UserRole,
 } from '@stackbox/contract'
 import { type CatalogSeed, PREVIEW_HEAD_SHA, type RepositoryRow } from '../src/preview/handlers/catalog'
+import type { AccountsSeed } from '../src/preview/handlers/accounts'
 
 type Schemas = components['schemas']
-export type User = Schemas['User']
-export type Organization = Schemas['Organisation']
+export type CurrentUser = Schemas['CurrentUser']
 
 export const ORG_ID = 'org-1'
 
-export function makeUser(overrides: Partial<User> = {}): User {
+export function makeUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
   return {
     id: 'u1',
     name: 'Ada Lovelace',
-    username: 'ada',
     email: 'ada@example.com',
-    organisation: 'acme',
-    organisation_id: ORG_ID,
     role: UserRole.OrgAdmin,
-    ...overrides,
-  }
-}
-
-export function makeOrganization(overrides: Partial<Organization> = {}): Organization {
-  return {
-    id: ORG_ID,
-    name: 'acme',
-    is_platform: false,
-    created_at: '2026-07-20T09:00:00Z',
-    updated_at: '2026-07-20T09:00:00Z',
+    organization: { id: ORG_ID, name: 'acme' },
     ...overrides,
   }
 }
@@ -610,6 +598,43 @@ export const INSTANCE_DETAILS: InstanceDetail[] = [
   }),
 ]
 
+export type Organization = Schemas['Organization']
+export type Member = Schemas['Member']
+export type Invite = Schemas['Invite']
+export type ApiToken = Schemas['ApiToken']
+
+export const PREVIEW_ORGANIZATION: Organization = { id: ORG_ID, name: 'acme', budget_cents: 50_000, created_at: '2026-07-20T09:00:00Z' }
+
+export function makeMember(overrides: Partial<Member> = {}): Member {
+  return { id: 'u1', name: 'Ada Lovelace', email: 'ada@example.com', role: UserRole.OrgAdmin, created_at: '2026-07-20T09:00:00Z', ...overrides }
+}
+
+export const PREVIEW_MEMBERS: Member[] = [
+  makeMember(),
+  makeMember({ id: 'u3', name: 'Dev Ito', email: 'dev@example.com', role: UserRole.OrgMember, created_at: '2026-07-22T09:00:00Z' }),
+  makeMember({ id: 'u2', name: 'Vik Rao', email: 'vik@example.com', role: UserRole.OrgMember, created_at: '2026-07-21T09:00:00Z' }),
+]
+
+export function makeInvite(overrides: Partial<Invite> = {}): Invite {
+  return {
+    id: 'invite-1',
+    email: 'grace@example.com',
+    role: UserRole.OrgMember,
+    status: InviteStatus.Pending,
+    expires_at: hoursFromNow(120),
+    created_at: hoursAgo(48),
+    ...overrides,
+  }
+}
+
+export const PREVIEW_INVITES: Invite[] = [makeInvite()]
+
+export function makeApiToken(overrides: Partial<ApiToken> = {}): ApiToken {
+  return { id: 'token-1', name: 'CI deploys', prefix: 'sbx4Jq2p', expires_at: hoursFromNow(24 * 60), last_used_at: hoursAgo(3), created_at: hoursAgo(24 * 30), ...overrides }
+}
+
+export const PREVIEW_API_TOKENS: ApiToken[] = [makeApiToken()]
+
 export const PREVIEW_CATALOG_SEED: CatalogSeed = {
   connections: [GITHUB_CONNECTION, GITLAB_CONNECTION],
   repositories: REPOSITORY_ROWS,
@@ -620,3 +645,24 @@ export const PREVIEW_CATALOG_SEED: CatalogSeed = {
 }
 
 export const EMPTY_CATALOG_SEED: CatalogSeed = { connections: [], repositories: [], catalogue: {}, applications: [], tasks: [], instances: [] }
+
+export const PREVIEW_PASSWORD = 'password'
+
+/** Opens the seeded pending invite for grace@example.com in the preview: /invites/preview-invite-grace. */
+export const PREVIEW_INVITE_TOKEN = 'preview-invite-grace'
+
+export const PREVIEW_ACCOUNTS_SEED: AccountsSeed = {
+  organization: PREVIEW_ORGANIZATION,
+  accounts: PREVIEW_MEMBERS.map((member) => ({ member, password: PREVIEW_PASSWORD })),
+  invites: PREVIEW_INVITES,
+  inviteTokens: { [PREVIEW_INVITE_TOKEN]: 'invite-1' },
+  apiTokens: PREVIEW_API_TOKENS,
+}
+
+export const EMPTY_ACCOUNTS_SEED: AccountsSeed = {
+  organization: PREVIEW_ORGANIZATION,
+  accounts: [{ member: makeMember(), password: PREVIEW_PASSWORD }],
+  invites: [],
+  inviteTokens: {},
+  apiTokens: [],
+}

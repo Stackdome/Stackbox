@@ -21,6 +21,7 @@ const meta = {
   component: Harness,
   tags: ['ai-generated'],
   args: {
+    onSignOut: () => {},
     user: { name: 'Ada Lovelace', email: 'ada@example.com', avatar: '', organisation: 'acme' },
   },
 } satisfies Meta<typeof Harness>
@@ -35,13 +36,13 @@ export const NoOrganisation: Story = {
   args: { user: { name: 'Ada Lovelace', email: 'ada@example.com', avatar: '' } },
 }
 
-/** The menu opens on click, with Log out the one action in it. The menu
+/** The menu opens on click, with Sign out the one action in it. The menu
  *  content portals to `document.body`, outside the story's own canvas. */
-export const OpensToLogOut: Story = {
+export const OpensToSignOut: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole('button', { name: /account menu/i }))
     await waitFor(async () => {
-      await expect(within(document.body).getByRole('menuitem', { name: /log out/i })).toBeVisible()
+      await expect(within(document.body).getByRole('menuitem', { name: 'Sign out' })).toBeVisible()
     })
   },
 }

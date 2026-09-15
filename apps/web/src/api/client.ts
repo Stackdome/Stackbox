@@ -2,8 +2,9 @@
 import axios, { AxiosError } from 'axios';
 import type { components } from '@stackbox/contract';
 import { API_BASE_URL } from './base-url';
-import { refreshAccessToken } from './auth-refresh';
+import { refreshSession } from './auth-refresh';
 import { clearAuthSession } from '@/lib/common';
+import { ROUTES, invitePath } from '@/lib/routes';
 
 // OpenAPI Error types. The contract has no distinct ErrorList schema; the
 // wire envelope for a list of errors is just an Error array under `items`.
@@ -88,19 +89,13 @@ export function isServerError(error: unknown): boolean {
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add interceptor to include Authorization header and cookie if token exists
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers = config.headers || {};
-    config.headers['Authorization'] = `Bearer ${token}`;
-    document.cookie = `auth_token=${token}; path=/; secure; samesite=strict`;
-  }
   // The default JSON content type must not override the multipart boundary a FormData body needs.
   if (config.data instanceof FormData && config.headers) {
     delete config.headers['Content-Type'];
@@ -109,53 +104,32 @@ api.interceptors.request.use((config) => {
 });
 
 export interface AuthErrorDeps {
-  refresh: () => Promise<string>;
+  refresh: () => Promise<void>;
   retry: (config: unknown) => Promise<unknown>;
   onAuthFailure: () => void;
   isAuthPage?: () => boolean;
 }
 
-// Includes the OAuth callback: a stale session's failed refresh must not
-// navigate away and abort the in-flight code exchange.
+// Sign in and Join answer their own 401s: a wrong password there is an answer, not a lapsed session.
 export function isOnAuthPage(): boolean {
   const path = window.location.pathname;
-  return path === '/sign-in' || path === '/sign-up' || path === '/auth/github/callback';
-}
-
-// Expired/invalid access tokens return 403 here (not 401); match the token reason
-// so RBAC 403s ("unauthorized to perform…") are left alone.
-const TOKEN_EXPIRY_REASON = /token parse error|token (is )?expired|expired by/i;
-
-function reasonOf(err: { response?: { data?: { reason?: string; items?: { reason?: string }[] } } }): string {
-  const data = err?.response?.data;
-  return data?.reason ?? data?.items?.[0]?.reason ?? '';
-}
-
-function shouldRefresh(status: number | undefined, reason: string): boolean {
-  return status === 401 || (status === 403 && TOKEN_EXPIRY_REASON.test(reason));
+  return path === ROUTES.login || path.startsWith(invitePath(''));
 }
 
 export async function handleResponseError(error: unknown, deps: AuthErrorDeps): Promise<unknown> {
-  const err = error as {
-    response?: { status?: number; data?: { reason?: string; items?: { reason?: string }[] } };
-    config?: { headers?: Record<string, string>; _retry?: boolean };
-  };
-  const status = err?.response?.status;
+  const err = error as { response?: { status?: number }; config?: { _retry?: boolean } };
   const onAuthPage = deps.isAuthPage ? deps.isAuthPage() : isOnAuthPage();
   const original = err?.config;
 
-  if (shouldRefresh(status, reasonOf(err)) && !onAuthPage && original && !original._retry) {
+  if (err?.response?.status === 401 && !onAuthPage && original && !original._retry) {
     original._retry = true;
-    let token: string;
     try {
-      token = await deps.refresh();
+      await deps.refresh();
     } catch {
-      // Only a failed refresh logs out; a failed retry must propagate as-is.
+      // Only a failed refresh signs out; a failed retry must propagate as-is.
       deps.onAuthFailure();
       return Promise.reject(error);
     }
-    original.headers = original.headers ?? {};
-    original.headers['Authorization'] = `Bearer ${token}`;
     return deps.retry(original);
   }
   return Promise.reject(error);
@@ -165,11 +139,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) =>
     handleResponseError(error, {
-      refresh: refreshAccessToken,
+      refresh: refreshSession,
       retry: (config) => api(config as Parameters<typeof api>[0]),
       onAuthFailure: () => {
         clearAuthSession();
-        window.location.href = '/sign-in';
+        window.location.href = ROUTES.login;
       },
     }),
 );

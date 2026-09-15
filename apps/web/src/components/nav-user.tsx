@@ -22,7 +22,6 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { logoutAndRedirect } from "@/lib/common"
 
 /** First letter of the first two words, e.g. "Ada Lovelace" to "AL". Falls
  *  back to the first two characters for single-word names, and to "?" for an
@@ -36,7 +35,9 @@ function initials(name: string): string {
 
 export function NavUser({
   user,
+  onSignOut,
 }: {
+  onSignOut: () => void
   user: {
     name: string
     email: string
@@ -100,9 +101,9 @@ export function NavUser({
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuItem onClick={() => logoutAndRedirect()}>
+            <DropdownMenuItem onClick={onSignOut}>
               <LogOut />
-              Log out
+              Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

@@ -1,4 +1,3 @@
-import { makeUser } from '../../.storybook/fixtures'
 import { previewHandlers } from './handlers'
 
 /**
@@ -10,13 +9,6 @@ import { previewHandlers } from './handlers'
  * that actually works.
  */
 export async function startPreview(): Promise<void> {
-  // Auth is localStorage-based (`src/lib/common.ts`), so signing in is just
-  // seeding it. Without this the router bounces straight to /sign-in.
-  const user = makeUser()
-  localStorage.setItem('authToken', 'preview-token')
-  localStorage.setItem('refreshToken', 'preview-refresh')
-  localStorage.setItem('currentUser', JSON.stringify(user))
-
   const { setupWorker } = await import('msw/browser')
   const worker = setupWorker(...previewHandlers)
 
@@ -32,6 +24,6 @@ export async function startPreview(): Promise<void> {
   console.info(
     `%c preview `,
     'background:#191714;color:#F5F4F1;border-radius:4px',
-    'mocked network, no backend required. Signed in as ' + user.name,
+    'mocked network, no backend required. Sign in as ada@example.com with the password "password".',
   )
 }

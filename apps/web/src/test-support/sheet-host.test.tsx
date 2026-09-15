@@ -5,7 +5,6 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { SheetHost } from './sheet-host'
 import { ROUTES } from '@/lib/routes'
-import { PlaceholderPage } from '@/pages/placeholder/placeholder-page'
 
 describe('SheetHost', () => {
   // Two tests in this file both render a heading; without this, the DOM from
@@ -26,7 +25,7 @@ describe('SheetHost', () => {
     render(
       <MemoryRouter initialEntries={[ROUTES.instances]}>
         <SheetHost>
-          <PlaceholderPage />
+          <p>page body</p>
         </SheetHost>
       </MemoryRouter>,
     )

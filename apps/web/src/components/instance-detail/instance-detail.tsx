@@ -14,7 +14,7 @@ export function InstanceDetail({
   detail: InstanceDetailView;
   now: number;
   deploying: boolean;
-  onDeploy: () => void;
+  onDeploy?: () => void;
 }) {
   const tornDown = detail.status === InstanceStatus.TornDown;
   return (

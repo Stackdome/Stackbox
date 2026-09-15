@@ -9,6 +9,10 @@ export const ROUTES = {
   instance: '/instances/:instanceId',
   repositories: '/repositories',
   settings: '/settings',
+  settingsMembers: '/settings/members',
+  settingsTokens: '/settings/tokens',
+  login: '/login',
+  invite: '/invites/:token',
 } as const
 
 export type RoutePath = (typeof ROUTES)[keyof typeof ROUTES]
@@ -23,4 +27,8 @@ export function applicationPath(applicationId: string): string {
 
 export function instancePath(instanceId: string): string {
   return ROUTES.instance.replace(':instanceId', instanceId)
+}
+
+export function invitePath(token: string): string {
+  return ROUTES.invite.replace(':token', token)
 }

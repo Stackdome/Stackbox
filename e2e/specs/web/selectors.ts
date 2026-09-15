@@ -7,3 +7,5 @@ export const serviceRows = '[data-slot="service-list"] [data-slot="data-list-row
 export const instanceRows = '[data-slot="instance-list"] [data-slot="data-list-row"]'
 export const instanceStatus = '[data-slot="instance-status"]'
 export const expiryText = '[data-slot="expiry-text"]'
+export const memberRows = '[data-slot="member-list"] [data-slot="data-list-row"]'
+export const apiTokenRows = '[data-slot="api-token-list"] [data-slot="data-list-row"]'
