@@ -23,3 +23,13 @@ export function loginAllowance(attempts: Date[], now: Date): LoginAllowance {
 export function afterFailure(attempts: Date[], now: Date): Date[] {
   return [...openWindow(attempts, now), now]
 }
+
+// Drops a reserved attempt by reference identity, because afterFailure stores the same Date instance the caller reserved with.
+export function withoutAttempt(attempts: Date[], attempt: Date): Date[] {
+  return attempts.filter((kept) => kept !== attempt)
+}
+
+export function isExpired(attempts: Date[], now: Date): boolean {
+  const [first] = attempts
+  return first !== undefined && now.getTime() - first.getTime() >= LOGIN_WINDOW_MS
+}

@@ -7,7 +7,7 @@ import { UserStore } from '../db/user-store'
 import type { UserProfile } from '../organizations/types'
 import { CLOCK, type Clock } from '../ports'
 import { isUsable, shouldTouch } from './calc/api-token'
-import { afterFailure, attemptKey, loginAllowance } from './calc/login-attempts'
+import { afterFailure, attemptKey, isExpired, loginAllowance, withoutAttempt } from './calc/login-attempts'
 import { LoginOutcomeKind, loginOutcome } from './calc/login-match'
 import { CHOOSE_ORGANIZATION, INVALID_CREDENTIALS, INVALID_REFRESH, INVALID_SESSION, TOO_MANY_ATTEMPTS } from './errors'
 import { DUMMY_HASH, verifyPassword } from './password'
@@ -28,6 +28,11 @@ export class AuthService {
   // ponytail: failed sign ins are counted in this process and keyed by email, not by address; a shared store when the api runs more than one replica.
   private readonly failedAttempts = new Map<string, Date[]>()
 
+  // Exposed for the rate limit's expiry test; not part of the public contract.
+  get trackedEmails(): number {
+    return this.failedAttempts.size
+  }
+
   constructor(
     @Inject(UserStore) private readonly users: UserStore,
     @Inject(ApiTokenStore) private readonly apiTokens: ApiTokenStore,
@@ -38,20 +43,33 @@ export class AuthService {
   async login(input: Schemas['LoginRequest']): Promise<Session> {
     const key = attemptKey(input.email)
     const now = this.clock.now()
-    const allowance = loginAllowance(this.failedAttempts.get(key) ?? [], now)
+    this.pruneExpiredAttempts(now)
+    const attempts = this.failedAttempts.get(key) ?? []
+    const allowance = loginAllowance(attempts, now)
     if (!allowance.allowed) {
       throw new HttpException({ ...TOO_MANY_ATTEMPTS, details: { retry_after_seconds: allowance.retryAfterSeconds } }, HttpStatus.TOO_MANY_REQUESTS)
     }
+    // Reserved before the password check so a burst of concurrent logins cannot all read the same allowance before any of them record a failure.
+    if (isExpired(attempts, now)) this.failedAttempts.delete(key)
+    this.failedAttempts.set(key, afterFailure(attempts, now))
     const outcome = loginOutcome(await this.accountsMatching(input.email, input.password), input.organization_id)
     switch (outcome.kind) {
       case LoginOutcomeKind.Refused:
-        this.failedAttempts.set(key, afterFailure(this.failedAttempts.get(key) ?? [], now))
         throw new UnauthorizedException(INVALID_CREDENTIALS)
       case LoginOutcomeKind.Choose:
+        this.failedAttempts.set(key, withoutAttempt(this.failedAttempts.get(key) ?? [], now))
         throw new ConflictException({ ...CHOOSE_ORGANIZATION, details: { organizations: outcome.organizations } })
       case LoginOutcomeKind.Session:
         this.failedAttempts.delete(key)
         return this.sessionFor(outcome.account)
+    }
+  }
+
+  // Map insertion order tracks window start because a failure always moves its key to the end (see login); walking from the front and stopping at the first live entry prunes in amortised O(1) per call.
+  private pruneExpiredAttempts(now: Date): void {
+    for (const [key, attempts] of this.failedAttempts) {
+      if (!isExpired(attempts, now)) break
+      this.failedAttempts.delete(key)
     }
   }
 
@@ -62,7 +80,7 @@ export class AuthService {
     return this.sessionFor(account)
   }
 
-  // ponytail: one token version per account signs out every device at once; a session table when per-device sign out is asked for.
+  // ponytail: one token version per account signs out every device at once, and rotation does not revoke the refresh token it replaced until this bumps the version; a session table when per-device sign out or immediate refresh-token revocation is asked for.
   async logout(user: AuthUser): Promise<void> {
     await this.users.bumpTokenVersion(user.id)
   }

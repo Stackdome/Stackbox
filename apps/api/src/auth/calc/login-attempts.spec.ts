@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { afterFailure, attemptKey, loginAllowance } from './login-attempts'
+import { afterFailure, attemptKey, isExpired, loginAllowance, withoutAttempt } from './login-attempts'
 
 const T0 = new Date('2026-09-15T10:00:00Z')
 const minutesAfterT0 = (minutes: number) => new Date(T0.getTime() + minutes * 60_000)
@@ -35,5 +35,20 @@ describe('the login rate limit', () => {
 
   it('keys attempts by the trimmed lower-cased email', () => {
     expect(attemptKey('  Ada@Example.com ')).toBe('ada@example.com')
+  })
+
+  it('drops a reserved attempt by reference, leaving other attempts with the same time untouched', () => {
+    const reserved = minutesAfterT0(1)
+    const attempts = [minutesAfterT0(0), reserved, new Date(reserved.getTime())]
+
+    expect(withoutAttempt(attempts, reserved)).toEqual([minutesAfterT0(0), new Date(reserved.getTime())])
+  })
+
+  it('is not expired while the window is still open, and expired once fifteen minutes pass', () => {
+    expect([isExpired(failuresAt(0, 1), minutesAfterT0(14)), isExpired(failuresAt(0, 1), minutesAfterT0(15))]).toEqual([false, true])
+  })
+
+  it('is not expired with no attempts', () => {
+    expect(isExpired([], T0)).toBe(false)
   })
 })

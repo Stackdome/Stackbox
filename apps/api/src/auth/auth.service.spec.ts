@@ -139,6 +139,56 @@ describe('AuthService', () => {
     expect((await service.login(ADA_LOGIN)).user.id).toBe(IDS.user)
   })
 
+  it('counts a sign in that is still checking the password against the limit', async () => {
+    const { service } = anAuthWorld()
+    const before = passwordMetrics.verifyCalls
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 10 }, () => service.login({ email: 'ada@example.com', password: WRONG })),
+    )
+    const statuses = results.map((result) => result.status === 'rejected' && result.reason instanceof HttpException && result.reason.getStatus())
+
+    expect([
+      statuses.filter((status) => status === HttpStatus.UNAUTHORIZED).length,
+      statuses.filter((status) => status === HttpStatus.TOO_MANY_REQUESTS).length,
+      passwordMetrics.verifyCalls - before,
+    ]).toEqual([5, 5, 5])
+  })
+
+  it('no longer holds an email that failed once, once the window has passed', async () => {
+    const { clock, service } = anAuthWorld()
+    await service.login({ email: 'ada@example.com', password: WRONG }).catch(() => undefined)
+    clock.advance(15 * MINUTE_MS)
+
+    await service.login({ email: 'someone-else@example.com', password: WRONG }).catch(() => undefined)
+
+    expect(service.trackedEmails).toBe(1)
+  })
+
+  it('refuses an organization the password matches no account in, as a wrong password', async () => {
+    await aTwinInGlobex()
+    const { service } = anAuthWorld()
+    const before = passwordMetrics.verifyCalls
+
+    const refused = await service.login({ ...ADA_LOGIN, organization_id: '00000000-0000-4000-8000-000000000099' }).catch((error: unknown) => error)
+
+    expect([refused instanceof UnauthorizedException && refused.getResponse(), passwordMetrics.verifyCalls - before]).toEqual([INVALID_CREDENTIALS, 2])
+  })
+
+  it('neither counts nor forgets an attempt that asks for the organization', async () => {
+    await aTwinInGlobex()
+    const { service } = anAuthWorld()
+    for (let attempt = 0; attempt < 4; attempt++) {
+      await service.login({ email: 'ada@example.com', password: WRONG }).catch(() => undefined)
+    }
+
+    const chosen = await service.login(ADA_LOGIN).catch((error: unknown) => error)
+    await service.login({ email: 'ada@example.com', password: WRONG }).catch(() => undefined)
+    const refused = await service.login(ADA_LOGIN).catch((error: unknown) => error)
+
+    expect([chosen instanceof ConflictException, refused instanceof HttpException && refused.getStatus()]).toEqual([true, HttpStatus.TOO_MANY_REQUESTS])
+  })
+
   it('forgets the failures of an email once it signs in', async () => {
     const { service } = anAuthWorld()
     const failFourTimes = async () => {
