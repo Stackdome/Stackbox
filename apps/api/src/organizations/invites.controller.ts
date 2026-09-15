@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Post, Res, UseGuards } from '@nestjs/common'
 import { type components, schemas } from '@stackbox/contract'
 import { AccessGuard, Action, type AuthUser, RequirePermission } from '../access'
-import { AuthService, type CookieResponse, CurrentUser, JwtCookieGuard, SessionCookies } from '../auth'
+import { AuthService, type CookieResponse, CurrentUser, JwtCookieGuard, SessionCookies, SessionOnlyGuard } from '../auth'
 import { ZodValidationPipe } from '../common/zod-validation.pipe'
 import { InviteService } from './invite.service'
 
@@ -22,6 +22,7 @@ export class InvitesController {
   }
 
   @Post()
+  @UseGuards(SessionOnlyGuard)
   @RequirePermission(INVITES_RESOURCE, Action.Create)
   create(
     @Param('org_id') orgId: string,

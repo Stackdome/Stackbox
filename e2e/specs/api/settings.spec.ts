@@ -124,3 +124,17 @@ test('an api token answers as its user until it is revoked, and its secret is ne
     401,
   ])
 })
+
+test('an api token cannot mint an invite link', async ({ playwright, baseURL, request }) => {
+  const admin = await signIn(playwright, baseURL, ADMIN)
+  const created = await admin.api.post('/api/v1/api-tokens', { data: { name: 'invite attempt', expires_in_days: ApiTokenExpiryDays.Month } })
+  const token: Schemas['ApiTokenCreated'] = await created.json()
+
+  const response = await request.post(orgPath(admin, '/invites'), {
+    headers: { Authorization: `Bearer ${token.secret}` },
+    data: { email: 'attacker@example.com', role: UserRole.OrgAdmin },
+  })
+  const body: { code: string } = await response.json()
+
+  expect([response.status(), body.code]).toEqual([401, 'invalid_session'])
+})

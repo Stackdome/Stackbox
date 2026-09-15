@@ -1,10 +1,12 @@
-import type { INestApplication } from '@nestjs/common'
+import type { ExecutionContext, INestApplication } from '@nestjs/common'
 import { Test } from '@nestjs/testing'
 import { UserRole } from '@stackbox/contract'
 import { afterEach, describe, expect, it } from 'vitest'
 import { AccessGuard } from '../access'
 import { AuthService, JwtCookieGuard, SessionCookies, type Session } from '../auth'
 import { AUTH_SETTINGS } from '../auth/settings'
+import type { RequestWithCredential } from '../auth/jwt-cookie.guard'
+import { CredentialKind } from '../auth/token-from-headers'
 import { aUser } from './test-support/builders'
 import { InviteService } from './invite.service'
 import { InviteAcceptController, InvitesController } from './invites.controller'
@@ -25,7 +27,10 @@ describe('the invite controllers', () => {
     app = undefined
   })
 
-  async function serve(invites: Partial<InviteService>, jwtGuard: { canActivate: () => boolean } = { canActivate: () => true }): Promise<string> {
+  async function serve(
+    invites: Partial<InviteService>,
+    jwtGuard: { canActivate: (context: ExecutionContext) => boolean } = { canActivate: () => true },
+  ): Promise<string> {
     const module = await Test.createTestingModule({
       controllers: [InvitesController, InviteAcceptController],
       providers: [
@@ -48,6 +53,22 @@ describe('the invite controllers', () => {
   function post(baseUrl: string, path: string, body: Record<string, unknown>): Promise<Response> {
     return fetch(`${baseUrl}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   }
+
+  it('refuses to create an invite through an api token', async () => {
+    const baseUrl = await serve(
+      { create: REFUSE },
+      {
+        canActivate: (context) => {
+          context.switchToHttp().getRequest<RequestWithCredential>().credentialKind = CredentialKind.ApiToken
+          return true
+        },
+      },
+    )
+
+    const response = await post(baseUrl, `${ORG_PATH}/invites`, { email: 'grace@example.com', role: UserRole.OrgMember })
+
+    expect(response.status).toBe(401)
+  })
 
   it('answers 400 for an invite to something that is not an email, or with a role that is not an organization role', async () => {
     const baseUrl = await serve({ create: REFUSE })

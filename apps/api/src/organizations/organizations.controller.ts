@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, Inject, Param, Patch, UseGuards } from '@nestjs/common'
 import { type components, schemas } from '@stackbox/contract'
 import { AccessGuard, Action, type AuthUser, RequirePermission } from '../access'
-import { CurrentUser, JwtCookieGuard } from '../auth'
+import { CurrentUser, JwtCookieGuard, SessionOnlyGuard } from '../auth'
 import { ZodValidationPipe } from '../common/zod-validation.pipe'
 import { OrganizationService } from './organization.service'
 
@@ -38,6 +38,7 @@ export class OrganizationsController {
   }
 
   @Patch('users/:user_id')
+  @UseGuards(SessionOnlyGuard)
   @RequirePermission(MEMBER_RESOURCE, Action.Write)
   changeRole(
     @Param('org_id') orgId: string,
@@ -50,6 +51,7 @@ export class OrganizationsController {
 
   @Delete('users/:user_id')
   @HttpCode(204)
+  @UseGuards(SessionOnlyGuard)
   @RequirePermission(MEMBER_RESOURCE, Action.Delete)
   remove(@Param('org_id') orgId: string, @Param('user_id') userId: string, @CurrentUser() caller: AuthUser): Promise<void> {
     return this.organizations.remove(orgId, caller, userId)
