@@ -12,17 +12,19 @@ export function ReleasesRail({
   releases: ReleaseView[];
   blockedReason: string | null;
   deploying: boolean;
-  onDeploy: () => void;
+  onDeploy?: () => void;
 }) {
   return (
     <section aria-label="Releases" className="flex min-w-0 flex-col gap-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-name font-medium text-foreground">Releases</h2>
-        <BlockedAction reason={blockedReason}>
-          <Button variant="outline" size="sm" onClick={onDeploy} disabled={deploying}>
-            Deploy
-          </Button>
-        </BlockedAction>
+        {onDeploy && (
+          <BlockedAction reason={blockedReason}>
+            <Button variant="outline" size="sm" onClick={onDeploy} disabled={deploying}>
+              Deploy
+            </Button>
+          </BlockedAction>
+        )}
       </div>
       {releases.length === 0 ? (
         <p className="text-body text-fg-muted">No releases yet</p>
