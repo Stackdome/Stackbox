@@ -24,6 +24,12 @@ async function withClient<T>(work: (client: Client) => Promise<T>): Promise<T> {
 // No route creates a second organization and the seed keeps one, so the twin is arranged here and removed after.
 export function arrangeTwin(email: string): Promise<Twin> {
   return withClient(async (client) => {
+    // A crashed prior run's afterAll can leave the twin's globex organization and account behind; clear them first.
+    await client.query(
+      'delete from organization where id in ((select org_id from user_account where email = $1) except (select org_id from user_account where email = $2))',
+      [email, SEEDED_ADMIN_EMAIL],
+    )
+    await client.query('delete from user_account where email = $1', [email])
     const admin = await client.query<{ org_id: string; password_hash: string }>('select org_id, password_hash from user_account where email = $1', [SEEDED_ADMIN_EMAIL])
     const globex = await client.query<{ id: string }>("insert into organization (name) values ('globex') returning id")
     const memberships: [string, UserRole][] = [
