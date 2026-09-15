@@ -4,7 +4,22 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { migratedTestDatabase } from '../../test/support/test-database'
 import { DEMO_ORIGIN_SHA } from '../ports/fakes'
 import type { Database } from './client'
-import { application, applicationInstance, artifact, execution, gitConnection, release, report, repository, service, task, taskEvent, userAccount } from './schema'
+import {
+  apiToken,
+  application,
+  applicationInstance,
+  artifact,
+  execution,
+  gitConnection,
+  invite,
+  release,
+  report,
+  repository,
+  service,
+  task,
+  taskEvent,
+  userAccount,
+} from './schema'
 import { FIXTURE, seed } from './seed'
 
 const OPTIONS = { passwordHash: 'scrypt$c2FsdA==$a2V5', now: new Date('2026-09-14T10:00:00Z') }
@@ -28,6 +43,15 @@ describe('seed', () => {
     const tasks = await db.select({ id: task.id }).from(task)
     const screenshots = await db.select({ id: artifact.id }).from(artifact).innerJoin(report, eq(artifact.ownerId, report.id))
     expect([admins.length, tasks.length, screenshots.length]).toEqual([1, 9, 1])
+  })
+
+  it('seeds no invite and no api token, and every account at token version 0', async () => {
+    await seed(db, OPTIONS)
+
+    const invites = await db.select({ id: invite.id }).from(invite)
+    const tokens = await db.select({ id: apiToken.id }).from(apiToken)
+    const versions = await db.selectDistinct({ version: userAccount.tokenVersion }).from(userAccount)
+    expect([invites.length, tokens.length, versions]).toEqual([0, 0, [{ version: 0 }]])
   })
 
   it('runs a cancelled fixture task again on the next seed', async () => {

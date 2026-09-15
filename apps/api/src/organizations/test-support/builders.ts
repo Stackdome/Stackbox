@@ -9,6 +9,7 @@ export function aUser(overrides: Partial<UserProfile> = {}): UserProfile {
     name: 'Ada Lovelace',
     passwordHash: null,
     orgRole: UserRole.OrgAdmin,
+    tokenVersion: 0,
     createdAt: new Date('2026-09-13T10:00:00Z'),
     organizationName: 'acme',
     ...overrides,

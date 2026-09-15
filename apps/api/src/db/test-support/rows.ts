@@ -1,7 +1,19 @@
-import { InstancePurpose, type InstanceStatus, RepoProvider, type ReleaseStatus } from '@stackbox/contract'
+import { InstancePurpose, type InstanceStatus, type InviteStatus, RepoProvider, type ReleaseStatus, UserRole } from '@stackbox/contract'
 import { sql } from 'drizzle-orm'
+import { ORG_SCOPE } from '../../access/types'
 import type { Database } from '../client'
-import { application, applicationInstance, gitConnection, organization, release, repository, userAccount } from '../schema'
+import {
+  apiToken,
+  application,
+  applicationInstance,
+  gitConnection,
+  invite,
+  organization,
+  release,
+  repository,
+  roleBinding,
+  userAccount,
+} from '../schema'
 
 export const IDS = {
   org: '00000000-0000-4000-8000-000000000001',
@@ -30,6 +42,11 @@ export const IDS = {
   secondInstance: '00000000-0000-4000-8000-000000000018',
   release: '00000000-0000-4000-8000-000000000019',
   secondRelease: '00000000-0000-4000-8000-00000000001a',
+  invite: '00000000-0000-4000-8000-00000000001b',
+  secondInvite: '00000000-0000-4000-8000-00000000001c',
+  apiToken: '00000000-0000-4000-8000-00000000001d',
+  secondApiToken: '00000000-0000-4000-8000-00000000001e',
+  secondUser: '00000000-0000-4000-8000-00000000001f',
 } as const
 
 export const TEST_INSTALLATION_REF = 'acme-installation'
@@ -119,4 +136,50 @@ export async function insertRelease(
   row: { instanceId: string; id?: string; status?: ReleaseStatus; commitSha?: string; ref?: string | null; runId?: string | null; createdAt?: Date },
 ): Promise<void> {
   await db.insert(release).values({ commitSha: 'origin-sha', ...row })
+}
+
+export async function insertMember(
+  db: Database,
+  row: { id: string; orgId: string; name: string; email?: string; role?: UserRole; passwordHash?: string | null },
+): Promise<void> {
+  const role = row.role ?? UserRole.OrgMember
+  await db
+    .insert(userAccount)
+    .values({ id: row.id, orgId: row.orgId, name: row.name, email: row.email ?? `${row.id}@example.com`, orgRole: role, passwordHash: row.passwordHash ?? null })
+  await db.insert(roleBinding).values({ orgId: row.orgId, userId: row.id, subject: role, scope: ORG_SCOPE })
+}
+
+export async function insertInvite(
+  db: Database,
+  row: {
+    orgId: string
+    email: string
+    tokenHash: string
+    expiresAt: Date
+    id?: string
+    role?: UserRole
+    status?: InviteStatus
+    createdBy?: string | null
+    createdAt?: Date
+  },
+): Promise<void> {
+  await db.insert(invite).values({ role: UserRole.OrgMember, ...row })
+}
+
+export async function insertApiToken(
+  db: Database,
+  row: {
+    userId: string
+    orgId: string
+    tokenHash: string
+    id?: string
+    name?: string
+    prefix?: string
+    expiresAt?: Date | null
+    lastUsedAt?: Date | null
+    revokedAt?: Date | null
+    createdAt?: Date
+  },
+): Promise<void> {
+  await db.insert(apiToken).values({ name: 'ci', prefix: row.tokenHash.slice(0, 8), ...row })
 }
