@@ -6,8 +6,8 @@ import { navGroups } from "@/components/nav-items"
 import { NavItem } from "@/components/nav-item"
 import { NavUser } from "@/components/nav-user"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { getCurrentUser } from "@/lib/common"
 import { useCurrentUser } from "@/hooks/use-current-user"
+import { useSignOut } from "@/hooks/use-sign-out"
 import { useTasks } from "@/hooks/use-tasks"
 import { ROUTES } from "@/lib/routes"
 import {
@@ -30,15 +30,15 @@ import {
  * 32px item pitched every 34px.
  */
 export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
-  const user = getCurrentUser();
-  const { isOrgAdmin } = useCurrentUser();
+  const { user, isOrgAdmin } = useCurrentUser();
+  const signOut = useSignOut();
   const { needsYouCount } = useTasks();
 
   const userData = {
-    name: user?.name || user?.username || "User",
-    email: user?.email || "user@example.com",
+    name: user?.name ?? "",
+    email: user?.email ?? "",
     avatar: "",
-    organisation: user?.organisation,
+    organisation: user?.organizationName,
   };
 
   return (
@@ -136,7 +136,7 @@ export function AppSidebar(props: React.ComponentProps<typeof Sidebar>) {
             the avatar does not move when the rail collapses; only the right
             inset closes, to the board's 44px collapsed width. */}
         <div className="pl-2 pr-3 group-data-[collapsible=icon]:pr-[5px]">
-          <NavUser user={userData} />
+          <NavUser user={userData} onSignOut={() => void signOut()} />
         </div>
       </SidebarFooter>
     </Sidebar>

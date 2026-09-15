@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppLayout } from '@/components/app-layout'
+import { SessionGate } from '@/components/session-gate'
 import { ApplicationDetailPage } from './pages/applications/application-detail-page'
 import { ApplicationsPage } from './pages/applications/applications-page'
 import { NewApplicationPage } from './pages/applications/new-application-page'
@@ -22,7 +23,13 @@ export function App() {
         <ConfirmProvider>
           <BrowserRouter>
             <Routes>
-              <Route element={<AppLayout />}>
+              <Route
+                element={
+                  <SessionGate>
+                    <AppLayout />
+                  </SessionGate>
+                }
+              >
                 <Route index element={<Navigate to={ROUTES.tasks} replace />} />
                 <Route path={ROUTES.tasks} element={<TasksPage />} />
                 <Route path={ROUTES.newTask} element={<TasksPage newTaskOpen />} />

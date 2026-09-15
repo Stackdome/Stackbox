@@ -24,31 +24,17 @@ import {
 import { type CatalogSeed, PREVIEW_HEAD_SHA, type RepositoryRow } from '../src/preview/handlers/catalog'
 
 type Schemas = components['schemas']
-export type User = Schemas['User']
-export type Organization = Schemas['Organisation']
+export type CurrentUser = Schemas['CurrentUser']
 
 export const ORG_ID = 'org-1'
 
-export function makeUser(overrides: Partial<User> = {}): User {
+export function makeUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
   return {
     id: 'u1',
     name: 'Ada Lovelace',
-    username: 'ada',
     email: 'ada@example.com',
-    organisation: 'acme',
-    organisation_id: ORG_ID,
     role: UserRole.OrgAdmin,
-    ...overrides,
-  }
-}
-
-export function makeOrganization(overrides: Partial<Organization> = {}): Organization {
-  return {
-    id: ORG_ID,
-    name: 'acme',
-    is_platform: false,
-    created_at: '2026-07-20T09:00:00Z',
-    updated_at: '2026-07-20T09:00:00Z',
+    organization: { id: ORG_ID, name: 'acme' },
     ...overrides,
   }
 }
