@@ -50,6 +50,13 @@ describe('the organization mapper', () => {
     ]).toEqual(['Name the organization', 'Enter the budget in whole dollars', 'Enter the budget in whole dollars', null])
   })
 
+  it('rounds a budget stored in odd cents to whole dollars, so it opens without a problem or as dirty', () => {
+    const organization = toOrganization({ ...PREVIEW_ORGANIZATION, budget_cents: 12345 })
+    const draft = generalDraftOf(organization)
+
+    expect([draft, generalDraftProblem(draft), isGeneralDirty(organization, draft)]).toEqual([{ name: 'acme', budget: '123' }, null, false])
+  })
+
   it('refuses a budget above the integer columns maximum', () => {
     expect([generalDraftProblem({ name: 'acme', budget: '21474836' }), generalDraftProblem({ name: 'acme', budget: '21474837' })]).toEqual([
       null,

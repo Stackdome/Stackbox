@@ -47,7 +47,7 @@ export function toOrganization(organization: Schemas['Organization']): Organizat
 }
 
 export function generalDraftOf(organization: OrganizationView): GeneralDraft {
-  return { name: organization.name, budget: String(organization.budgetDollars) }
+  return { name: organization.name, budget: String(Math.round(organization.budgetDollars)) }
 }
 
 export function generalDraftProblem(draft: GeneralDraft): string | null {
@@ -58,7 +58,7 @@ export function generalDraftProblem(draft: GeneralDraft): string | null {
 }
 
 export function isGeneralDirty(organization: OrganizationView, draft: GeneralDraft): boolean {
-  return draft.name.trim() !== organization.name || draft.budget.trim() !== String(organization.budgetDollars)
+  return draft.name.trim() !== organization.name || draft.budget.trim() !== String(Math.round(organization.budgetDollars))
 }
 
 export function toOrganizationUpdate(draft: GeneralDraft): Schemas['OrganizationUpdate'] {
