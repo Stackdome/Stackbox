@@ -23,6 +23,7 @@ import {
   UserRole,
 } from '@stackbox/contract'
 import { type CatalogSeed, PREVIEW_HEAD_SHA, type RepositoryRow } from '../src/preview/handlers/catalog'
+import type { AccountsSeed } from '../src/preview/handlers/accounts'
 
 type Schemas = components['schemas']
 export type CurrentUser = Schemas['CurrentUser']
@@ -644,3 +645,24 @@ export const PREVIEW_CATALOG_SEED: CatalogSeed = {
 }
 
 export const EMPTY_CATALOG_SEED: CatalogSeed = { connections: [], repositories: [], catalogue: {}, applications: [], tasks: [], instances: [] }
+
+export const PREVIEW_PASSWORD = 'password'
+
+/** Opens the seeded pending invite for grace@example.com in the preview: /invites/preview-invite-grace. */
+export const PREVIEW_INVITE_TOKEN = 'preview-invite-grace'
+
+export const PREVIEW_ACCOUNTS_SEED: AccountsSeed = {
+  organization: PREVIEW_ORGANIZATION,
+  accounts: PREVIEW_MEMBERS.map((member) => ({ member, password: PREVIEW_PASSWORD })),
+  invites: PREVIEW_INVITES,
+  inviteTokens: { [PREVIEW_INVITE_TOKEN]: 'invite-1' },
+  apiTokens: PREVIEW_API_TOKENS,
+}
+
+export const EMPTY_ACCOUNTS_SEED: AccountsSeed = {
+  organization: PREVIEW_ORGANIZATION,
+  accounts: [{ member: makeMember(), password: PREVIEW_PASSWORD }],
+  invites: [],
+  inviteTokens: {},
+  apiTokens: [],
+}
