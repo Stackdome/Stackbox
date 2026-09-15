@@ -4,6 +4,8 @@ import { SessionGate } from '@/components/session-gate'
 import { ApplicationDetailPage } from './pages/applications/application-detail-page'
 import { ApplicationsPage } from './pages/applications/applications-page'
 import { NewApplicationPage } from './pages/applications/new-application-page'
+import { JoinPage } from './pages/auth/join-page'
+import { SignInPage } from './pages/auth/sign-in-page'
 import { InstanceDetailPage } from './pages/instances/instance-detail-page'
 import { InstancesPage } from './pages/instances/instances-page'
 import { PlaceholderPage } from './pages/placeholder/placeholder-page'
@@ -23,6 +25,8 @@ export function App() {
         <ConfirmProvider>
           <BrowserRouter>
             <Routes>
+              <Route path={ROUTES.login} element={<SignInPage />} />
+              <Route path={ROUTES.invite} element={<JoinPage />} />
               <Route
                 element={
                   <SessionGate>
