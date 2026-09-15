@@ -35,10 +35,27 @@ export function JoinForm({ preview, onSubmit }: { preview: InvitePreviewView; on
     <form aria-label={`Join ${preview.organizationName}`} noValidate className="flex flex-col gap-4" onSubmit={(event) => void submit(event)}>
       <p className="text-body text-fg-2">{`Joining as ${preview.email}, ${preview.roleLabel}`}</p>
       <FieldShell label="Name" htmlFor={NAME_ID} required>
-        <Input id={NAME_ID} autoComplete="name" placeholder="Grace Hopper" value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+        <Input
+          id={NAME_ID}
+          autoComplete="name"
+          placeholder="Grace Hopper"
+          value={draft.name}
+          onChange={(event) => {
+            setFailure(null);
+            setDraft({ ...draft, name: event.target.value });
+          }}
+        />
       </FieldShell>
       <FieldShell label="Password" htmlFor={PASSWORD_ID} required hint={`At least ${MIN_PASSWORD_LENGTH} characters`}>
-        <PasswordInput id={PASSWORD_ID} autoComplete="new-password" value={draft.password} onChange={(event) => setDraft({ ...draft, password: event.target.value })} />
+        <PasswordInput
+          id={PASSWORD_ID}
+          autoComplete="new-password"
+          value={draft.password}
+          onChange={(event) => {
+            setFailure(null);
+            setDraft({ ...draft, password: event.target.value });
+          }}
+        />
       </FieldShell>
       <Button type="submit" size="lg" className="w-full" loading={submitting}>
         {`Join ${preview.organizationName}`}
