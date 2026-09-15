@@ -73,22 +73,28 @@ describe('the preview accounts', () => {
     ])
   })
 
-  it('refuses an organization update with a blank name or a negative budget', () => {
+  it('refuses an organization update with a blank name, a negative budget or one above the integer columns maximum', () => {
     const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
 
-    expect([accounts.updateOrganization({ name: '  ' }), accounts.updateOrganization({ budget_cents: -1 })]).toEqual([
-      { status: 400, body: { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' } },
-      { status: 400, body: { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' } },
+    expect([accounts.updateOrganization({ name: '  ' }), accounts.updateOrganization({ budget_cents: -1 }), accounts.updateOrganization({ budget_cents: 2147483648 })]).toEqual([
+      { status: 400, body: { message: 'validation failed' } },
+      { status: 400, body: { message: 'validation failed' } },
+      { status: 400, body: { message: 'validation failed' } },
     ])
   })
 
-  it('refuses a budget above the integer columns maximum', () => {
+  it('refuses organization writes to a signed-in member', () => {
     const accounts = new PreviewAccounts(PREVIEW_ACCOUNTS_SEED)
+    accounts.signIn({ email: 'vik@example.com', password: PREVIEW_PASSWORD })
+    const forbidden = { status: 403, body: { code: 'forbidden', message: "You do not have permission to change this organization's settings" } }
 
-    expect(accounts.updateOrganization({ budget_cents: 2147483648 })).toEqual({
-      status: 400,
-      body: { code: 'invalid_organization_update', message: 'Name the organization and set a budget of zero or more' },
-    })
+    expect([
+      accounts.updateOrganization({ name: 'acme labs' }),
+      accounts.changeRole('u3', UserRole.OrgAdmin),
+      accounts.removeMember('u3'),
+      accounts.invite({ email: 'newhire@example.com', role: UserRole.OrgMember }),
+      accounts.revokeInvite('invite-1'),
+    ]).toEqual([forbidden, forbidden, forbidden, forbidden, forbidden])
   })
 
   it('refuses to invite an email address missing a domain', () => {
@@ -104,8 +110,8 @@ describe('the preview accounts', () => {
       accounts.accept(PREVIEW_INVITE_TOKEN, { name: 'Grace Hopper', password: 'short' }),
       accounts.accept(PREVIEW_INVITE_TOKEN, { name: '  ', password: 'a long enough password' }),
     ]).toEqual([
-      { status: 400, body: { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' } },
-      { status: 400, body: { code: 'invalid_invite_accept', message: 'Name yourself and use a password of at least 8 characters' } },
+      { status: 400, body: { message: 'validation failed' } },
+      { status: 400, body: { message: 'validation failed' } },
     ])
   })
 })
