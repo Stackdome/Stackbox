@@ -8,8 +8,8 @@ import { JoinPage } from './pages/auth/join-page'
 import { SignInPage } from './pages/auth/sign-in-page'
 import { InstanceDetailPage } from './pages/instances/instance-detail-page'
 import { InstancesPage } from './pages/instances/instances-page'
-import { PlaceholderPage } from './pages/placeholder/placeholder-page'
 import { RepositoriesPage } from './pages/repositories/repositories-page'
+import { SettingsPage, SettingsTab } from './pages/settings/settings-page'
 import { TaskDetailPage } from './pages/tasks/task-detail-page'
 import { TasksPage } from './pages/tasks/tasks-page'
 import { ROUTES } from '@/lib/routes'
@@ -44,7 +44,9 @@ export function App() {
                 <Route path={ROUTES.instances} element={<InstancesPage />} />
                 <Route path={ROUTES.instance} element={<InstanceDetailPage />} />
                 <Route path={ROUTES.repositories} element={<RepositoriesPage />} />
-                <Route path={ROUTES.settings} element={<PlaceholderPage />} />
+                <Route path={ROUTES.settings} element={<SettingsPage tab={SettingsTab.General} />} />
+                <Route path={ROUTES.settingsMembers} element={<SettingsPage tab={SettingsTab.Members} />} />
+                <Route path={ROUTES.settingsTokens} element={<SettingsPage tab={SettingsTab.Tokens} />} />
               </Route>
             </Routes>
           </BrowserRouter>
