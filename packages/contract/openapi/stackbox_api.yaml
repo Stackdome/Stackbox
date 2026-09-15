@@ -1800,6 +1800,7 @@ components:
           type: string
         budget_cents:
           type: integer
+          maximum: 2147483647
           description: Monthly budget in cents.
         created_at:
           type: string
@@ -1816,6 +1817,7 @@ components:
         budget_cents:
           type: integer
           minimum: 0
+          maximum: 2147483647
     Member:
       type: object
       x-stability: draft

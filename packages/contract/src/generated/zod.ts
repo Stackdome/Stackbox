@@ -41,14 +41,14 @@ const Organization = z
   .object({
     id: z.string(),
     name: z.string(),
-    budget_cents: z.number().int(),
+    budget_cents: z.number().int().lte(2147483647),
     created_at: z.string().datetime({ offset: true }),
   })
   .passthrough();
 const OrganizationUpdate = z
   .object({
     name: z.string().min(1).max(100).regex(/\S/),
-    budget_cents: z.number().int().gte(0),
+    budget_cents: z.number().int().gte(0).lte(2147483647),
   })
   .partial()
   .passthrough();
